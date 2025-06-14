@@ -24,6 +24,13 @@ interface Tip {
   display_name?: string;
 }
 
+// Declare Razorpay global variable
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -32,10 +39,17 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
   const [loading, setLoading] = useState(false);
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [totalTips, setTotalTips] = useState(0);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
   const suggestedAmounts = [1, 5, 10, 25, 50];
 
   useEffect(() => {
+    // Load Razorpay script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => setRazorpayLoaded(true);
+    document.body.appendChild(script);
+
     fetchRecentTips();
     const cleanup = subscribeToTips();
     return cleanup;
@@ -43,7 +57,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
   const fetchRecentTips = async () => {
     try {
-      // First get tips
+      // Get recent tips
       const { data: tipsData, error: tipsError } = await supabase
         .from('stream_tips')
         .select('*')
@@ -56,22 +70,27 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
       if (tipsData && tipsData.length > 0) {
         // Get user profiles for the tips
         const userIds = [...new Set(tipsData.map(tip => tip.tipper_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, display_name')
-          .in('id', userIds);
+        
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, username, display_name')
+            .in('id', userIds);
 
-        // Merge tips with profile data
-        const tipsWithProfiles = tipsData.map(tip => {
-          const profile = profilesData?.find(p => p.id === tip.tipper_id);
-          return {
-            ...tip,
-            username: profile?.username,
-            display_name: profile?.display_name
-          };
-        });
+          // Merge tips with profile data
+          const tipsWithProfiles = tipsData.map(tip => {
+            const profile = profilesData?.find(p => p.id === tip.tipper_id);
+            return {
+              ...tip,
+              username: profile?.username,
+              display_name: profile?.display_name
+            };
+          });
 
-        setRecentTips(tipsWithProfiles);
+          setRecentTips(tipsWithProfiles);
+        } else {
+          setRecentTips(tipsData);
+        }
       } else {
         setRecentTips([]);
       }
@@ -139,6 +158,15 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
       return;
     }
 
+    if (!razorpayLoaded) {
+      toast({
+        title: "Payment Loading",
+        description: "Please wait for payment system to load",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const amount = parseFloat(tipAmount);
     if (!amount || amount <= 0) {
       toast({
@@ -151,28 +179,86 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('stream_tips')
-        .insert({
-          stream_id: streamId,
-          tipper_id: user.id,
-          amount: amount,
-          message: tipMessage.trim() || null
-        });
+      // Create payment order
+      const { data: orderData, error: orderError } = await supabase.functions.invoke(
+        'create-tip-payment',
+        {
+          body: {
+            streamId,
+            amount,
+            message: tipMessage.trim() || null
+          }
+        }
+      );
 
-      if (error) throw error;
+      if (orderError) throw orderError;
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Stream Tip",
+        description: `Tip for livestream`,
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          try {
+            // Verify payment
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+              'verify-tip-payment',
+              {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  streamId,
+                  amount,
+                  message: tipMessage.trim() || null
+                }
+              }
+            );
+
+            if (verifyError) throw verifyError;
+
+            setTipAmount("");
+            setTipMessage("");
+            toast({
+              title: "Tip sent successfully!",
+              description: `You sent $${amount} to the creator`,
+            });
+          } catch (error: any) {
+            console.error('Payment verification error:', error);
+            toast({
+              title: "Payment verification failed",
+              description: "Please contact support if money was deducted",
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          email: user.email,
+        },
+        theme: {
+          color: "#3399cc"
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
       
-      setTipAmount("");
-      setTipMessage("");
-      toast({
-        title: "Tip sent!",
-        description: `You sent $${amount} to the creator`,
+      rzp.on('payment.failed', function (response: any) {
+        console.error('Payment failed:', response.error);
+        toast({
+          title: "Payment failed",
+          description: response.error.description,
+          variant: "destructive",
+        });
       });
+
+      rzp.open();
     } catch (error: any) {
-      console.error('Error sending tip:', error);
+      console.error('Error creating tip payment:', error);
       toast({
         title: "Error",
-        description: "Failed to send tip",
+        description: "Failed to initiate payment",
         variant: "destructive",
       });
     } finally {
@@ -250,11 +336,15 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading || !tipAmount || parseFloat(tipAmount) <= 0}
+              disabled={loading || !tipAmount || parseFloat(tipAmount) <= 0 || !razorpayLoaded}
             >
               <Gift className="w-4 h-4 mr-2" />
-              Send Tip
+              {loading ? "Processing..." : "Send Tip"}
             </Button>
+            
+            {!razorpayLoaded && (
+              <p className="text-xs text-gray-500 text-center">Loading payment system...</p>
+            )}
           </form>
         )}
 
