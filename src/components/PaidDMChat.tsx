@@ -6,6 +6,7 @@ import { MessageCircle, Paperclip, Image, Video, Mic, DollarSign, Trash2 } from 
 import { useToast } from "@/hooks/use-toast";
 import TipModal from "./TipModal";
 import VideoCall from "./VideoCall";
+import CallPickupModal from "./CallPickupModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [clearingChat, setClearingChat] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showCallPickup, setShowCallPickup] = useState(false);
+  const [incomingCallFrom, setIncomingCallFrom] = useState<string>("");
   const [isVideoCallInitiator, setIsVideoCallInitiator] = useState(false);
   const [videoCallOffer, setVideoCallOffer] = useState<RTCSessionDescriptionInit | null>(null);
   const [videoCallAnswer, setVideoCallAnswer] = useState<RTCSessionDescriptionInit | null>(null);
@@ -356,8 +359,10 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           setVideoCallOffer(offerData);
           setVideoCallAnswer(null); // Reset previous answer
           setVideoCallIceCandidate(null); // Reset previous ICE candidate
-          setShowVideoCall(true);
-          setIsVideoCallInitiator(false);
+          
+          // Show pickup modal instead of directly opening video call
+          setIncomingCallFrom(senderId === sessionInfo?.creator_id ? "Creator" : "Subscriber");
+          setShowCallPickup(true);
         }
       } else if (content.startsWith('VIDEO_CALL_ANSWER:')) {
         const answerData = JSON.parse(content.replace('VIDEO_CALL_ANSWER:', ''));
@@ -374,12 +379,26 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       } else if (content === 'VIDEO_CALL_END') {
         if (senderId !== currentUserId) {
           setShowVideoCall(false);
+          setShowCallPickup(false);
           setVideoCallOffer(null);
           setVideoCallAnswer(null);
           setVideoCallIceCandidate(null);
           toast({
             title: "Call Ended",
             description: "The other participant ended the video call",
+          });
+        }
+      } else if (content === 'VIDEO_CALL_DECLINED') {
+        if (senderId !== currentUserId) {
+          setShowVideoCall(false);
+          setShowCallPickup(false);
+          setVideoCallOffer(null);
+          setVideoCallAnswer(null);
+          setVideoCallIceCandidate(null);
+          toast({
+            title: "Call Declined",
+            description: "The other participant declined the video call",
+            variant: "destructive",
           });
         }
       }
@@ -412,6 +431,44 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       sender_id: currentUserId,
       recipient_id,
       content: "📹 Started a video call"
+    });
+  };
+
+  // Accept incoming call
+  const acceptCall = () => {
+    console.log('Accepting incoming video call');
+    setShowCallPickup(false);
+    setShowVideoCall(true);
+    setIsVideoCallInitiator(false);
+  };
+
+  // Decline incoming call
+  const declineCall = async () => {
+    if (!sessionInfo) return;
+    
+    console.log('Declining incoming video call');
+    setShowCallPickup(false);
+    setVideoCallOffer(null);
+    setVideoCallAnswer(null);
+    setVideoCallIceCandidate(null);
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    // Send decline message
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "VIDEO_CALL_DECLINED"
+    });
+
+    // Send a regular message to notify about call decline
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "📹 Video call declined"
     });
   };
 
@@ -472,6 +529,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     
     console.log('Ending video call');
     setShowVideoCall(false);
+    setShowCallPickup(false);
     setVideoCallOffer(null);
     setVideoCallAnswer(null);
     setVideoCallIceCandidate(null);
@@ -555,7 +613,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               if (m.content.startsWith('VIDEO_CALL_OFFER:') || 
                   m.content.startsWith('VIDEO_CALL_ANSWER:') || 
                   m.content.startsWith('VIDEO_CALL_ICE:') ||
-                  m.content === 'VIDEO_CALL_END') {
+                  m.content === 'VIDEO_CALL_END' ||
+                  m.content === 'VIDEO_CALL_DECLINED') {
                 return null;
               }
 
@@ -659,7 +718,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               variant="outline"
               size="sm"
               onClick={startVideoCall}
-              disabled={uploadingMedia || showVideoCall}
+              disabled={uploadingMedia || showVideoCall || showCallPickup}
               className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50"
             >
               <Video className="w-3 h-3" />
@@ -697,6 +756,14 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           />
         )}
       </div>
+
+      {/* Call Pickup Modal */}
+      <CallPickupModal
+        isOpen={showCallPickup}
+        callerName={incomingCallFrom}
+        onAccept={acceptCall}
+        onDecline={declineCall}
+      />
 
       {/* Video Call Modal */}
       {showVideoCall && (
