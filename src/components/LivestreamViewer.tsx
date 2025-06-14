@@ -45,66 +45,101 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
     const video = videoRef.current;
     if (!video || !streamData.stream_key) return;
 
-    // Construct the HLS URL - using a more standard format
-    const hlsUrl = `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`;
+    // Try multiple HLS URL formats
+    const hlsUrls = [
+      `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`,
+      `https://lp-playback.studio/hls/${streamData.stream_key}/index.m3u8`,
+      `https://livepeer.studio/api/asset/hls/${streamData.stream_key}/index.m3u8`
+    ];
     
-    console.log('Initializing video player with URL:', hlsUrl);
+    console.log('Attempting to load stream with key:', streamData.stream_key);
+    console.log('Trying URLs:', hlsUrls);
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: false,
-        lowLatencyMode: true,
-        backBufferLength: 90
-      });
+    let currentUrlIndex = 0;
 
-      hlsRef.current = hls;
-      hls.loadSource(hlsUrl);
-      hls.attachMedia(video);
+    const tryNextUrl = () => {
+      if (currentUrlIndex >= hlsUrls.length) {
+        setVideoError('All stream URLs failed to load. The stream may not be properly configured.');
+        return;
+      }
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest parsed, starting playback');
-        video.play().catch(err => {
-          console.log('Autoplay prevented:', err);
-          setVideoError('Click play to start the stream');
-        });
-        setVideoError(null);
-      });
+      const hlsUrl = hlsUrls[currentUrlIndex];
+      console.log(`Trying URL ${currentUrlIndex + 1}:`, hlsUrl);
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              setVideoError('Network error - stream may be unavailable');
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              setVideoError('Media error - trying to recover');
-              hls.recoverMediaError();
-              break;
-            default:
-              setVideoError('Stream error - please refresh the page');
-              hls.destroy();
-              break;
-          }
+      if (Hls.isSupported()) {
+        // Clean up previous instance
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
         }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS support
-      video.src = hlsUrl;
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(err => {
-          console.log('Autoplay prevented:', err);
-          setVideoError('Click play to start the stream');
+
+        const hls = new Hls({
+          enableWorker: false,
+          lowLatencyMode: true,
+          backBufferLength: 90,
+          maxLoadingDelay: 4,
+          maxRetries: 2,
+          retryDelayInMs: 1000
         });
-      });
-      
-      video.addEventListener('error', () => {
-        setVideoError('Error loading stream');
-      });
-    } else {
-      setVideoError('Your browser does not support HLS streaming');
-    }
+
+        hlsRef.current = hls;
+        hls.loadSource(hlsUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('HLS manifest parsed successfully for URL:', hlsUrl);
+          video.play().catch(err => {
+            console.log('Autoplay prevented:', err);
+            setVideoError('Click play to start the stream');
+          });
+          setVideoError(null);
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('HLS error for URL:', hlsUrl, data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('Network error, trying next URL...');
+                currentUrlIndex++;
+                setTimeout(tryNextUrl, 1000);
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('Media error, trying to recover...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.log('Fatal error, trying next URL...');
+                currentUrlIndex++;
+                setTimeout(tryNextUrl, 1000);
+                break;
+            }
+          }
+        });
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS support
+        video.src = hlsUrl;
+        video.addEventListener('loadedmetadata', () => {
+          console.log('Native HLS loaded successfully for URL:', hlsUrl);
+          video.play().catch(err => {
+            console.log('Autoplay prevented:', err);
+            setVideoError('Click play to start the stream');
+          });
+          setVideoError(null);
+        });
+        
+        video.addEventListener('error', () => {
+          console.log('Native HLS error for URL:', hlsUrl);
+          currentUrlIndex++;
+          setTimeout(tryNextUrl, 1000);
+        });
+      } else {
+        setVideoError('Your browser does not support HLS streaming');
+      }
+    };
+
+    // Start trying URLs
+    tryNextUrl();
   };
 
   const fetchStreamData = async () => {
