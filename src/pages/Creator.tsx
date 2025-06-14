@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -12,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import CreatorSidebar from "@/components/CreatorSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar"; // ADD THIS IMPORT
 
 const Creator = () => {
   const { user } = useAuth();
@@ -40,54 +42,56 @@ const Creator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <div className="flex w-full max-w-[1400px] mx-auto px-4 py-8 gap-6">
-        {/* Sidebar */}
-        <CreatorSidebar active={activeSection} onSelect={setActiveSection} />
+      {/* FIX: Wrap sidebar+content in SidebarProvider */}
+      <SidebarProvider>
+        <div className="flex w-full max-w-[1400px] mx-auto px-4 py-8 gap-6">
+          {/* Sidebar */}
+          <CreatorSidebar active={activeSection} onSelect={setActiveSection} />
 
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Creator Dashboard</h1>
-            <p className="text-gray-600">
-              Manage your content, streams, and audience
-            </p>
-          </div>
+          {/* Main Content */}
+          <main className="flex-1 min-w-0">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold mb-2">Creator Dashboard</h1>
+              <p className="text-gray-600">
+                Manage your content, streams, and audience
+              </p>
+            </div>
 
-          {activeSection === "overview" && <CreatorDashboard />}
-          {activeSection === "livestream" && <LivestreamDashboard />}
-          {activeSection === "content" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Content Management</CardTitle>
-                <CardDescription>
-                  Upload and manage your premium content
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Content management coming soon...
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          {activeSection === "settings" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Creator Settings</CardTitle>
-                <CardDescription>
-                  Configure your creator preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-gray-500 py-8">
-                  Creator settings coming soon...
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </main>
-      </div>
-
+            {activeSection === "overview" && <CreatorDashboard />}
+            {activeSection === "livestream" && <LivestreamDashboard />}
+            {activeSection === "content" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Content Management</CardTitle>
+                  <CardDescription>
+                    Upload and manage your premium content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">
+                    Content management coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {activeSection === "settings" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Creator Settings</CardTitle>
+                  <CardDescription>
+                    Configure your creator preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">
+                    Creator settings coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </main>
+        </div>
+      </SidebarProvider>
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
