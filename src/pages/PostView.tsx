@@ -94,11 +94,15 @@ const PostView = () => {
         }
       }
 
-      setPost({
+      // Type the content_type properly
+      const typedPost: Post = {
         ...postData,
+        content_type: postData.content_type as 'text' | 'image' | 'video',
         likes_count: likesCount,
         user_liked: userLiked
-      });
+      };
+
+      setPost(typedPost);
     } catch (error) {
       console.error('Error fetching post:', error);
       toast.error("Failed to load post");
