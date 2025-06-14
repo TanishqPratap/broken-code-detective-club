@@ -20,7 +20,7 @@ const LivestreamDashboard = () => {
   const [viewerCount, setViewerCount] = useState(0);
   const [isCreatingStream, setIsCreatingStream] = useState(false);
 
-  const saveStreamToDatabase = async (streamKey: string) => {
+  const saveStreamToDatabase = async (livepeerStreamId: string, streamKey: string, playbackId: string) => {
     if (!user) return;
 
     try {
@@ -35,6 +35,15 @@ const LivestreamDashboard = () => {
         });
 
       if (error) throw error;
+      
+      // Store the Livepeer stream data locally
+      setStreamData({
+        id: livepeerStreamId,
+        streamKey: streamKey,
+        playbackId: playbackId,
+        playbackUrl: `https://livepeercdn.com/hls/${playbackId}/index.m3u8`,
+        rtmpIngestUrl: `rtmp://rtmp.livepeer.com/live/${streamKey}`
+      });
     } catch (error: any) {
       console.error('Error saving stream:', error);
       toast({
@@ -58,14 +67,19 @@ const LivestreamDashboard = () => {
     setIsCreatingStream(true);
     
     try {
-      // For now, create a mock stream until we have proper Livepeer integration
-      const mockStream = {
-        streamKey: `stream_${Date.now()}`,
-        playbackUrl: `https://livepeercdn.com/hls/stream_${Date.now()}/index.m3u8`
-      };
-      
-      setStreamData(mockStream);
-      await saveStreamToDatabase(mockStream.streamKey);
+      const { data, error } = await supabase.functions.invoke('livepeer-stream', {
+        body: {
+          action: 'create',
+          streamData: {
+            title: streamTitle,
+            description: streamDescription
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      await saveStreamToDatabase(data.id, data.streamKey, data.playbackId);
       
       toast({
         title: "Stream Created",
@@ -192,6 +206,13 @@ const LivestreamDashboard = () => {
                 </Button>
               ) : (
                 <div className="space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <Label className="text-sm font-medium">RTMP Ingest URL</Label>
+                    <p className="text-xs text-gray-600 mt-1 font-mono break-all">
+                      {streamData.rtmpIngestUrl}
+                    </p>
+                  </div>
+                  
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <Label className="text-sm font-medium">Stream Key</Label>
                     <p className="text-xs text-gray-600 mt-1 font-mono break-all">

@@ -65,6 +65,10 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
     );
   }
 
+  const playbackUrl = streamData.status === 'live' 
+    ? `https://livepeercdn.com/hls/${streamData.stream_key}/index.m3u8`
+    : null;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid lg:grid-cols-3 gap-8">
@@ -73,9 +77,9 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
           <Card>
             <CardContent className="p-0">
               <div className="aspect-video bg-black rounded-t-lg overflow-hidden">
-                {streamData.status === 'live' ? (
+                {streamData.status === 'live' && playbackUrl ? (
                   <video
-                    src={`https://livepeercdn.com/hls/${streamData.stream_key}/index.m3u8`}
+                    src={playbackUrl}
                     autoPlay
                     muted
                     className="w-full h-full"
