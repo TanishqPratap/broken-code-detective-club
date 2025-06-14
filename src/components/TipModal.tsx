@@ -102,7 +102,10 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
 
             console.log('Payment verified successfully:', verificationData);
             
+            // Call the callback to show tip in chat
             onTipSent(tipAmount, message.trim() || undefined);
+            
+            // Close modal and reset form
             onClose();
             setAmount("");
             setMessage("");
@@ -118,6 +121,8 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
               description: "Payment was processed but verification failed. Please contact support.",
               variant: "destructive",
             });
+          } finally {
+            setLoading(false);
           }
         },
         prefill: {

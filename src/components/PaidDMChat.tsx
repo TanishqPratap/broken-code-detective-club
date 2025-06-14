@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -217,11 +216,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       sender_id: currentUserId,
       recipient_id,
       content: `💰 Sent a tip of $${amount}${message ? `: ${message}` : ''}`
-    });
-
-    toast({
-      title: "Tip Sent!",
-      description: `Successfully sent $${amount} tip`,
     });
   };
 
