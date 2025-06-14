@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { User, Video } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [accountType, setAccountType] = useState<"creator" | "subscriber">("subscriber");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -29,7 +32,9 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         options: {
           data: {
             display_name: displayName,
-          }
+            role: accountType,
+          },
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
@@ -117,6 +122,36 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
           </TabsContent>
           
           <TabsContent value="signup" className="space-y-4">
+            <div className="space-y-4">
+              <Label>Account Type</Label>
+              <RadioGroup 
+                value={accountType} 
+                onValueChange={(value) => setAccountType(value as "creator" | "subscriber")}
+                className="grid grid-cols-2 gap-4"
+              >
+                <div className="flex items-center space-x-2 border rounded-lg p-4 hover:bg-gray-50">
+                  <RadioGroupItem value="subscriber" id="subscriber" />
+                  <Label htmlFor="subscriber" className="flex items-center gap-2 cursor-pointer">
+                    <User className="w-4 h-4" />
+                    <div>
+                      <div className="font-medium">Subscriber</div>
+                      <div className="text-xs text-gray-500">Follow and support creators</div>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border rounded-lg p-4 hover:bg-gray-50">
+                  <RadioGroupItem value="creator" id="creator" />
+                  <Label htmlFor="creator" className="flex items-center gap-2 cursor-pointer">
+                    <Video className="w-4 h-4" />
+                    <div>
+                      <div className="font-medium">Creator</div>
+                      <div className="text-xs text-gray-500">Share content and earn money</div>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="signup-name">Display Name</Label>
               <Input
@@ -147,7 +182,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
               />
             </div>
             <Button onClick={handleSignUp} disabled={loading} className="w-full">
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account..." : `Create ${accountType === "creator" ? "Creator" : "Subscriber"} Account`}
             </Button>
           </TabsContent>
         </Tabs>
