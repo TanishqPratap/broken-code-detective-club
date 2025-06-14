@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, DollarSign, Trash2, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TipModal from "./TipModal";
-import VideoCall from "./VideoCall";
+import StreamVideoCall from "./StreamVideoCall";
 import CallPickupModal from "./CallPickupModal";
 import MediaUploader from "./PaidDM/MediaUploader";
 import MessageList, { MessageRow } from "./PaidDM/MessageList";
 import ChatInput from "./PaidDM/ChatInput";
-import { useVideoCallSignaling } from "@/hooks/useVideoCallSignaling";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useStreamVideoCall } from "@/hooks/useStreamVideoCall";
 
 interface PaidDMChatProps {
   sessionId: string;
@@ -33,13 +33,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
-  const [showVideoCall, setShowVideoCall] = useState(false);
-  const [showCallPickup, setShowCallPickup] = useState(false);
-  const [incomingCallFrom, setIncomingCallFrom] = useState<string>("");
-  const [isVideoCallInitiator, setIsVideoCallInitiator] = useState(false);
-  const [videoCallOffer, setVideoCallOffer] = useState<RTCSessionDescriptionInit | null>(null);
-  const [videoCallAnswer, setVideoCallAnswer] = useState<RTCSessionDescriptionInit | null>(null);
-  const [videoCallIceCandidate, setVideoCallIceCandidate] = useState<RTCIceCandidate | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("disconnected");
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const channelRef = useRef<any>(null);
@@ -47,6 +40,20 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const reconnectAttemptsRef = useRef(0);
   const { toast } = useToast();
   const [sessionInfo, setSessionInfo] = useState<{ creator_id: string; subscriber_id: string; } | null>(null);
+
+  const streamVideoCall = useStreamVideoCall({
+    sessionInfo,
+    currentUserId,
+    onCallMessage: async (content: string) => {
+      if (!sessionInfo) return;
+      const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content,
+      });
+    },
+  });
 
   useEffect(() => {
     (async () => {
@@ -60,29 +67,22 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     })();
   }, [sessionId]);
 
-  const resetVideoCallState = useCallback(() => {
-    console.log("Resetting video call state");
-    setVideoCallOffer(null);
-    setVideoCallAnswer(null);
-    setVideoCallIceCandidate(null);
-    setIsVideoCallInitiator(false);
-    setIncomingCallFrom("");
-  }, []);
+  const handleMessageReceived = useCallback((message: MessageRow) => {
+    console.log("=== NEW MESSAGE RECEIVED ===", message);
+    
+    const isForThisConversation = 
+      (message.sender_id === sessionInfo?.creator_id && message.recipient_id === sessionInfo?.subscriber_id) ||
+      (message.sender_id === sessionInfo?.subscriber_id && message.recipient_id === sessionInfo?.creator_id);
+    
+    if (isForThisConversation) {
+      setMessages((prev) => [...prev, { ...message }]);
+      
+      if (message.content.startsWith("STREAM_VIDEO_CALL_") && message.sender_id !== currentUserId) {
+        streamVideoCall.processSignalingMessage(message.content, message.sender_id);
+      }
+    }
+  }, [sessionInfo, currentUserId, streamVideoCall.processSignalingMessage]);
 
-  // Video call signaling handler
-  const handleVideoCallMessage = useVideoCallSignaling(currentUserId, sessionInfo, {
-    showVideoCall,
-    setShowVideoCall,
-    setIncomingCallFrom,
-    setShowCallPickup,
-    setVideoCallOffer,
-    setVideoCallAnswer,
-    setVideoCallIceCandidate,
-    setIsVideoCallInitiator,
-    resetVideoCallState,
-  });
-
-  // Simplified connection setup with better error handling
   const setupRealtimeConnection = useCallback(() => {
     if (!sessionInfo) {
       console.log("No session info available for realtime connection");
@@ -92,14 +92,12 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     console.log("=== Setting up simplified realtime connection ===");
     setConnectionStatus("connecting");
     
-    // Clean up existing channel
     if (channelRef.current) {
       console.log("Cleaning up existing channel");
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
-    // Create a simpler channel name
     const channelName = `chat-${sessionId}`;
     console.log("Creating channel:", channelName);
     
@@ -114,43 +112,12 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           filter: `sender_id=in.(${sessionInfo.creator_id},${sessionInfo.subscriber_id})`
         },
         (payload) => {
-          const m = payload.new as MessageRow;
-          console.log("=== NEW MESSAGE RECEIVED ===");
-          console.log("Message:", {
-            id: m.id,
-            sender: m.sender_id,
-            recipient: m.recipient_id,
-            content: m.content.substring(0, 100),
-            isFromOtherUser: m.sender_id !== currentUserId,
-            isVideoCallRelated: m.content.startsWith("VIDEO_CALL_")
-          });
-          
-          // Check if this message is for this conversation
-          const isForThisConversation = 
-            (m.sender_id === sessionInfo?.creator_id && m.recipient_id === sessionInfo?.subscriber_id) ||
-            (m.sender_id === sessionInfo?.subscriber_id && m.recipient_id === sessionInfo?.creator_id);
-          
-          if (isForThisConversation) {
-            console.log("Message is for this conversation, adding to messages");
-            setMessages((prev) => [...prev, { ...m }]);
-            
-            // Process video call signaling messages from other users
-            if (m.content.startsWith("VIDEO_CALL_") && m.sender_id !== currentUserId) {
-              console.log("=== PROCESSING VIDEO CALL SIGNALING ===");
-              console.log("Content:", m.content);
-              console.log("From user:", m.sender_id);
-              
-              // Process immediately without delay
-              handleVideoCallMessage(m.content, m.sender_id);
-            }
-          } else {
-            console.log("Message not for this conversation, ignoring");
-          }
+          const message = payload.new as MessageRow;
+          handleMessageReceived(message);
         }
       )
       .subscribe((status) => {
-        console.log("=== CHANNEL STATUS UPDATE ===");
-        console.log("Channel status:", status);
+        console.log("=== CHANNEL STATUS UPDATE ===", status);
         setConnectionStatus(status);
         
         if (status === 'SUBSCRIBED') {
@@ -164,7 +131,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           console.error("❌ Channel connection failed:", status);
           setConnectionStatus("failed");
           
-          // Limit reconnection attempts
           if (reconnectAttemptsRef.current < 3) {
             reconnectAttemptsRef.current++;
             console.log(`Retrying connection... Attempt ${reconnectAttemptsRef.current}/3`);
@@ -176,7 +142,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
             reconnectTimeoutRef.current = setTimeout(() => {
               console.log("Attempting to reconnect...");
               setupRealtimeConnection();
-            }, 2000 * reconnectAttemptsRef.current); // Exponential backoff
+            }, 2000 * reconnectAttemptsRef.current);
           } else {
             console.error("Max reconnection attempts reached");
             toast({
@@ -190,7 +156,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
 
     channelRef.current = channel;
     return channel;
-  }, [sessionInfo, sessionId, currentUserId, handleVideoCallMessage, toast]);
+  }, [sessionInfo, sessionId, handleMessageReceived, toast]);
 
   useEffect(() => {
     let ignore = false;
@@ -220,7 +186,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
     fetchMessages();
 
-    // Setup realtime connection
     const channel = setupRealtimeConnection();
 
     return () => {
@@ -237,20 +202,10 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     };
   }, [sessionInfo, setupRealtimeConnection]);
 
-  // Debug state changes
-  useEffect(() => {
-    console.log("=== VIDEO CALL STATE DEBUG ===");
-    console.log("showCallPickup:", showCallPickup);
-    console.log("incomingCallFrom:", incomingCallFrom);
-    console.log("videoCallOffer:", !!videoCallOffer);
-    console.log("connectionStatus:", connectionStatus);
-  }, [showCallPickup, incomingCallFrom, videoCallOffer, connectionStatus]);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // --- MEDIA UPLOAD logic extracted out ---
   const uploadMedia = async (file: File) => {
     if (!sessionInfo) return;
     try {
@@ -282,7 +237,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
-  // Enhanced message sending with fallback
   const sendMessage = async (text: string) => {
     if (!text || !sessionInfo) return;
     setLoading(true);
@@ -342,169 +296,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     },
     [sessionInfo, currentUserId, toast]
   );
-
-  // Video call functions - improved for better debugging
-  const startVideoCall = useCallback(async () => {
-    if (!sessionInfo) return;
-    
-    console.log("Starting video call as initiator");
-    resetVideoCallState();
-    setShowVideoCall(true);
-    setIsVideoCallInitiator(true);
-    
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    console.log("Sending call start message to:", recipient_id);
-    
-    // Send display message
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: "📹 Started a video call",
-    });
-  }, [sessionInfo, currentUserId, resetVideoCallState]);
-
-  const acceptCall = useCallback(async () => {
-    if (!sessionInfo) return;
-    
-    console.log("Accepting incoming video call");
-    setShowCallPickup(false);
-    setShowVideoCall(true);
-    setIsVideoCallInitiator(false);
-    
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    // Send acceptance signal
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: "VIDEO_CALL_ACCEPTED",
-    });
-    
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: "📹 Joined the video call",
-    });
-  }, [sessionInfo, currentUserId]);
-
-  const declineCall = useCallback(async () => {
-    if (!sessionInfo) return;
-    
-    console.log("Declining incoming video call");
-    setShowCallPickup(false);
-    resetVideoCallState();
-    
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    // Send decline signals
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: "VIDEO_CALL_DECLINED",
-    });
-    
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: "📹 Video call declined",
-    });
-  }, [sessionInfo, currentUserId, resetVideoCallState]);
-
-  // Enhanced video call offer with broadcast fallback
-  const handleVideoCallOfferCreated = useCallback(async (offer: RTCSessionDescriptionInit) => {
-    if (!sessionInfo) return;
-    
-    console.log("Sending video call offer to other user");
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    try {
-      const offerMessage = `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`;
-      
-      // Send via database message
-      await supabase.from("messages").insert({
-        sender_id: currentUserId,
-        recipient_id,
-        content: offerMessage,
-      });
-      
-      console.log("Video call offer sent successfully to:", recipient_id);
-    } catch (error) {
-      console.error("Failed to send video call offer:", error);
-      toast({
-        title: "Call Error",
-        description: "Failed to send call invitation",
-        variant: "destructive",
-      });
-    }
-  }, [sessionInfo, currentUserId, toast]);
-
-  const handleVideoCallAnswerCreated = useCallback(async (answer: RTCSessionDescriptionInit) => {
-    if (!sessionInfo) return;
-    
-    console.log("Sending video call answer");
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    try {
-      await supabase.from("messages").insert({
-        sender_id: currentUserId,
-        recipient_id,
-        content: `VIDEO_CALL_ANSWER:${JSON.stringify(answer)}`,
-      });
-      console.log("Video call answer sent successfully");
-    } catch (error) {
-      console.error("Failed to send video call answer:", error);
-      toast({
-        title: "Call Error",
-        description: "Failed to respond to call",
-        variant: "destructive",
-      });
-    }
-  }, [sessionInfo, currentUserId, toast]);
-
-  const handleVideoCallIceCandidate = useCallback(async (candidate: RTCIceCandidate) => {
-    if (!sessionInfo) return;
-    
-    console.log("Sending ICE candidate");
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    try {
-      await supabase.from("messages").insert({
-        sender_id: currentUserId,
-        recipient_id,
-        content: `VIDEO_CALL_ICE:${JSON.stringify(candidate)}`,
-      });
-    } catch (error) {
-      console.error("Failed to send ICE candidate:", error);
-    }
-  }, [sessionInfo, currentUserId]);
-
-  const endVideoCall = useCallback(async () => {
-    if (!sessionInfo) return;
-    
-    console.log("Ending video call");
-    setShowVideoCall(false);
-    setShowCallPickup(false);
-    resetVideoCallState();
-    
-    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    
-    try {
-      await supabase.from("messages").insert({
-        sender_id: currentUserId,
-        recipient_id,
-        content: "VIDEO_CALL_END",
-      });
-      
-      await supabase.from("messages").insert({
-        sender_id: currentUserId,
-        recipient_id,
-        content: "📹 Video call ended",
-      });
-    } catch (error) {
-      console.error("Failed to send call end signal:", error);
-    }
-  }, [sessionInfo, currentUserId, resetVideoCallState]);
 
   if (!sessionInfo) return <div className="p-4">Loading chat...</div>;
 
@@ -568,8 +359,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               type="button" 
               variant="outline" 
               size="sm" 
-              onClick={startVideoCall} 
-              disabled={uploadingMedia || showVideoCall || showCallPickup} 
+              onClick={streamVideoCall.startVideoCall} 
+              disabled={uploadingMedia || streamVideoCall.showVideoCall || streamVideoCall.showCallPickup} 
               className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50" 
             >
               <Video className="w-3 h-3" /> Video Call
@@ -591,25 +382,18 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         )}
       </div>
       
-      {/* Call pickup modal */}
       <CallPickupModal 
-        isOpen={showCallPickup} 
-        callerName={incomingCallFrom} 
-        onAccept={acceptCall} 
-        onDecline={declineCall} 
+        isOpen={streamVideoCall.showCallPickup} 
+        callerName={streamVideoCall.incomingCallFrom} 
+        onAccept={streamVideoCall.acceptCall} 
+        onDecline={streamVideoCall.declineCall} 
       />
       
-      {/* Video call component */}
-      {showVideoCall && (
-        <VideoCall
-          isInitiator={isVideoCallInitiator}
-          onClose={endVideoCall}
-          onOfferCreated={handleVideoCallOfferCreated}
-          onAnswerCreated={handleVideoCallAnswerCreated}
-          onIceCandidateGenerated={handleVideoCallIceCandidate}
-          remoteOffer={videoCallOffer}
-          remoteAnswer={videoCallAnswer}
-          remoteIceCandidate={videoCallIceCandidate}
+      {streamVideoCall.showVideoCall && streamVideoCall.callId && (
+        <StreamVideoCall
+          callId={streamVideoCall.callId}
+          onCallEnd={streamVideoCall.endCall}
+          isInitiator={streamVideoCall.isInitiator}
         />
       )}
     </>
