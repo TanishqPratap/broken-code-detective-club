@@ -43,14 +43,11 @@ const VideoCall = ({
   const [offerProcessed, setOfferProcessed] = useState(false);
   const lastProcessedRemoteOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
 
-  // Create a ref for localStream to be used in requestMediaPermissions
-  // This avoids dependency cycle with initializeCall
   const localStreamRef = useRef<MediaStream | null>(null);
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
 
-  // Effect to reset offerProcessed when a new remoteOffer instance arrives
   useEffect(() => {
     if (!isInitiator && remoteOffer) {
       if (remoteOffer !== lastProcessedRemoteOfferRef.current) {
@@ -447,9 +444,6 @@ const VideoCall = ({
         return;
       }
 
-      // Only add candidate if remote description is set and signaling state isn't closed.
-      // Adding candidates before setRemoteDescription (especially for the receiver) can cause issues.
-      // Or if the connection is in a state where it can accept candidates ('have-local-offer' for initiator, 'have-remote-offer' for receiver)
       if ( (peerConnection.remoteDescription && peerConnection.remoteDescription.type) || 
            (peerConnection.signalingState === 'have-local-offer' || peerConnection.signalingState === 'have-remote-offer')
          ) {
@@ -464,7 +458,6 @@ const VideoCall = ({
         pendingIceCandidates.current.push(candidate);
       }
     } catch (error) {
-      // Don't toast for every ICE candidate error, can be noisy. Log it.
       console.error('[VideoCall] Error handling remote ICE candidate:', error, 'Candidate:', candidate);
     }
   }, []);
