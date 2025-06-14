@@ -39,7 +39,8 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
   useEffect(() => {
     fetchRecentTips();
-    subscribeToTips();
+    const cleanup = subscribeToTips();
+    return cleanup;
   }, [streamId]);
 
   const fetchRecentTips = async () => {
@@ -48,7 +49,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
         .from('stream_tips')
         .select(`
           *,
-          profiles!stream_tips_tipper_id_fkey (
+          profiles (
             username,
             display_name
           )
@@ -77,7 +78,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
   const subscribeToTips = () => {
     const channel = supabase
-      .channel('stream-tips')
+      .channel(`stream-tips-${streamId}`)
       .on(
         'postgres_changes',
         {
@@ -92,7 +93,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
             .from('stream_tips')
             .select(`
               *,
-              profiles!stream_tips_tipper_id_fkey (
+              profiles (
                 username,
                 display_name
               )

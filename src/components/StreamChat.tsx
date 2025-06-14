@@ -34,7 +34,8 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
 
   useEffect(() => {
     fetchComments();
-    subscribeToComments();
+    const cleanup = subscribeToComments();
+    return cleanup;
   }, [streamId]);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
         .from('stream_comments')
         .select(`
           *,
-          profiles!stream_comments_user_id_fkey (
+          profiles (
             username,
             display_name
           )
@@ -67,7 +68,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
 
   const subscribeToComments = () => {
     const channel = supabase
-      .channel('stream-comments')
+      .channel(`stream-comments-${streamId}`)
       .on(
         'postgres_changes',
         {
@@ -82,7 +83,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
             .from('stream_comments')
             .select(`
               *,
-              profiles!stream_comments_user_id_fkey (
+              profiles (
                 username,
                 display_name
               )
