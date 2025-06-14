@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Star, Users, TrendingUp, Shield, Compass, Video, Play } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
+import PostFeed from "@/components/PostFeed";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -56,6 +57,12 @@ const Index = () => {
                 Discover Content
               </Button>
             </div>
+          </div>
+
+          {/* Feed Content */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-6 text-center">Latest Posts</h2>
+            <PostFeed />
           </div>
 
           {/* Quick Stats */}
