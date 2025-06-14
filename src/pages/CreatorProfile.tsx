@@ -1,60 +1,74 @@
+
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
-import TrailerViewer from "@/components/TrailerViewer";
-import PaidDMModal from "@/components/PaidDMModal";
 import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Users, Star, MessageSquare, UserPlus, Heart, UserMinus } from "lucide-react";
+import PaidDMModal from "@/components/PaidDMModal";
+import CreatorProfile from "@/components/CreatorProfile";
+import TrailerPreviewCard from "@/components/TrailerPreviewCard";
+import { useToast } from "@/hooks/use-toast";
 
-interface CreatorProfile {
+interface CreatorData {
   id: string;
   username: string;
   display_name: string;
   bio: string;
   avatar_url: string;
   subscription_price: number;
-  chat_rate: number;
   is_verified: boolean;
+  chat_rate?: number;
   subscriber_count: number;
+  post_count: number;
   is_subscribed: boolean;
 }
 
-const CreatorProfile = () => {
+interface TrailerContent {
+  id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  media_url: string;
+  order_position: number;
+  created_at: string;
+  creator: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    is_verified: boolean;
+    subscription_price: number | null;
+  };
+}
+
+const CreatorProfilePage = () => {
   const { creatorId } = useParams<{ creatorId: string }>();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [creator, setCreator] = useState<CreatorProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [subscribing, setSubscribing] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showPaidDMModal, setShowPaidDMModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showPaidDMModal, setShowPaidDMModal] = useState(false);
+  const [creator, setCreator] = useState<CreatorData | null>(null);
+  const [trailers, setTrailers] = useState<TrailerContent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (creatorId) {
-      fetchCreatorProfile();
+      fetchCreatorData();
+      fetchTrailers();
     }
   }, [creatorId, user]);
 
-  const fetchCreatorProfile = async () => {
+  const fetchCreatorData = async () => {
     if (!creatorId) return;
 
     try {
       // Fetch creator profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
         .eq('id', creatorId)
         .single();
 
@@ -67,6 +81,12 @@ const CreatorProfile = () => {
         .eq('creator_id', creatorId)
         .eq('status', 'active');
 
+      // Get post count (from content table)
+      const { count: postCount } = await supabase
+        .from('content')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', creatorId);
+
       // Check if current user is subscribed
       let isSubscribed = false;
       if (user) {
@@ -76,7 +96,7 @@ const CreatorProfile = () => {
           .eq('creator_id', creatorId)
           .eq('subscriber_id', user.id)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
         
         isSubscribed = !!subscription;
       }
@@ -84,10 +104,11 @@ const CreatorProfile = () => {
       setCreator({
         ...profileData,
         subscriber_count: subscriberCount || 0,
+        post_count: postCount || 0,
         is_subscribed: isSubscribed
       });
     } catch (error) {
-      console.error('Error fetching creator profile:', error);
+      console.error('Error fetching creator data:', error);
       toast({
         title: "Error",
         description: "Failed to load creator profile",
@@ -98,53 +119,58 @@ const CreatorProfile = () => {
     }
   };
 
-  const handleSubscribe = async () => {
+  const fetchTrailers = async () => {
+    if (!creatorId) return;
+
+    try {
+      const { data: trailersData, error: trailersError } = await supabase
+        .from('trailer_content')
+        .select(`
+          id,
+          title,
+          description,
+          content_type,
+          media_url,
+          order_position,
+          created_at,
+          creator_id
+        `)
+        .eq('creator_id', creatorId)
+        .order('order_position', { ascending: true });
+
+      if (trailersError) throw trailersError;
+
+      // Get creator info for trailers
+      const { data: creatorInfo } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, is_verified, subscription_price')
+        .eq('id', creatorId)
+        .single();
+
+      const trailersWithCreator = (trailersData || []).map(trailer => ({
+        ...trailer,
+        creator: {
+          id: creatorInfo?.id || creatorId,
+          username: creatorInfo?.username || '',
+          display_name: creatorInfo?.display_name,
+          avatar_url: creatorInfo?.avatar_url,
+          is_verified: creatorInfo?.is_verified || false,
+          subscription_price: creatorInfo?.subscription_price
+        }
+      }));
+
+      setTrailers(trailersWithCreator);
+    } catch (error) {
+      console.error('Error fetching trailers:', error);
+    }
+  };
+
+  const handleSubscribe = () => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
-
-    // Open payment modal instead of direct subscription
     setShowSubscriptionModal(true);
-  };
-
-  const handleSubscriptionSuccess = async () => {
-    setShowSubscriptionModal(false);
-    // Refresh creator data after successful subscription
-    await fetchCreatorProfile();
-  };
-
-  const handleUnsubscribe = async () => {
-    if (!user || !creator) return;
-
-    setSubscribing(true);
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ status: 'cancelled' })
-        .eq('creator_id', creator.id)
-        .eq('subscriber_id', user.id)
-        .eq('status', 'active');
-
-      if (error) throw error;
-
-      toast({
-        title: "Unsubscribed successfully",
-        description: `You have unsubscribed from ${creator.display_name}`,
-      });
-
-      // Refresh creator data
-      await fetchCreatorProfile();
-    } catch (error) {
-      console.error('Error unsubscribing:', error);
-      toast({
-        title: "Unsubscribe failed",
-        description: "There was an error processing your request.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubscribing(false);
-    }
   };
 
   const handleStartPaidDM = () => {
@@ -155,13 +181,26 @@ const CreatorProfile = () => {
     setShowPaidDMModal(true);
   };
 
-  const handlePaidDMSessionCreated = (sessionId: string) => {
-    navigate(`/dm?session=${sessionId}`);
+  const handleSubscriptionSuccess = () => {
+    setShowSubscriptionModal(false);
+    fetchCreatorData(); // Refresh creator data
+    toast({
+      title: "Subscription Successful!",
+      description: `You are now subscribed to ${creator?.display_name || creator?.username}`,
+    });
+  };
+
+  const handlePaidDMSuccess = () => {
+    setShowPaidDMModal(false);
+    toast({
+      title: "Payment Successful!",
+      description: "You can now send a paid message to this creator.",
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="min-h-screen bg-background">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
@@ -175,14 +214,12 @@ const CreatorProfile = () => {
 
   if (!creator) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="min-h-screen bg-background">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Creator Not Found</h1>
-            <Button onClick={() => navigate('/discover')}>
-              Back to Discover
-            </Button>
+            <p className="text-gray-600">The requested creator profile could not be found.</p>
           </div>
         </div>
       </div>
@@ -190,94 +227,40 @@ const CreatorProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+    <div className="min-h-screen bg-background">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
-      <div className="container mx-auto px-4 py-8">
-        {/* Creator Header */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={creator.avatar_url} />
-                <AvatarFallback className="text-2xl">
-                  {creator.display_name?.[0] || creator.username?.[0] || "U"}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 text-center md:text-left">
-                <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
-                  <CardTitle className="text-2xl">{creator.display_name || creator.username}</CardTitle>
-                  {creator.is_verified && (
-                    <Badge variant="secondary">
-                      <Star className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-muted-foreground mb-2">@{creator.username}</p>
-                <CardDescription className="mb-4">{creator.bio}</CardDescription>
-                
-                <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{creator.subscriber_count} subscribers</span>
-                  </div>
-                </div>
-              </div>
+      <CreatorProfile
+        creator={{
+          id: creator.id,
+          username: creator.username,
+          displayName: creator.display_name,
+          bio: creator.bio || "",
+          avatar: creator.avatar_url || "",
+          coverImage: "",
+          subscriberCount: creator.subscriber_count,
+          postCount: creator.post_count,
+          isSubscribed: creator.is_subscribed,
+          subscriptionPrice: creator.subscription_price
+        }}
+        onSubscribe={handleSubscribe}
+        onStartPaidDM={creator.chat_rate ? handleStartPaidDM : undefined}
+      />
 
-              <div className="flex flex-col gap-3">
-                {creator.is_subscribed ? (
-                  <div className="flex flex-col gap-2">
-                    <Badge variant="default" className="px-4 py-2 justify-center">
-                      <Heart className="w-4 h-4 mr-2" />
-                      Subscribed
-                    </Badge>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleUnsubscribe} 
-                      disabled={subscribing}
-                      size="sm"
-                    >
-                      <UserMinus className="w-4 h-4 mr-2" />
-                      {subscribing ? "Unsubscribing..." : "Unsubscribe"}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button onClick={handleSubscribe} disabled={subscribing} size="lg">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    {subscribing ? "Processing..." : `Subscribe - $${creator.subscription_price}/month`}
-                  </Button>
-                )}
-                
-                {creator.chat_rate && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleStartPaidDM}
-                    size="lg"
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Paid DM - ${creator.chat_rate}/hour
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Separator className="my-8" />
-
-        {/* Trailer Content */}
-        <TrailerViewer 
-          creatorId={creator.id}
-          creatorName={creator.display_name || creator.username}
-          subscriptionPrice={creator.subscription_price}
-          onSubscribe={creator.is_subscribed ? undefined : handleSubscribe}
-        />
-      </div>
+      {/* Trailers Section */}
+      {trailers.length > 0 && (
+        <div className="container mx-auto px-4 py-8">
+          <h2 className="text-2xl font-bold mb-6">Free Previews</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {trailers.map((trailer) => (
+              <TrailerPreviewCard key={trailer.id} trailer={trailer} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-      
+
       {creator && (
         <>
           <SubscriptionPaymentModal
@@ -288,22 +271,19 @@ const CreatorProfile = () => {
             subscriptionPrice={creator.subscription_price}
             onSubscriptionSuccess={handleSubscriptionSuccess}
           />
-          
-          {user && (
-            <PaidDMModal
-              open={showPaidDMModal}
-              onClose={() => setShowPaidDMModal(false)}
-              creatorId={creator.id}
-              creatorName={creator.display_name || creator.username}
-              chatRate={creator.chat_rate || 0}
-              subscriberId={user.id}
-              onSessionCreated={handlePaidDMSessionCreated}
-            />
-          )}
+
+          <PaidDMModal
+            isOpen={showPaidDMModal}
+            onClose={() => setShowPaidDMModal(false)}
+            creatorId={creator.id}
+            creatorName={creator.display_name || creator.username}
+            hourlyRate={creator.chat_rate || 0}
+            onPaymentSuccess={handlePaidDMSuccess}
+          />
         </>
       )}
     </div>
   );
 };
 
-export default CreatorProfile;
+export default CreatorProfilePage;

@@ -1,14 +1,17 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
+import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
+import PaidDMModal from "@/components/PaidDMModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Play, Clock, Heart, UserPlus, UserCheck } from "lucide-react";
+import { Users, Play, Clock, Heart, UserPlus, UserCheck, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +39,7 @@ interface Creator {
   is_verified: boolean;
   subscriber_count?: number;
   is_subscribed?: boolean;
+  chat_rate?: number;
 }
 
 const Discover = () => {
@@ -43,10 +47,12 @@ const Discover = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showPaidDMModal, setShowPaidDMModal] = useState(false);
+  const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subscribing, setSubscribing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -99,7 +105,7 @@ const Discover = () => {
     try {
       const { data: profilesData, error } = await supabase
         .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
         .not('subscription_price', 'is', null)
         .order('created_at', { ascending: false })
         .limit(12);
@@ -153,51 +159,29 @@ const Discover = () => {
     navigate(`/watch/${streamId}`);
   };
 
-  const handleSubscribe = async (creatorId: string) => {
+  const handleSubscribe = (creator: Creator) => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
 
-    setSubscribing(creatorId);
-    try {
-      // For now, just create a subscription record
-      // In a real app, this would integrate with payment processing
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          subscriber_id: user.id,
-          creator_id: creatorId,
-          status: 'active',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-        });
+    setSelectedCreator(creator);
+    setShowSubscriptionModal(true);
+  };
 
-      if (error) throw error;
-
-      toast({
-        title: "Subscribed successfully!",
-        description: "You are now subscribed to this creator.",
-      });
-
-      // Refresh creators data
-      await fetchCreators();
-    } catch (error) {
-      console.error('Error subscribing:', error);
-      toast({
-        title: "Subscription failed",
-        description: "There was an error processing your subscription.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubscribing(null);
+  const handlePaidDM = (creator: Creator) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
     }
+
+    setSelectedCreator(creator);
+    setShowPaidDMModal(true);
   };
 
   const handleUnsubscribe = async (creatorId: string) => {
     if (!user) return;
 
-    setSubscribing(creatorId);
     try {
       const { error } = await supabase
         .from('subscriptions')
@@ -222,9 +206,26 @@ const Discover = () => {
         description: "There was an error processing your request.",
         variant: "destructive",
       });
-    } finally {
-      setSubscribing(null);
     }
+  };
+
+  const handleSubscriptionSuccess = () => {
+    setShowSubscriptionModal(false);
+    setSelectedCreator(null);
+    fetchCreators(); // Refresh data
+    toast({
+      title: "Subscription Successful!",
+      description: "You are now subscribed to this creator.",
+    });
+  };
+
+  const handlePaidDMSuccess = () => {
+    setShowPaidDMModal(false);
+    setSelectedCreator(null);
+    toast({
+      title: "Payment Successful!",
+      description: "You can now send a paid message to this creator.",
+    });
   };
 
   if (loading) {
@@ -312,34 +313,35 @@ const Discover = () => {
                           }}
                           className="flex-1"
                           variant="outline"
-                          disabled={subscribing === creator.id}
                         >
                           <UserCheck className="w-4 h-4 mr-2" />
-                          {subscribing === creator.id ? "Processing..." : "Subscribed"}
+                          Subscribed
                         </Button>
                       ) : (
                         <Button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSubscribe(creator.id);
+                            handleSubscribe(creator);
                           }}
                           className="flex-1"
-                          disabled={subscribing === creator.id}
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
-                          {subscribing === creator.id ? "Subscribing..." : "Subscribe"}
+                          Subscribe
                         </Button>
                       )}
-                      <Button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/creator/${creator.id}`);
-                        }}
-                        variant="outline"
-                        size="icon"
-                      >
-                        <Play className="w-4 h-4" />
-                      </Button>
+                      {creator.chat_rate && (
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePaidDM(creator);
+                          }}
+                          variant="outline"
+                          size="icon"
+                          title={`Paid DM - $${creator.chat_rate}/hour`}
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -429,6 +431,34 @@ const Discover = () => {
       </div>
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
+      {selectedCreator && (
+        <>
+          <SubscriptionPaymentModal
+            isOpen={showSubscriptionModal}
+            onClose={() => {
+              setShowSubscriptionModal(false);
+              setSelectedCreator(null);
+            }}
+            creatorId={selectedCreator.id}
+            creatorName={selectedCreator.display_name || selectedCreator.username}
+            subscriptionPrice={selectedCreator.subscription_price}
+            onSubscriptionSuccess={handleSubscriptionSuccess}
+          />
+
+          <PaidDMModal
+            isOpen={showPaidDMModal}
+            onClose={() => {
+              setShowPaidDMModal(false);
+              setSelectedCreator(null);
+            }}
+            creatorId={selectedCreator.id}
+            creatorName={selectedCreator.display_name || selectedCreator.username}
+            hourlyRate={selectedCreator.chat_rate || 0}
+            onPaymentSuccess={handlePaidDMSuccess}
+          />
+        </>
+      )}
     </div>
   );
 };

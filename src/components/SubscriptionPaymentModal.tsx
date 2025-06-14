@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, DollarSign } from "lucide-react";
+import { Check, DollarSign, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -34,28 +34,41 @@ const SubscriptionPaymentModal = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [scriptLoading, setScriptLoading] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<{
     amountUSD: number;
     amountINR: number;
     exchangeRate: number;
   } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       loadRazorpayScript();
+      // Reset states when modal opens
+      setError(null);
+      setPaymentInfo(null);
     }
   }, [isOpen]);
 
-  const loadRazorpayScript = () => {
+  const loadRazorpayScript = async () => {
+    if (window.Razorpay) {
+      return true;
+    }
+
+    setScriptLoading(true);
     return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onload = () => {
+        setScriptLoading(false);
+        resolve(true);
+      };
+      script.onerror = () => {
+        setScriptLoading(false);
+        setError('Failed to load payment gateway. Please try again.');
+        resolve(false);
+      };
       document.body.appendChild(script);
     });
   };
@@ -70,9 +83,17 @@ const SubscriptionPaymentModal = ({
       return;
     }
 
+    if (!window.Razorpay) {
+      setError('Payment gateway not loaded. Please refresh and try again.');
+      return;
+    }
+
     setLoading(true);
+    setError(null);
 
     try {
+      console.log('Creating subscription payment order...');
+      
       // Create a subscription payment order
       const { data, error } = await supabase.functions.invoke('create-subscription-payment', {
         body: {
@@ -81,7 +102,10 @@ const SubscriptionPaymentModal = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating payment order:', error);
+        throw new Error(error.message || 'Failed to create payment order');
+      }
 
       console.log('Subscription payment order created:', data);
 
@@ -109,6 +133,7 @@ const SubscriptionPaymentModal = ({
         handler: async function (response: any) {
           try {
             console.log('Payment response received:', response);
+            setLoading(true);
             
             // Verify payment on backend
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-subscription-payment', {
@@ -120,7 +145,10 @@ const SubscriptionPaymentModal = ({
               }
             });
 
-            if (verifyError) throw verifyError;
+            if (verifyError) {
+              console.error('Payment verification error:', verifyError);
+              throw new Error(verifyError.message || 'Payment verification failed');
+            }
 
             console.log('Subscription payment verified successfully:', verifyData);
 
@@ -135,15 +163,19 @@ const SubscriptionPaymentModal = ({
             
           } catch (error: any) {
             console.error('Payment verification failed:', error);
+            setError(error.message || 'Payment verification failed. Please contact support.');
             toast({
               title: "Payment Verification Failed",
               description: error.message || "Please contact support",
               variant: "destructive",
             });
+          } finally {
+            setLoading(false);
           }
         },
         modal: {
           ondismiss: function() {
+            console.log('Payment modal dismissed');
             setLoading(false);
           }
         }
@@ -154,6 +186,7 @@ const SubscriptionPaymentModal = ({
       
     } catch (error: any) {
       console.error('Error creating subscription payment:', error);
+      setError(error.message || 'Failed to process payment');
       toast({
         title: "Payment Error",
         description: error.message || "Failed to process payment",
@@ -162,6 +195,11 @@ const SubscriptionPaymentModal = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    handleSubscribe();
   };
 
   return (
@@ -214,15 +252,49 @@ const SubscriptionPaymentModal = ({
                 <span className="text-sm">Monthly subscription renewal</span>
               </li>
             </ul>
-            
-            <Button 
-              className="w-full" 
-              onClick={handleSubscribe}
-              disabled={loading}
-              size="lg"
-            >
-              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${subscriptionPrice} with Razorpay`}
-            </Button>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-red-700 font-medium">Payment Error</p>
+                    <p className="text-xs text-red-600 mt-1">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {scriptLoading ? (
+              <Button className="w-full" disabled size="lg">
+                Loading payment gateway...
+              </Button>
+            ) : error ? (
+              <Button 
+                className="w-full" 
+                onClick={handleRetry}
+                disabled={loading}
+                size="lg"
+                variant="outline"
+              >
+                Retry Payment
+              </Button>
+            ) : (
+              <Button 
+                className="w-full" 
+                onClick={handleSubscribe}
+                disabled={loading || !user}
+                size="lg"
+              >
+                {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${subscriptionPrice} with Razorpay`}
+              </Button>
+            )}
+
+            {!user && (
+              <p className="text-xs text-center text-muted-foreground mt-2">
+                Please sign in to subscribe
+              </p>
+            )}
           </CardContent>
         </Card>
       </DialogContent>
