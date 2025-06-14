@@ -55,19 +55,22 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
         )
         .order("created_at");
-      // If returned data is unknown type, filter for well-typed MessageRow
+      
       if (!ignore && Array.isArray(data)) {
-        setMessages(
-          data.filter(
-            (m): m is MessageRow =>
-              typeof m.id === "string" &&
-              typeof m.sender_id === "string" &&
-              typeof m.recipient_id === "string" &&
-              typeof m.content === "string" &&
-              typeof m.created_at === "string" &&
-              typeof m.updated_at === "string"
-          )
-        );
+        // Map the data to ensure proper typing
+        const typedMessages: MessageRow[] = data.map(m => ({
+          id: m.id,
+          sender_id: m.sender_id,
+          recipient_id: m.recipient_id,
+          content: m.content,
+          created_at: m.created_at,
+          updated_at: m.updated_at,
+          media_url: m.media_url || undefined,
+          media_type: (m.media_type === 'image' || m.media_type === 'video' || m.media_type === 'audio') 
+            ? m.media_type 
+            : undefined
+        }));
+        setMessages(typedMessages);
       }
     }
     fetchMessages();
@@ -86,19 +89,19 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
             (m.sender_id === sessionInfo?.subscriber_id &&
               m.recipient_id === sessionInfo?.creator_id)
           ) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: m.id,
-                sender_id: m.sender_id,
-                recipient_id: m.recipient_id,
-                content: m.content,
-                media_url: m.media_url,
-                media_type: m.media_type,
-                created_at: m.created_at,
-                updated_at: m.updated_at,
-              },
-            ]);
+            const newMessage: MessageRow = {
+              id: m.id,
+              sender_id: m.sender_id,
+              recipient_id: m.recipient_id,
+              content: m.content,
+              created_at: m.created_at,
+              updated_at: m.updated_at,
+              media_url: m.media_url || undefined,
+              media_type: (m.media_type === 'image' || m.media_type === 'video' || m.media_type === 'audio') 
+                ? m.media_type 
+                : undefined
+            };
+            setMessages((prev) => [...prev, newMessage]);
           }
         }
       )
