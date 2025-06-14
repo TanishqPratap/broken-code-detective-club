@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "@/components/PostCard";
-import MetaTagInjector from "@/components/MetaTagInjector";
+import SocialMetaTags from "@/components/SocialMetaTags";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -161,7 +160,7 @@ const PostView = () => {
     );
   }
 
-  // Enhanced SEO data preparation
+  // Enhanced SEO data with better image selection
   const postTitle = post.text_content 
     ? `${post.text_content.slice(0, 60)}${post.text_content.length > 60 ? '...' : ''} - ${post.profiles.display_name || post.profiles.username}`
     : `${post.content_type.charAt(0).toUpperCase() + post.content_type.slice(1)} by ${post.profiles.display_name || post.profiles.username}`;
@@ -170,19 +169,32 @@ const PostView = () => {
     ? post.text_content.slice(0, 160) + (post.text_content.length > 160 ? '...' : '')
     : `Check out this amazing ${post.content_type} from ${post.profiles.display_name || post.profiles.username} on Content Creator Platform`;
 
-  // Determine the best image for sharing
-  const shareImage = post.thumbnail_url || 
-    (post.media_url && !post.media_url.includes('.mp4') && !post.media_url.includes('.webm') ? post.media_url : null) ||
-    'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center&auto=format&q=80';
+  // Better image selection priority
+  const getShareImage = () => {
+    // Priority 1: thumbnail_url
+    if (post.thumbnail_url && !post.thumbnail_url.includes('placeholder')) {
+      return post.thumbnail_url;
+    }
+    
+    // Priority 2: media_url if it's an image
+    if (post.media_url && post.content_type === 'image') {
+      return post.media_url;
+    }
+    
+    // Priority 3: High-quality fallback
+    return 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center&auto=format&q=80';
+  };
+
+  const shareImage = getShareImage();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <MetaTagInjector
+      <SocialMetaTags
         title={postTitle}
         description={postDescription}
         imageUrl={shareImage}
         pageUrl={`/posts/${post.id}`}
-        contentType={post.content_type}
+        contentType={post.content_type === 'video' ? 'video' : 'article'}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
