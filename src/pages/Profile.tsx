@@ -12,8 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Camera, Save, User } from "lucide-react";
+import { Loader2, Save, User } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import AvatarUpload from "@/components/AvatarUpload";
 
 interface Profile {
   id: string;
@@ -132,6 +133,12 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    if (profile) {
+      setProfile({ ...profile, avatar_url: newAvatarUrl });
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -210,22 +217,22 @@ const Profile = () => {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-6">
-                  <div className="relative">
+                  {isEditing ? (
+                    <AvatarUpload
+                      currentAvatarUrl={profile.avatar_url}
+                      userId={profile.id}
+                      displayName={profile.display_name}
+                      username={profile.username}
+                      onAvatarUpdate={handleAvatarUpdate}
+                    />
+                  ) : (
                     <Avatar className="w-24 h-24">
                       <AvatarImage src={profile.avatar_url || ""} />
                       <AvatarFallback className="text-2xl">
                         {profile.display_name?.[0] || profile.username[0] || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
-                      onClick={() => toast({ title: "Coming Soon", description: "Avatar upload will be available soon" })}
-                    >
-                      <Camera className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  )}
                   
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
