@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -203,43 +204,41 @@ const PaidDM = () => {
         </div>
 
         {/* Featured Creators Section */}
-        {!loading && sessions.length === 0 && (
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">Featured Creators</h2>
-            {loadingCreators ? (
-              <div className="text-center py-4 text-gray-500">Loading creators...</div>
-            ) : creators && creators.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {creators.slice(0, 6).map((creator) => (
-                  <Card
-                    key={creator.id}
-                    className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => {
-                      setSelectedCreator(creator);
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Avatar className="w-16 h-16 mx-auto mb-3">
-                      <AvatarImage src={creator.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {creator.display_name ? creator.display_name[0] : "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <h3 className="font-semibold text-sm mb-1">
-                      {creator.display_name || creator.username}
-                    </h3>
-                    <p className="text-xs text-gray-500 mb-2">@{creator.username}</p>
-                    <p className="text-xs text-green-600 font-medium">
-                      ${creator.chat_rate ? Number(creator.chat_rate).toFixed(2) : "--"}/hr
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4 text-gray-500">No creators available</div>
-            )}
-          </div>
-        )}
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-4">Featured Creators</h2>
+          {loadingCreators ? (
+            <div className="text-center py-4 text-gray-500">Loading creators...</div>
+          ) : creators && creators.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {creators.slice(0, 6).map((creator) => (
+                <Card
+                  key={creator.id}
+                  className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => {
+                    setSelectedCreator(creator);
+                    setModalOpen(true);
+                  }}
+                >
+                  <Avatar className="w-16 h-16 mx-auto mb-3">
+                    <AvatarImage src={creator.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {creator.display_name ? creator.display_name[0] : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-semibold text-sm mb-1">
+                    {creator.display_name || creator.username}
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-2">@{creator.username}</p>
+                  <p className="text-xs text-green-600 font-medium">
+                    ${creator.chat_rate ? Number(creator.chat_rate).toFixed(2) : "--"}/hr
+                  </p>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">No creators available</div>
+          )}
+        </div>
       </div>
 
       {/* DM Create Modal */}
