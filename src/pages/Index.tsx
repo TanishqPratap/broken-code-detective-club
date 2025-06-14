@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +9,9 @@ import ContentFeed from "@/components/ContentFeed";
 import CreatorDashboard from "@/components/CreatorDashboard";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
-const HomeContent = () => {
+const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, loading } = useAuth();
 
@@ -220,14 +219,6 @@ const HomeContent = () => {
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <AuthProvider>
-      <HomeContent />
-    </AuthProvider>
   );
 };
 
