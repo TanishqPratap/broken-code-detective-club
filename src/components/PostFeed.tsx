@@ -29,7 +29,7 @@ const PostFeed = () => {
 
   const fetchPosts = async () => {
     try {
-      // First, get all posts with profiles
+      // First, get all posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -39,12 +39,7 @@ const PostFeed = () => {
           text_content,
           media_url,
           media_type,
-          created_at,
-          profiles!posts_user_id_fkey (
-            display_name,
-            username,
-            avatar_url
-          )
+          created_at
         `)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -55,6 +50,20 @@ const PostFeed = () => {
         setPosts([]);
         return;
       }
+
+      // Get user profiles for each post
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of profiles for quick lookup
+      const profilesMap = new Map(
+        profilesData?.map(profile => [profile.id, profile]) || []
+      );
 
       // Get likes count and user's like status for each post
       const postsWithData = await Promise.all(
@@ -80,9 +89,17 @@ const PostFeed = () => {
             userLiked = !!userLikeData;
           }
 
+          // Get the profile for this post
+          const profile = profilesMap.get(post.user_id);
+
           return {
             ...post,
             content_type: post.content_type as 'text' | 'image' | 'video',
+            profiles: profile || {
+              display_name: null,
+              username: 'Unknown User',
+              avatar_url: null
+            },
             likes_count: likesCount || 0,
             user_liked: userLiked
           };

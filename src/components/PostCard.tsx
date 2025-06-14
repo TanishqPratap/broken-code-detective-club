@@ -68,25 +68,47 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Get comments first
+      const { data: commentsData, error: commentsError } = await supabase
         .from('posts_interactions')
-        .select(`
-          id,
-          user_id,
-          comment_text,
-          created_at,
-          profiles!posts_interactions_user_id_fkey (
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('id, user_id, comment_text, created_at')
         .eq('post_id', post.id)
         .eq('interaction_type', 'comment')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      setComments(data || []);
+      if (commentsError) throw commentsError;
+
+      if (!commentsData || commentsData.length === 0) {
+        setComments([]);
+        return;
+      }
+
+      // Get user profiles for comments
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of profiles for quick lookup
+      const profilesMap = new Map(
+        profilesData?.map(profile => [profile.id, profile]) || []
+      );
+
+      // Combine comments with profiles
+      const commentsWithProfiles = commentsData.map(comment => ({
+        ...comment,
+        profiles: profilesMap.get(comment.user_id) || {
+          display_name: null,
+          username: 'Unknown User',
+          avatar_url: null
+        }
+      }));
+
+      setComments(commentsWithProfiles);
     } catch (error) {
       console.error('Error fetching comments:', error);
       toast.error("Failed to load comments");
