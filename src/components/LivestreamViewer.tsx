@@ -1,13 +1,13 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Lock } from "lucide-react";
+import { Users, DollarSign, Lock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import StreamSubscriptionModal from "./StreamSubscriptionModal";
+import Hls from "hls.js";
 
 interface LivestreamViewerProps {
   streamId: string;
@@ -17,14 +17,95 @@ interface LivestreamViewerProps {
 const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [streamData, setStreamData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStreamData();
   }, [streamId, user]);
+
+  useEffect(() => {
+    if (streamData && hasAccess && streamData.status === 'live' && videoRef.current) {
+      initializeVideoPlayer();
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+    };
+  }, [streamData, hasAccess]);
+
+  const initializeVideoPlayer = () => {
+    const video = videoRef.current;
+    if (!video || !streamData.stream_key) return;
+
+    // Construct the HLS URL - using a more standard format
+    const hlsUrl = `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`;
+    
+    console.log('Initializing video player with URL:', hlsUrl);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: false,
+        lowLatencyMode: true,
+        backBufferLength: 90
+      });
+
+      hlsRef.current = hls;
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('HLS manifest parsed, starting playback');
+        video.play().catch(err => {
+          console.log('Autoplay prevented:', err);
+          setVideoError('Click play to start the stream');
+        });
+        setVideoError(null);
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('HLS error:', data);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              setVideoError('Network error - stream may be unavailable');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              setVideoError('Media error - trying to recover');
+              hls.recoverMediaError();
+              break;
+            default:
+              setVideoError('Stream error - please refresh the page');
+              hls.destroy();
+              break;
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS support
+      video.src = hlsUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(err => {
+          console.log('Autoplay prevented:', err);
+          setVideoError('Click play to start the stream');
+        });
+      });
+      
+      video.addEventListener('error', () => {
+        setVideoError('Error loading stream');
+      });
+    } else {
+      setVideoError('Your browser does not support HLS streaming');
+    }
+  };
 
   const fetchStreamData = async () => {
     try {
@@ -38,6 +119,8 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
       if (streamError) throw streamError;
       setStreamData(stream);
 
+      console.log('Stream data:', stream);
+
       // Check if user has access to paid streams
       if (stream.is_paid && user) {
         const { data: subscription } = await supabase
@@ -46,8 +129,10 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
           .eq('stream_id', streamId)
           .eq('subscriber_id', user.id)
           .eq('status', 'active')
-          .single();
+          .gte('expires_at', new Date().toISOString())
+          .maybeSingle();
 
+        console.log('Subscription data:', subscription);
         setHasAccess(!!subscription);
       } else if (!stream.is_paid) {
         setHasAccess(true);
@@ -68,6 +153,16 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
     setHasAccess(true);
     setShowSubscriptionModal(false);
     fetchStreamData();
+  };
+
+  const retryVideo = () => {
+    setVideoError(null);
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+    }
+    setTimeout(() => {
+      initializeVideoPlayer();
+    }, 1000);
   };
 
   if (loading) {
@@ -165,17 +260,29 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
           <div className="lg:col-span-3">
             <Card>
               <CardContent className="p-0">
-                <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
                   {streamData.status === 'live' ? (
-                    <video
-                      className="w-full h-full"
-                      controls
-                      autoPlay
-                      muted
-                    >
-                      <source src={`https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`} type="application/x-mpegURL" />
-                      Your browser does not support the video tag.
-                    </video>
+                    <>
+                      <video
+                        ref={videoRef}
+                        className="w-full h-full"
+                        controls
+                        muted
+                        playsInline
+                        poster="/placeholder.svg"
+                      />
+                      {videoError && (
+                        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                          <div className="text-center text-white p-4">
+                            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                            <p className="mb-4">{videoError}</p>
+                            <Button onClick={retryVideo} variant="outline" size="sm">
+                              Retry
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white">
                       <div className="text-center">
@@ -226,6 +333,14 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Started:</span>
                     <span className="text-sm">{new Date(streamData.started_at).toLocaleTimeString()}</span>
+                  </div>
+                )}
+                {streamData.stream_key && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Stream Key:</span>
+                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                      {streamData.stream_key.slice(0, 8)}...
+                    </span>
                   </div>
                 )}
               </CardContent>
