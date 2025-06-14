@@ -40,6 +40,19 @@ export function useVideoCallSignaling(
         return;
       }
 
+      // Enhanced validation
+      if (!sessionInfo) {
+        console.error("No session info available for signaling");
+        return;
+      }
+
+      // Validate sender is part of this session
+      const isValidSender = senderId === sessionInfo.creator_id || senderId === sessionInfo.subscriber_id;
+      if (!isValidSender) {
+        console.log("Ignoring signaling from user not in this session:", senderId);
+        return;
+      }
+
       console.log("Processing signaling message from:", senderId);
 
       try {
@@ -47,28 +60,45 @@ export function useVideoCallSignaling(
           console.log("=== PROCESSING VIDEO CALL OFFER ===");
           console.log("Full offer content:", content);
           
-          const offerData = JSON.parse(content.replace("VIDEO_CALL_OFFER:", ""));
+          const offerJson = content.replace("VIDEO_CALL_OFFER:", "");
+          console.log("Extracted offer JSON:", offerJson);
+          
+          let offerData;
+          try {
+            offerData = JSON.parse(offerJson);
+          } catch (parseError) {
+            console.error("Failed to parse offer JSON:", parseError);
+            console.error("Raw JSON string:", offerJson);
+            toast({
+              title: "Call Error",
+              description: "Invalid call data received",
+              variant: "destructive",
+            });
+            return;
+          }
+          
           console.log("Parsed offer data:", offerData);
           
           // Clear previous state
+          console.log("Resetting video call state before processing offer");
           videoCallState.resetVideoCallState();
           
           // Set the new offer
+          console.log("Setting video call offer");
           videoCallState.setVideoCallOffer(offerData);
           
           // Determine caller name based on session info
           let callerName = "Unknown User";
-          if (sessionInfo) {
-            if (senderId === sessionInfo.creator_id) {
-              callerName = "Creator";
-            } else if (senderId === sessionInfo.subscriber_id) {
-              callerName = "Subscriber";
-            }
+          if (senderId === sessionInfo.creator_id) {
+            callerName = "Creator";
+          } else if (senderId === sessionInfo.subscriber_id) {
+            callerName = "Subscriber";
           }
           
           console.log("=== SHOWING PICKUP MODAL ===");
           console.log("Caller name:", callerName);
           console.log("Setting incoming call from:", callerName);
+          console.log("About to set showCallPickup to true");
           
           // Set incoming call state
           videoCallState.setIncomingCallFrom(callerName);
@@ -77,6 +107,12 @@ export function useVideoCallSignaling(
           
           console.log("Pickup modal state set, showing toast");
           
+          // Force a state update check
+          setTimeout(() => {
+            console.log("=== POST-OFFER STATE CHECK ===");
+            console.log("showCallPickup should now be true");
+          }, 100);
+          
           toast({
             title: "Incoming Video Call",
             description: `${callerName} is calling you`,
@@ -84,12 +120,26 @@ export function useVideoCallSignaling(
           
         } else if (content.startsWith("VIDEO_CALL_ANSWER:")) {
           console.log("Received video call answer from:", senderId);
-          const answerData = JSON.parse(content.replace("VIDEO_CALL_ANSWER:", ""));
+          const answerJson = content.replace("VIDEO_CALL_ANSWER:", "");
+          let answerData;
+          try {
+            answerData = JSON.parse(answerJson);
+          } catch (parseError) {
+            console.error("Failed to parse answer JSON:", parseError);
+            return;
+          }
           videoCallState.setVideoCallAnswer(answerData);
           
         } else if (content.startsWith("VIDEO_CALL_ICE:")) {
           console.log("Received ICE candidate from:", senderId);
-          const iceData = JSON.parse(content.replace("VIDEO_CALL_ICE:", ""));
+          const iceJson = content.replace("VIDEO_CALL_ICE:", "");
+          let iceData;
+          try {
+            iceData = JSON.parse(iceJson);
+          } catch (parseError) {
+            console.error("Failed to parse ICE JSON:", parseError);
+            return;
+          }
           videoCallState.setVideoCallIceCandidate(iceData);
           
         } else if (content === "VIDEO_CALL_END") {
@@ -124,6 +174,7 @@ export function useVideoCallSignaling(
         }
       } catch (error) {
         console.error("Error parsing video call signaling message:", error);
+        console.error("Message content that failed:", content);
         toast({
           title: "Call Error",
           description: "Failed to process video call signal",

@@ -40,7 +40,10 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [videoCallOffer, setVideoCallOffer] = useState<RTCSessionDescriptionInit | null>(null);
   const [videoCallAnswer, setVideoCallAnswer] = useState<RTCSessionDescriptionInit | null>(null);
   const [videoCallIceCandidate, setVideoCallIceCandidate] = useState<RTCIceCandidate | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("connecting");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const channelRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const [sessionInfo, setSessionInfo] = useState<{ creator_id: string; subscriber_id: string; } | null>(null);
 
@@ -78,36 +81,21 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     resetVideoCallState,
   });
 
-  useEffect(() => {
-    let ignore = false;
-    if (!sessionInfo) return;
-    
-    async function fetchMessages() {
-      const { data } = await supabase
-        .from("messages")
-        .select("*")
-        .or(
-          `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
-        )
-        .order("created_at");
-      if (!ignore && Array.isArray(data)) {
-        const typedMessages: MessageRow[] = data.map(m => ({
-          id: m.id,
-          sender_id: m.sender_id,
-          recipient_id: m.recipient_id,
-          content: m.content,
-          created_at: m.created_at,
-          updated_at: m.updated_at,
-          media_url: m.media_url || undefined,
-          media_type: (m.media_type === 'image' || m.media_type === 'video' || m.media_type === 'audio') ? m.media_type : undefined,
-        }));
-        setMessages(typedMessages);
-      }
-    }
-    fetchMessages();
+  // Connection monitoring
+  const setupRealtimeConnection = useCallback(() => {
+    if (!sessionInfo) return null;
 
+    console.log("=== Setting up realtime connection ===");
+    console.log("Session info:", sessionInfo);
+    
     const channel = supabase
-      .channel(`dm-${sessionId}`)
+      .channel(`dm-${sessionId}`, {
+        config: {
+          presence: {
+            key: currentUserId,
+          },
+        },
+      })
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
@@ -138,27 +126,114 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               console.log("Content:", m.content);
               console.log("From user:", m.sender_id);
               console.log("Current user:", currentUserId);
-              handleVideoCallMessage(m.content, m.sender_id);
+              
+              // Add a small delay to ensure state is ready
+              setTimeout(() => {
+                handleVideoCallMessage(m.content, m.sender_id);
+              }, 100);
             }
           } else {
             console.log("Message not for this conversation, ignoring");
           }
         }
       )
-      .subscribe();
+      .on('broadcast', { event: 'video_call_signal' }, (payload) => {
+        console.log("=== BROADCAST VIDEO CALL SIGNAL ===");
+        console.log("Received broadcast:", payload);
+        if (payload.payload.sender_id !== currentUserId) {
+          handleVideoCallMessage(payload.payload.content, payload.payload.sender_id);
+        }
+      })
+      .subscribe((status) => {
+        console.log("=== CHANNEL STATUS UPDATE ===");
+        console.log("Channel status:", status);
+        setConnectionStatus(status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log("✅ Successfully subscribed to realtime channel");
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error("❌ Channel connection failed:", status);
+          toast({
+            title: "Connection Issue",
+            description: "Real-time messaging may be affected. Retrying...",
+            variant: "destructive",
+          });
+          
+          // Retry connection after 3 seconds
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log("Retrying realtime connection...");
+            if (channelRef.current) {
+              supabase.removeChannel(channelRef.current);
+            }
+            channelRef.current = setupRealtimeConnection();
+          }, 3000);
+        }
+      });
+
+    channelRef.current = channel;
+    return channel;
+  }, [sessionInfo, sessionId, currentUserId, handleVideoCallMessage, toast]);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!sessionInfo) return;
+    
+    async function fetchMessages() {
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
+        )
+        .order("created_at");
+      if (!ignore && Array.isArray(data)) {
+        const typedMessages: MessageRow[] = data.map(m => ({
+          id: m.id,
+          sender_id: m.sender_id,
+          recipient_id: m.recipient_id,
+          content: m.content,
+          created_at: m.created_at,
+          updated_at: m.updated_at,
+          media_url: m.media_url || undefined,
+          media_type: (m.media_type === 'image' || m.media_type === 'video' || m.media_type === 'audio') ? m.media_type : undefined,
+        }));
+        setMessages(typedMessages);
+      }
+    }
+    fetchMessages();
+
+    // Setup realtime connection
+    const channel = setupRealtimeConnection();
 
     return () => {
       ignore = true;
-      supabase.removeChannel(channel);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [sessionInfo, sessionId, handleVideoCallMessage, currentUserId]);
+  }, [sessionInfo, setupRealtimeConnection]);
 
+  // Debug state changes
   useEffect(() => {
     console.log("=== VIDEO CALL STATE DEBUG ===");
     console.log("showCallPickup:", showCallPickup);
     console.log("incomingCallFrom:", incomingCallFrom);
     console.log("videoCallOffer:", !!videoCallOffer);
-  }, [showCallPickup, incomingCallFrom, videoCallOffer]);
+    console.log("connectionStatus:", connectionStatus);
+  }, [showCallPickup, incomingCallFrom, videoCallOffer, connectionStatus]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -196,13 +271,24 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
-  // --- SENDING MESSAGE (text) ---
+  // Enhanced message sending with fallback
   const sendMessage = async (text: string) => {
     if (!text || !sessionInfo) return;
     setLoading(true);
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: text });
-    setLoading(false);
+    
+    try {
+      await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: text });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast({
+        title: "Message Failed",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearChat = async () => {
@@ -314,7 +400,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   }, [sessionInfo, currentUserId, resetVideoCallState]);
 
-  // Updated video call handlers with better error handling and logging
+  // Enhanced video call offer with broadcast fallback
   const handleVideoCallOfferCreated = useCallback(async (offer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
     
@@ -322,11 +408,27 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
     
     try {
+      const offerMessage = `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`;
+      
+      // Try to send via database message
       await supabase.from("messages").insert({
         sender_id: currentUserId,
         recipient_id,
-        content: `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`,
+        content: offerMessage,
       });
+      
+      // Also try broadcast as fallback
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'video_call_signal',
+          payload: {
+            sender_id: currentUserId,
+            content: offerMessage,
+          }
+        });
+      }
+      
       console.log("Video call offer sent successfully to:", recipient_id);
     } catch (error) {
       console.error("Failed to send video call offer:", error);
@@ -414,6 +516,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5" />
             Paid Direct Messages
+            {connectionStatus !== 'SUBSCRIBED' && (
+              <span className="text-xs px-2 py-1 bg-orange-100 text-orange-600 rounded">
+                {connectionStatus === 'CONNECTING' ? 'Connecting...' : 'Connection issues'}
+              </span>
+            )}
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -462,7 +569,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               variant="outline" 
               size="sm" 
               onClick={startVideoCall} 
-              disabled={uploadingMedia || showVideoCall || showCallPickup} 
+              disabled={uploadingMedia || showVideoCall || showCallPickup || connectionStatus !== 'SUBSCRIBED'} 
               className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50" 
             >
               <Video className="w-3 h-3" /> Video Call
