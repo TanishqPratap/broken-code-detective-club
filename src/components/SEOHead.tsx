@@ -24,196 +24,200 @@ const SEOHead = ({
     // Update document title
     document.title = title;
 
-    // Function to ensure URL is absolute and properly formatted
-    const makeAbsoluteUrl = (url: string) => {
+    // Clean and validate URLs
+    const cleanUrl = (url: string): string => {
       if (!url) return '';
       
-      // If already absolute, return as is
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+      // Remove any query parameters that might interfere
+      const cleanedUrl = url.split('?')[0];
+      
+      // Ensure absolute URL
+      if (cleanedUrl.startsWith('http://') || cleanedUrl.startsWith('https://')) {
+        return cleanedUrl;
       }
       
-      // Handle relative URLs
       const baseUrl = window.location.origin;
-      if (url.startsWith('/')) {
-        return `${baseUrl}${url}`;
-      }
-      return `${baseUrl}/${url}`;
+      return cleanedUrl.startsWith('/') ? `${baseUrl}${cleanedUrl}` : `${baseUrl}/${cleanedUrl}`;
     };
 
-    // Function to validate if URL is accessible
-    const isValidImageUrl = (url: string): boolean => {
-      if (!url) return false;
-      if (url.includes('placeholder')) return false;
-      if (url.includes('.mp4') || url.includes('.webm') || url.includes('.mov')) return false;
-      return true;
-    };
-
-    // Determine the best image for social sharing with strict priority
-    let socialImage = '';
+    // Determine the best image with strict priority
+    let finalImage = '';
     
-    console.log('=== SEO HEAD IMAGE SELECTION DEBUG ===');
-    console.log('Raw thumbnailUrl:', thumbnailUrl);
-    console.log('Raw image:', image);
-    console.log('Raw videoUrl:', videoUrl);
+    console.log('=== SEO Image Selection Debug ===');
+    console.log('thumbnailUrl:', thumbnailUrl);
+    console.log('image:', image);
+    console.log('videoUrl:', videoUrl);
     
-    // Priority 1: Use thumbnailUrl if it exists and is valid
-    if (thumbnailUrl && isValidImageUrl(thumbnailUrl)) {
-      socialImage = thumbnailUrl;
-      console.log('✅ Selected: thumbnailUrl ->', socialImage);
+    // Priority 1: thumbnailUrl (generated thumbnail)
+    if (thumbnailUrl && !thumbnailUrl.includes('placeholder')) {
+      finalImage = cleanUrl(thumbnailUrl);
+      console.log('✅ Using thumbnailUrl:', finalImage);
     }
-    // Priority 2: Use image if it's valid and not a video file
-    else if (image && isValidImageUrl(image)) {
-      socialImage = image;
-      console.log('✅ Selected: image ->', socialImage);
+    // Priority 2: image (if not video and not placeholder)
+    else if (image && !image.includes('placeholder') && !image.includes('.mp4') && !image.includes('.webm')) {
+      finalImage = cleanUrl(image);
+      console.log('✅ Using image:', finalImage);
     }
-    // Priority 3: Use a high-quality default that social media will accept
+    // Priority 3: High-quality fallback
     else {
-      socialImage = 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center';
-      console.log('✅ Selected: fallback ->', socialImage);
+      finalImage = 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center&auto=format&q=80';
+      console.log('✅ Using fallback:', finalImage);
     }
 
-    // Ensure the final image URL is absolute
-    const finalImageUrl = makeAbsoluteUrl(socialImage);
-    console.log('Final absolute image URL:', finalImageUrl);
-
-    // Function to remove all existing meta tags
-    const removeExistingMetaTags = () => {
+    // Remove ALL existing meta tags first
+    const removeMetaTags = () => {
       const selectors = [
         'meta[property^="og:"]',
         'meta[name^="twitter:"]',
         'meta[name="description"]',
         'meta[property="description"]',
         'meta[name="image"]',
-        'meta[property="image"]'
+        'meta[property="image"]',
+        'link[rel="image_src"]'
       ];
       
       selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => el.remove());
+        document.querySelectorAll(selector).forEach(el => el.remove());
       });
     };
 
-    // Function to create meta tag
-    const createMetaTag = (property: string, content: string, isName = false) => {
-      if (!content || content.trim() === '') return;
+    // Create meta tag helper
+    const setMetaTag = (tagType: 'property' | 'name', tagName: string, content: string) => {
+      if (!content?.trim()) return;
       
       const meta = document.createElement('meta');
-      const attribute = isName ? 'name' : 'property';
-      meta.setAttribute(attribute, property);
+      meta.setAttribute(tagType, tagName);
       meta.content = content.trim();
       document.head.appendChild(meta);
-      
-      console.log(`✅ Added meta tag: ${attribute}="${property}" content="${content}"`);
+      console.log(`Added: ${tagType}="${tagName}" content="${content}"`);
     };
 
-    // Remove existing meta tags first
-    removeExistingMetaTags();
-    console.log('🗑️ Cleared existing meta tags');
+    // Clear existing tags
+    removeMetaTags();
+    console.log('🗑️ Cleared all existing meta tags');
 
-    // Add a small delay to ensure DOM is clean
+    // Add canonical link
+    let existingCanonical = document.querySelector('link[rel="canonical"]');
+    if (existingCanonical) {
+      existingCanonical.remove();
+    }
+    const canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    canonical.href = url;
+    document.head.appendChild(canonical);
+
+    // Set new meta tags with delay to ensure clean DOM
     setTimeout(() => {
       console.log('🔄 Setting new meta tags...');
       
-      // Basic meta tags
-      createMetaTag('description', description, true);
-
-      // Open Graph meta tags - CRITICAL for social media
-      createMetaTag('og:title', title);
-      createMetaTag('og:description', description);
-      createMetaTag('og:image', finalImageUrl);
-      createMetaTag('og:image:secure_url', finalImageUrl);
-      createMetaTag('og:image:width', '1200');
-      createMetaTag('og:image:height', '630');
-      createMetaTag('og:image:alt', title);
-      createMetaTag('og:image:type', 'image/jpeg');
-      createMetaTag('og:url', url);
-      createMetaTag('og:type', type);
-      createMetaTag('og:site_name', 'Content Creator Platform');
-
-      // For video content, add video-specific tags
+      // Basic meta
+      setMetaTag('name', 'description', description);
+      
+      // Open Graph - Essential for Facebook, WhatsApp, LinkedIn
+      setMetaTag('property', 'og:type', type);
+      setMetaTag('property', 'og:title', title);
+      setMetaTag('property', 'og:description', description);
+      setMetaTag('property', 'og:url', url);
+      setMetaTag('property', 'og:site_name', 'Content Creator Platform');
+      
+      // Image meta tags - CRITICAL
+      setMetaTag('property', 'og:image', finalImage);
+      setMetaTag('property', 'og:image:secure_url', finalImage);
+      setMetaTag('property', 'og:image:type', 'image/jpeg');
+      setMetaTag('property', 'og:image:width', '1200');
+      setMetaTag('property', 'og:image:height', '630');
+      setMetaTag('property', 'og:image:alt', title);
+      
+      // Video specific tags
       if (type === 'video' && videoUrl) {
-        const absoluteVideoUrl = makeAbsoluteUrl(videoUrl);
-        createMetaTag('og:video', absoluteVideoUrl);
-        createMetaTag('og:video:secure_url', absoluteVideoUrl);
-        createMetaTag('og:video:type', 'video/mp4');
-        createMetaTag('og:video:width', '1280');
-        createMetaTag('og:video:height', '720');
-        
-        // Use video thumbnail if available
-        if (thumbnailUrl && isValidImageUrl(thumbnailUrl)) {
-          createMetaTag('og:video:thumbnail', makeAbsoluteUrl(thumbnailUrl));
-        }
+        const cleanVideoUrl = cleanUrl(videoUrl);
+        setMetaTag('property', 'og:video', cleanVideoUrl);
+        setMetaTag('property', 'og:video:secure_url', cleanVideoUrl);
+        setMetaTag('property', 'og:video:type', 'video/mp4');
+        setMetaTag('property', 'og:video:width', '1280');
+        setMetaTag('property', 'og:video:height', '720');
       }
-
-      // Twitter Card meta tags - CRITICAL for Twitter/X
-      createMetaTag('twitter:card', type === 'video' ? 'player' : 'summary_large_image', true);
-      createMetaTag('twitter:title', title, true);
-      createMetaTag('twitter:description', description, true);
-      createMetaTag('twitter:image', finalImageUrl, true);
-      createMetaTag('twitter:image:alt', title, true);
-      createMetaTag('twitter:site', '@ContentCreatorPlatform', true);
-      createMetaTag('twitter:creator', '@ContentCreatorPlatform', true);
-
-      // For video tweets
-      if (type === 'video' && videoUrl) {
-        const absoluteVideoUrl = makeAbsoluteUrl(videoUrl);
-        createMetaTag('twitter:player', absoluteVideoUrl, true);
-        createMetaTag('twitter:player:width', '1280', true);
-        createMetaTag('twitter:player:height', '720', true);
-      }
-
-      // Additional meta tags for better social media support
-      createMetaTag('image', finalImageUrl, true);
-      createMetaTag('thumbnail', finalImageUrl, true);
-
-      // Add structured data for better SEO
+      
+      // Twitter Cards - Essential for Twitter/X
+      setMetaTag('name', 'twitter:card', type === 'video' ? 'summary_large_image' : 'summary_large_image');
+      setMetaTag('name', 'twitter:site', '@ContentCreator');
+      setMetaTag('name', 'twitter:creator', '@ContentCreator');
+      setMetaTag('name', 'twitter:title', title);
+      setMetaTag('name', 'twitter:description', description);
+      setMetaTag('name', 'twitter:image', finalImage);
+      setMetaTag('name', 'twitter:image:alt', title);
+      
+      // Additional image references
+      setMetaTag('name', 'image', finalImage);
+      setMetaTag('property', 'image', finalImage);
+      
+      // Add link tag for image_src (legacy support)
+      const imageSrc = document.createElement('link');
+      imageSrc.rel = 'image_src';
+      imageSrc.href = finalImage;
+      document.head.appendChild(imageSrc);
+      
+      // Structured data for rich snippets
+      const removeExistingLD = () => {
+        document.querySelectorAll('script[type="application/ld+json"]').forEach(el => el.remove());
+      };
+      removeExistingLD();
+      
       const structuredData = {
         "@context": "https://schema.org",
         "@type": type === 'video' ? 'VideoObject' : 'Article',
-        "name": title,
+        "headline": title,
         "description": description,
-        "image": finalImageUrl,
+        "image": [finalImage],
         "url": url,
+        "publisher": {
+          "@type": "Organization",
+          "name": "Content Creator Platform",
+          "logo": {
+            "@type": "ImageObject",
+            "url": `${window.location.origin}/favicon.ico`
+          }
+        },
         ...(type === 'video' && videoUrl ? {
-          "contentUrl": makeAbsoluteUrl(videoUrl),
-          "thumbnailUrl": finalImageUrl,
+          "contentUrl": cleanUrl(videoUrl),
+          "thumbnailUrl": finalImage,
           "uploadDate": new Date().toISOString()
         } : {})
       };
-
-      // Remove existing structured data
-      const existingStructuredData = document.querySelector('script[type="application/ld+json"]');
-      if (existingStructuredData) {
-        existingStructuredData.remove();
-      }
-
-      // Add new structured data
-      const scriptTag = document.createElement('script');
-      scriptTag.type = 'application/ld+json';
-      scriptTag.textContent = JSON.stringify(structuredData);
-      document.head.appendChild(scriptTag);
-
-      console.log('📊 Added structured data:', structuredData);
-
-      // Log final verification
-      console.log('=== FINAL META TAGS VERIFICATION ===');
-      console.log('og:image:', document.querySelector('meta[property="og:image"]')?.getAttribute('content'));
-      console.log('og:image:secure_url:', document.querySelector('meta[property="og:image:secure_url"]')?.getAttribute('content'));
-      console.log('twitter:image:', document.querySelector('meta[name="twitter:image"]')?.getAttribute('content'));
-      console.log('twitter:card:', document.querySelector('meta[name="twitter:card"]')?.getAttribute('content'));
       
-      // Force a refresh in development to help with testing
-      if (window.location.hostname === 'localhost' || window.location.hostname.includes('lovable')) {
-        console.log('🔄 Development mode - meta tags updated. You may need to clear social media cache.');
-        console.log('🔗 Test your links here:');
-        console.log('   - Twitter: https://cards-dev.twitter.com/validator');
-        console.log('   - Facebook: https://developers.facebook.com/tools/debug/');
-        console.log('   - LinkedIn: https://www.linkedin.com/post-inspector/');
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify(structuredData);
+      document.head.appendChild(script);
+      
+      console.log('📊 Added structured data');
+      console.log('🔍 Final image being used:', finalImage);
+      
+      // Force cache refresh for social media crawlers
+      if (window.location.hostname.includes('lovable') || window.location.hostname === 'localhost') {
+        console.log('🔄 Development environment detected');
+        console.log('📋 Test URLs:');
+        console.log('   Twitter: https://cards-dev.twitter.com/validator');
+        console.log('   Facebook: https://developers.facebook.com/tools/debug/');
+        console.log('   LinkedIn: https://www.linkedin.com/post-inspector/');
+        console.log('   WhatsApp: https://developers.facebook.com/tools/debug/');
       }
-    }, 100);
+      
+      // Log final verification
+      setTimeout(() => {
+        console.log('=== Final Meta Tags Verification ===');
+        const ogImage = document.querySelector('meta[property="og:image"]');
+        const twitterImage = document.querySelector('meta[name="twitter:image"]');
+        const imageSrcLink = document.querySelector('link[rel="image_src"]');
+        
+        console.log('og:image:', ogImage?.getAttribute('content'));
+        console.log('twitter:image:', twitterImage?.getAttribute('content'));
+        console.log('image_src:', imageSrcLink?.getAttribute('href'));
+        console.log('All meta tags count:', document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]').length);
+      }, 500);
+      
+    }, 150);
 
-    // Cleanup function
     return () => {
       document.title = "Content Creator Platform";
     };

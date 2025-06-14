@@ -81,9 +81,13 @@ const TrailerView = () => {
         creator: creatorData
       };
 
-      console.log('TrailerView - Full trailer data:', trailerWithCreator);
-      console.log('TrailerView - Thumbnail URL from DB:', trailerWithCreator.thumbnail_url);
-      console.log('TrailerView - Media URL from DB:', trailerWithCreator.media_url);
+      console.log('TrailerView - Trailer data for SEO:', {
+        id: trailerWithCreator.id,
+        title: trailerWithCreator.title,
+        thumbnail_url: trailerWithCreator.thumbnail_url,
+        media_url: trailerWithCreator.media_url,
+        content_type: trailerWithCreator.content_type
+      });
 
       setTrailer(trailerWithCreator);
 
@@ -134,24 +138,29 @@ const TrailerView = () => {
     );
   }
 
-  const trailerTitle = `${trailer.title} - ${trailer.creator.display_name || trailer.creator.username} | Content Creator Platform`;
-  const trailerDescription = trailer.description || `Watch this amazing ${trailer.content_type} trailer from ${trailer.creator.display_name || trailer.creator.username} on Content Creator Platform`;
+  // Enhanced SEO data for trailers
+  const trailerTitle = `${trailer.title} by ${trailer.creator.display_name || trailer.creator.username} | Content Creator Platform`;
+  const trailerDescription = trailer.description 
+    ? trailer.description.slice(0, 160) + (trailer.description.length > 160 ? '...' : '')
+    : `Watch this exclusive ${trailer.content_type} trailer from ${trailer.creator.display_name || trailer.creator.username}. Join now for more amazing content!`;
   const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
-
-  console.log('TrailerView - Passing to SEOHead:');
-  console.log('  - title:', trailerTitle);
-  console.log('  - description:', trailerDescription);
-  console.log('  - thumbnailUrl:', trailer.thumbnail_url);
-  console.log('  - image:', trailer.media_url);
-  console.log('  - videoUrl:', trailer.content_type === 'video' ? trailer.media_url : undefined);
-  console.log('  - url:', trailerUrl);
+  
+  // Prioritize thumbnail for social sharing
+  const socialImage = trailer.thumbnail_url || trailer.media_url;
+  
+  console.log('TrailerView - SEO Image Selection:', {
+    thumbnail_url: trailer.thumbnail_url,
+    media_url: trailer.media_url,
+    selected: socialImage,
+    content_type: trailer.content_type
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <SEOHead
         title={trailerTitle}
         description={trailerDescription}
-        image={trailer.media_url}
+        image={socialImage}
         url={trailerUrl}
         type="video"
         videoUrl={trailer.content_type === 'video' ? trailer.media_url : undefined}
