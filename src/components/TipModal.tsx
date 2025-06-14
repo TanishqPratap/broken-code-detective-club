@@ -102,6 +102,11 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
 
             console.log('Payment verified successfully:', verificationData);
             
+            toast({
+              title: "Tip Sent!",
+              description: `Successfully sent $${tipAmount} tip`,
+            });
+            
             // Call the callback to show tip in chat
             onTipSent(tipAmount, message.trim() || undefined);
             
@@ -110,10 +115,6 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
             setAmount("");
             setMessage("");
             
-            toast({
-              title: "Tip Sent!",
-              description: `Successfully sent $${tipAmount} tip`,
-            });
           } catch (verifyError: any) {
             console.error('Payment verification failed:', verifyError);
             toast({
@@ -121,8 +122,6 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
               description: "Payment was processed but verification failed. Please contact support.",
               variant: "destructive",
             });
-          } finally {
-            setLoading(false);
           }
         },
         prefill: {

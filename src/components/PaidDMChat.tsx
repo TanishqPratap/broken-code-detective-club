@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -204,19 +205,39 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   };
 
   const handleTipSent = async (amount: number, message?: string) => {
-    if (!sessionInfo) return;
+    console.log('Handling tip sent:', { amount, message, sessionInfo });
+    
+    if (!sessionInfo) {
+      console.error('No session info available for tip');
+      return;
+    }
 
     const recipient_id =
       currentUserId === sessionInfo.creator_id
         ? sessionInfo.subscriber_id
         : sessionInfo.creator_id;
 
-    // Send a message indicating a tip was sent
-    await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      recipient_id,
-      content: `💰 Sent a tip of $${amount}${message ? `: ${message}` : ''}`
-    });
+    try {
+      // Send a message indicating a tip was sent
+      const { error } = await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: `💰 Sent a tip of $${amount}${message ? `: ${message}` : ''}`
+      });
+
+      if (error) {
+        console.error('Error inserting tip message:', error);
+        toast({
+          title: "Error",
+          description: "Failed to display tip message in chat",
+          variant: "destructive",
+        });
+      } else {
+        console.log('Tip message inserted successfully');
+      }
+    } catch (error) {
+      console.error('Error in handleTipSent:', error);
+    }
   };
 
   const renderMediaMessage = (message: MessageRow) => {
