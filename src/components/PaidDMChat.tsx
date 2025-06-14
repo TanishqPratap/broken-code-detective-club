@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Paperclip, Image, Video, Mic } from "lucide-react";
 
 interface PaidDMChatProps {
   sessionId: string;
@@ -15,6 +15,8 @@ interface MessageRow {
   sender_id: string;
   recipient_id: string;
   content: string;
+  media_url?: string;
+  media_type?: 'image' | 'video' | 'audio';
   created_at: string;
   updated_at: string;
 }
@@ -23,7 +25,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch chat session info (creator & subscriber IDs)
   const [sessionInfo, setSessionInfo] = useState<{ creator_id: string; subscriber_id: string; } | null>(null);
@@ -85,6 +89,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
                 sender_id: m.sender_id,
                 recipient_id: m.recipient_id,
                 content: m.content,
+                media_url: m.media_url,
+                media_type: m.media_type,
                 created_at: m.created_at,
                 updated_at: m.updated_at,
               },
@@ -104,6 +110,71 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const uploadMedia = async (file: File): Promise<{ url: string; type: 'image' | 'video' | 'audio' } | null> => {
+    try {
+      setUploadingMedia(true);
+      
+      // Determine media type based on file type
+      let mediaType: 'image' | 'video' | 'audio';
+      if (file.type.startsWith('image/')) {
+        mediaType = 'image';
+      } else if (file.type.startsWith('video/')) {
+        mediaType = 'video';
+      } else if (file.type.startsWith('audio/')) {
+        mediaType = 'audio';
+      } else {
+        throw new Error('Unsupported file type');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUserId}-${Date.now()}.${fileExt}`;
+      const filePath = `chat-media/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-media')
+        .getPublicUrl(filePath);
+
+      return { url: publicUrl, type: mediaType };
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      return null;
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !sessionInfo) return;
+
+    const mediaResult = await uploadMedia(file);
+    if (!mediaResult) return;
+
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: `Sent a ${mediaResult.type}`,
+      media_url: mediaResult.url,
+      media_type: mediaResult.type
+    });
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || !sessionInfo) return;
     setLoading(true);
@@ -119,6 +190,48 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
     setInput("");
     setLoading(false);
+  };
+
+  const renderMediaMessage = (message: MessageRow) => {
+    if (!message.media_url || !message.media_type) return null;
+
+    switch (message.media_type) {
+      case 'image':
+        return (
+          <div className="mt-2">
+            <img 
+              src={message.media_url} 
+              alt="Shared image" 
+              className="max-w-xs rounded-lg cursor-pointer hover:opacity-90"
+              onClick={() => window.open(message.media_url, '_blank')}
+            />
+          </div>
+        );
+      case 'video':
+        return (
+          <div className="mt-2">
+            <video 
+              src={message.media_url} 
+              controls 
+              className="max-w-xs rounded-lg"
+              preload="metadata"
+            />
+          </div>
+        );
+      case 'audio':
+        return (
+          <div className="mt-2">
+            <audio 
+              src={message.media_url} 
+              controls 
+              className="max-w-xs"
+              preload="metadata"
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   if (!sessionInfo) return <div className="p-4">Loading chat...</div>;
@@ -144,27 +257,96 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
             </div>
             <div>{m.content}</div>
+            {renderMediaMessage(m)}
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
-      <form
-        className="flex gap-2"
-        onSubmit={e => {
-          e.preventDefault();
-          sendMessage();
-        }}
-      >
-        <Input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={loading}
-        />
-        <Button type="submit" disabled={loading || !input.trim()}>
-          Send
-        </Button>
-      </form>
+      
+      <div className="space-y-2">
+        {/* Media Upload Button */}
+        <div className="flex gap-2 justify-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingMedia}
+            className="flex items-center gap-1"
+          >
+            <Paperclip className="w-3 h-3" />
+            {uploadingMedia ? "Uploading..." : "Media"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.accept = "image/*";
+                fileInputRef.current.click();
+              }
+            }}
+            disabled={uploadingMedia}
+          >
+            <Image className="w-3 h-3" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.accept = "video/*";
+                fileInputRef.current.click();
+              }
+            }}
+            disabled={uploadingMedia}
+          >
+            <Video className="w-3 h-3" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.accept = "audio/*";
+                fileInputRef.current.click();
+              }
+            }}
+            disabled={uploadingMedia}
+          >
+            <Mic className="w-3 h-3" />
+          </Button>
+        </div>
+
+        {/* Text Message Form */}
+        <form
+          className="flex gap-2"
+          onSubmit={e => {
+            e.preventDefault();
+            sendMessage();
+          }}
+        >
+          <Input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={loading || uploadingMedia}
+          />
+          <Button type="submit" disabled={loading || !input.trim() || uploadingMedia}>
+            Send
+          </Button>
+        </form>
+      </div>
     </div>
   );
 };
