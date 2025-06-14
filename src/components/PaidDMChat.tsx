@@ -354,6 +354,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         if (senderId !== currentUserId) {
           console.log('Received video call offer:', offerData);
           setVideoCallOffer(offerData);
+          setVideoCallAnswer(null); // Reset previous answer
+          setVideoCallIceCandidate(null); // Reset previous ICE candidate
           setShowVideoCall(true);
           setIsVideoCallInitiator(false);
         }
@@ -372,6 +374,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       } else if (content === 'VIDEO_CALL_END') {
         if (senderId !== currentUserId) {
           setShowVideoCall(false);
+          setVideoCallOffer(null);
+          setVideoCallAnswer(null);
+          setVideoCallIceCandidate(null);
           toast({
             title: "Call Ended",
             description: "The other participant ended the video call",
@@ -388,6 +393,12 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     if (!sessionInfo) return;
     
     console.log('Starting video call as initiator');
+    
+    // Reset video call states
+    setVideoCallOffer(null);
+    setVideoCallAnswer(null);
+    setVideoCallIceCandidate(null);
+    
     setShowVideoCall(true);
     setIsVideoCallInitiator(true);
     
@@ -464,6 +475,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     setVideoCallOffer(null);
     setVideoCallAnswer(null);
     setVideoCallIceCandidate(null);
+    setIsVideoCallInitiator(false);
     
     const recipient_id =
       currentUserId === sessionInfo.creator_id

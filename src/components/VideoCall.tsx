@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Video, VideoOff, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { Video, VideoOff, Mic, MicOff, Phone, PhoneOff, Camera, CameraOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoCallProps {
@@ -10,9 +10,9 @@ interface VideoCallProps {
   onOfferCreated?: (offer: RTCSessionDescriptionInit) => void;
   onAnswerCreated?: (answer: RTCSessionDescriptionInit) => void;
   onIceCandidateGenerated?: (candidate: RTCIceCandidate) => void;
-  remoteOffer?: RTCSessionDescriptionInit;
-  remoteAnswer?: RTCSessionDescriptionInit;
-  remoteIceCandidate?: RTCIceCandidate;
+  remoteOffer?: RTCSessionDescriptionInit | null;
+  remoteAnswer?: RTCSessionDescriptionInit | null;
+  remoteIceCandidate?: RTCIceCandidate | null;
 }
 
 const VideoCall = ({
@@ -28,7 +28,9 @@ const VideoCall = ({
   const [isConnected, setIsConnected] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [hasMediaPermissions, setHasMediaPermissions] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   
@@ -45,16 +47,16 @@ const VideoCall = ({
   }, []);
 
   useEffect(() => {
-    if (remoteOffer && peerConnectionRef.current) {
+    if (remoteOffer && peerConnectionRef.current && !isInitiator) {
       handleRemoteOffer(remoteOffer);
     }
-  }, [remoteOffer]);
+  }, [remoteOffer, isInitiator]);
 
   useEffect(() => {
-    if (remoteAnswer && peerConnectionRef.current) {
+    if (remoteAnswer && peerConnectionRef.current && isInitiator) {
       handleRemoteAnswer(remoteAnswer);
     }
-  }, [remoteAnswer]);
+  }, [remoteAnswer, isInitiator]);
 
   useEffect(() => {
     if (remoteIceCandidate && peerConnectionRef.current) {
@@ -62,99 +64,123 @@ const VideoCall = ({
     }
   }, [remoteIceCandidate]);
 
-  const requestMediaPermissions = async () => {
+  const requestMediaPermissions = async (facingMode: 'user' | 'environment' = 'user') => {
     try {
-      // First try with video and audio
-      let stream = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 },
-            facingMode: 'user'
-          },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true
-          }
-        });
-        setIsVideoEnabled(true);
-        setIsAudioEnabled(true);
-      } catch (videoError) {
-        console.log('Video access failed, trying audio only:', videoError);
-        // Fallback to audio only
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true
-            }
-          });
-          setIsVideoEnabled(false);
-          setIsAudioEnabled(true);
-          toast({
-            title: "Video Not Available",
-            description: "Using audio-only mode. Check camera permissions.",
-            variant: "destructive",
-          });
-        } catch (audioError) {
-          console.log('Audio access also failed:', audioError);
-          // Create a dummy stream for signaling
-          stream = new MediaStream();
-          setIsVideoEnabled(false);
-          setIsAudioEnabled(false);
-          toast({
-            title: "Media Access Denied",
-            description: "Video call will work in listen-only mode.",
-            variant: "destructive",
-          });
+      console.log('Requesting media permissions with facing mode:', facingMode);
+      
+      const constraints: MediaStreamConstraints = {
+        video: { 
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 },
+          facingMode: facingMode
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         }
-      }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Media stream obtained:', stream);
+      
+      // Check if we got video and audio tracks
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      console.log('Video tracks:', videoTracks.length, 'Audio tracks:', audioTracks.length);
+      
+      setIsVideoEnabled(videoTracks.length > 0);
+      setIsAudioEnabled(audioTracks.length > 0);
       
       return stream;
     } catch (error) {
       console.error('Error accessing media devices:', error);
-      throw error;
+      
+      // Try audio only if video fails
+      try {
+        console.log('Trying audio only...');
+        const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        
+        setIsVideoEnabled(false);
+        setIsAudioEnabled(true);
+        
+        toast({
+          title: "Video Not Available",
+          description: "Using audio-only mode. Check camera permissions.",
+          variant: "destructive",
+        });
+        
+        return audioOnlyStream;
+      } catch (audioError) {
+        console.error('Audio access also failed:', audioError);
+        setIsVideoEnabled(false);
+        setIsAudioEnabled(false);
+        
+        toast({
+          title: "Media Access Denied",
+          description: "Please allow camera and microphone access for video calls.",
+          variant: "destructive",
+        });
+        
+        throw audioError;
+      }
     }
   };
 
   const initializeCall = async () => {
     try {
       setIsInitializing(true);
+      console.log('Initializing video call...');
       
       // Request media permissions
       const stream = await requestMediaPermissions();
       setLocalStream(stream);
       setHasMediaPermissions(true);
       
+      // Set local video
       if (localVideoRef.current && stream) {
         localVideoRef.current.srcObject = stream;
+        console.log('Local video stream set');
       }
 
       // Create peer connection
       const configuration = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' }
         ]
       };
       
       const peerConnection = new RTCPeerConnection(configuration);
       peerConnectionRef.current = peerConnection;
+      console.log('Peer connection created');
 
       // Add local stream to peer connection
       if (stream) {
         stream.getTracks().forEach(track => {
+          console.log('Adding track to peer connection:', track.kind);
           peerConnection.addTrack(track, stream);
         });
       }
 
       // Handle remote stream
       peerConnection.ontrack = (event) => {
-        console.log('Received remote track:', event);
-        if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+        console.log('Received remote track:', event.track.kind);
+        const [remoteStream] = event.streams;
+        setRemoteStream(remoteStream);
+        
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+          console.log('Remote video stream set');
         }
       };
 
@@ -169,6 +195,7 @@ const VideoCall = ({
       // Handle connection state changes
       peerConnection.onconnectionstatechange = () => {
         console.log('Connection state:', peerConnection.connectionState);
+        
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
           toast({
@@ -180,7 +207,7 @@ const VideoCall = ({
           setIsConnected(false);
           toast({
             title: "Disconnected",
-            description: "Video call has ended",
+            description: "Video call connection lost",
             variant: "destructive",
           });
         } else if (peerConnection.connectionState === 'connecting') {
@@ -200,6 +227,7 @@ const VideoCall = ({
         });
         await peerConnection.setLocalDescription(offer);
         onOfferCreated?.(offer);
+        console.log('Offer created and sent');
       }
 
     } catch (error) {
@@ -207,7 +235,7 @@ const VideoCall = ({
       setHasMediaPermissions(false);
       toast({
         title: "Setup Error",
-        description: "Failed to initialize video call. Please check your permissions and try again.",
+        description: "Failed to initialize video call. Please check your permissions.",
         variant: "destructive",
       });
     } finally {
@@ -217,7 +245,7 @@ const VideoCall = ({
 
   const handleRemoteOffer = async (offer: RTCSessionDescriptionInit) => {
     try {
-      console.log('Handling remote offer:', offer);
+      console.log('Handling remote offer');
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) return;
 
@@ -225,7 +253,7 @@ const VideoCall = ({
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       onAnswerCreated?.(answer);
-      console.log('Created and sent answer');
+      console.log('Answer created and sent');
     } catch (error) {
       console.error('Error handling remote offer:', error);
       toast({
@@ -238,12 +266,12 @@ const VideoCall = ({
 
   const handleRemoteAnswer = async (answer: RTCSessionDescriptionInit) => {
     try {
-      console.log('Handling remote answer:', answer);
+      console.log('Handling remote answer');
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) return;
 
       await peerConnection.setRemoteDescription(answer);
-      console.log('Set remote answer successfully');
+      console.log('Remote answer set successfully');
     } catch (error) {
       console.error('Error handling remote answer:', error);
     }
@@ -251,12 +279,12 @@ const VideoCall = ({
 
   const handleRemoteIceCandidate = async (candidate: RTCIceCandidate) => {
     try {
-      console.log('Handling remote ICE candidate:', candidate);
+      console.log('Handling remote ICE candidate');
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) return;
 
       await peerConnection.addIceCandidate(candidate);
-      console.log('Added ICE candidate successfully');
+      console.log('ICE candidate added successfully');
     } catch (error) {
       console.error('Error handling remote ICE candidate:', error);
     }
@@ -268,6 +296,7 @@ const VideoCall = ({
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
+        console.log('Video toggled:', videoTrack.enabled);
       }
     }
   };
@@ -278,17 +307,83 @@ const VideoCall = ({
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
+        console.log('Audio toggled:', audioTrack.enabled);
       }
     }
   };
 
-  const cleanup = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+  const toggleCamera = async () => {
+    if (!localStream) return;
+    
+    try {
+      // Stop current video track
+      const currentVideoTrack = localStream.getVideoTracks()[0];
+      if (currentVideoTrack) {
+        currentVideoTrack.stop();
+        localStream.removeTrack(currentVideoTrack);
+      }
+
+      // Get new video stream with opposite camera
+      const newFacingMode = isFrontCamera ? 'environment' : 'user';
+      const newVideoStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: newFacingMode,
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 }
+        }
+      });
+
+      const newVideoTrack = newVideoStream.getVideoTracks()[0];
+      if (newVideoTrack) {
+        // Add new track to local stream
+        localStream.addTrack(newVideoTrack);
+        
+        // Replace track in peer connection
+        const peerConnection = peerConnectionRef.current;
+        if (peerConnection) {
+          const sender = peerConnection.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          if (sender) {
+            await sender.replaceTrack(newVideoTrack);
+          }
+        }
+
+        // Update local video display
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
+
+        setIsFrontCamera(!isFrontCamera);
+        console.log('Camera switched to:', newFacingMode);
+      }
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      toast({
+        title: "Camera Switch Failed",
+        description: "Unable to switch camera. Using current camera.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const cleanup = () => {
+    console.log('Cleaning up video call...');
+    
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped track:', track.kind);
+      });
+    }
+    
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      console.log('Peer connection closed');
     }
+    
+    setLocalStream(null);
+    setRemoteStream(null);
   };
 
   const endCall = () => {
@@ -301,7 +396,7 @@ const VideoCall = ({
       <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p>Initializing video call...</p>
+          <p>Setting up video call...</p>
         </div>
       </div>
     );
@@ -309,39 +404,44 @@ const VideoCall = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg p-4 max-w-6xl w-full mx-4 h-[90vh] flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Video Call</h3>
           <div className="flex items-center gap-2">
-            <span className={`text-sm ${isConnected ? 'text-green-600' : 'text-yellow-600'}`}>
+            <span className={`text-sm px-2 py-1 rounded ${
+              isConnected ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100'
+            }`}>
               {isConnected ? 'Connected' : 'Connecting...'}
             </span>
             {!hasMediaPermissions && (
-              <span className="text-xs text-red-600">
+              <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">
                 Media access limited
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex-1 flex gap-4">
+        <div className="flex-1 flex gap-4 min-h-0">
           {/* Remote video */}
-          <div className="flex-1 bg-gray-900 rounded-lg relative">
+          <div className="flex-1 bg-gray-900 rounded-lg relative overflow-hidden">
             <video
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              className="w-full h-full object-cover rounded-lg"
+              className="w-full h-full object-cover"
             />
             <div className="absolute top-2 left-2 text-white text-sm bg-black bg-opacity-50 px-2 py-1 rounded">
               Remote
             </div>
-            {!isConnected && (
+            {!remoteStream && (
               <div className="absolute inset-0 flex items-center justify-center text-white">
                 <div className="text-center">
-                  <div className="animate-pulse mb-2">Waiting for connection...</div>
-                  <div className="text-sm opacity-70">
+                  <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <div className="text-lg mb-2">
                     {isInitiator ? 'Calling...' : 'Incoming call'}
+                  </div>
+                  <div className="text-sm opacity-70">
+                    Waiting for connection...
                   </div>
                 </div>
               </div>
@@ -349,34 +449,36 @@ const VideoCall = ({
           </div>
 
           {/* Local video */}
-          <div className="w-64 bg-gray-900 rounded-lg relative">
+          <div className="w-80 bg-gray-900 rounded-lg relative overflow-hidden">
             <video
               ref={localVideoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover rounded-lg"
+              className="w-full h-full object-cover"
             />
             <div className="absolute top-2 left-2 text-white text-sm bg-black bg-opacity-50 px-2 py-1 rounded">
-              You
+              You {isFrontCamera ? '(Front)' : '(Back)'}
             </div>
             {!isVideoEnabled && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800 rounded-lg">
-                <VideoOff className="w-8 h-8 text-gray-400" />
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                <VideoOff className="w-12 h-12 text-gray-400" />
               </div>
             )}
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex justify-center gap-4 mt-4">
+        <div className="flex justify-center gap-3 mt-4">
           <Button
             variant={isVideoEnabled ? "default" : "destructive"}
             size="sm"
             onClick={toggleVideo}
             disabled={!hasMediaPermissions}
+            className="flex items-center gap-2"
           >
             {isVideoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+            Video
           </Button>
           
           <Button
@@ -384,14 +486,28 @@ const VideoCall = ({
             size="sm"
             onClick={toggleAudio}
             disabled={!hasMediaPermissions}
+            className="flex items-center gap-2"
           >
             {isAudioEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+            Audio
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleCamera}
+            disabled={!hasMediaPermissions || !isVideoEnabled}
+            className="flex items-center gap-2"
+          >
+            {isFrontCamera ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
+            Switch Camera
           </Button>
           
           <Button
             variant="destructive"
             size="sm"
             onClick={endCall}
+            className="flex items-center gap-2"
           >
             <PhoneOff className="w-4 h-4" />
             End Call
