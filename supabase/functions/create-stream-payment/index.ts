@@ -58,6 +58,8 @@ serve(async (req) => {
       }
     };
 
+    console.log('Creating Razorpay order with data:', orderData);
+
     const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
     
     const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
@@ -69,11 +71,16 @@ serve(async (req) => {
       body: JSON.stringify(orderData),
     });
 
+    const responseText = await razorpayResponse.text();
+    console.log('Razorpay response status:', razorpayResponse.status);
+    console.log('Razorpay response:', responseText);
+
     if (!razorpayResponse.ok) {
-      throw new Error("Failed to create Razorpay order");
+      console.error('Razorpay API error:', responseText);
+      throw new Error(`Razorpay API error: ${responseText}`);
     }
 
-    const order = await razorpayResponse.json();
+    const order = JSON.parse(responseText);
 
     // Create pending subscription record
     await supabaseClient
