@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -226,23 +225,34 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
   };
 
   const handleShare = async () => {
+    // Generate unique trailer URL
+    const trailerUrl = `${window.location.origin}/creator/${trailer.creator.id}/trailer/${trailer.id}`;
     const shareData = {
       title: `Check out this trailer by ${trailer.creator.display_name || trailer.creator.username}`,
       text: trailer.description || `Amazing trailer content from ${trailer.creator.display_name || trailer.creator.username}`,
-      url: window.location.href
+      url: trailerUrl
     };
 
     try {
-      if (navigator.share) {
+      // Try native share API first
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
         toast.success("Trailer shared successfully!");
       } else {
-        await navigator.clipboard.writeText(shareData.url);
-        toast.success("Link copied to clipboard!");
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(trailerUrl);
+        toast.success("Trailer link copied to clipboard!");
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      toast.error("Failed to share trailer");
+      // Final fallback - just copy the URL
+      try {
+        await navigator.clipboard.writeText(trailerUrl);
+        toast.success("Trailer link copied to clipboard!");
+      } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError);
+        toast.error("Failed to share trailer");
+      }
     }
   };
 

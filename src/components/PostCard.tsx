@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -207,23 +206,34 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
   };
 
   const handleShare = async () => {
+    // Generate unique post URL
+    const postUrl = `${window.location.origin}/posts/${post.id}`;
     const shareData = {
       title: `Check out this post by ${post.profiles.display_name || post.profiles.username}`,
       text: post.text_content || `Amazing content from ${post.profiles.display_name || post.profiles.username}`,
-      url: window.location.href
+      url: postUrl
     };
 
     try {
-      if (navigator.share) {
+      // Try native share API first
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
         toast.success("Post shared successfully!");
       } else {
-        await navigator.clipboard.writeText(shareData.url);
-        toast.success("Link copied to clipboard!");
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("Post link copied to clipboard!");
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      toast.error("Failed to share post");
+      // Final fallback - just copy the URL
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("Post link copied to clipboard!");
+      } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError);
+        toast.error("Failed to share post");
+      }
     }
   };
 
