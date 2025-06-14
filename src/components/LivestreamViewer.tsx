@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Player } from "@livepeer/react";
 import { Users, Heart, MessageCircle, Share } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -75,11 +74,12 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
             <CardContent className="p-0">
               <div className="aspect-video bg-black rounded-t-lg overflow-hidden">
                 {streamData.status === 'live' ? (
-                  <Player
+                  <video
                     src={`https://livepeercdn.com/hls/${streamData.stream_key}/index.m3u8`}
                     autoPlay
                     muted
                     className="w-full h-full"
+                    controls
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white">

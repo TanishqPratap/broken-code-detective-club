@@ -1,6 +1,5 @@
 
-import { LivepeerConfig } from '@livepeer/react';
-import { livepeerClient } from '@/lib/livepeer';
+import React from 'react';
 
 interface LivepeerProviderProps {
   children: React.ReactNode;
@@ -8,9 +7,9 @@ interface LivepeerProviderProps {
 
 const LivepeerProvider = ({ children }: LivepeerProviderProps) => {
   return (
-    <LivepeerConfig client={livepeerClient}>
+    <div>
       {children}
-    </LivepeerConfig>
+    </div>
   );
 };
 

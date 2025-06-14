@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Player, useCreateStream } from "@livepeer/react";
 import { Play, Square, Users, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,21 +18,9 @@ const LivestreamDashboard = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamData, setStreamData] = useState<any>(null);
   const [viewerCount, setViewerCount] = useState(0);
+  const [isCreatingStream, setIsCreatingStream] = useState(false);
 
-  const {
-    mutate: createStream,
-    data: createdStream,
-    status: createStatus,
-  } = useCreateStream();
-
-  useEffect(() => {
-    if (createdStream) {
-      setStreamData(createdStream);
-      saveStreamToDatabase(createdStream);
-    }
-  }, [createdStream]);
-
-  const saveStreamToDatabase = async (stream: any) => {
+  const saveStreamToDatabase = async (streamKey: string) => {
     if (!user) return;
 
     try {
@@ -43,7 +30,7 @@ const LivestreamDashboard = () => {
           creator_id: user.id,
           title: streamTitle,
           description: streamDescription,
-          stream_key: stream.streamKey,
+          stream_key: streamKey,
           status: 'offline'
         });
 
@@ -58,7 +45,7 @@ const LivestreamDashboard = () => {
     }
   };
 
-  const handleCreateStream = () => {
+  const handleCreateStream = async () => {
     if (!streamTitle.trim()) {
       toast({
         title: "Error",
@@ -68,10 +55,32 @@ const LivestreamDashboard = () => {
       return;
     }
 
-    createStream({
-      name: streamTitle,
-      record: true,
-    });
+    setIsCreatingStream(true);
+    
+    try {
+      // For now, create a mock stream until we have proper Livepeer integration
+      const mockStream = {
+        streamKey: `stream_${Date.now()}`,
+        playbackUrl: `https://livepeercdn.com/hls/stream_${Date.now()}/index.m3u8`
+      };
+      
+      setStreamData(mockStream);
+      await saveStreamToDatabase(mockStream.streamKey);
+      
+      toast({
+        title: "Stream Created",
+        description: "Your stream has been created successfully",
+      });
+    } catch (error: any) {
+      console.error('Error creating stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create stream",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingStream(false);
+    }
   };
 
   const handleStartStream = async () => {
@@ -176,10 +185,10 @@ const LivestreamDashboard = () => {
               {!streamData ? (
                 <Button 
                   onClick={handleCreateStream} 
-                  disabled={createStatus === 'pending'}
+                  disabled={isCreatingStream}
                   className="w-full"
                 >
-                  {createStatus === 'pending' ? "Creating..." : "Create Stream"}
+                  {isCreatingStream ? "Creating..." : "Create Stream"}
                 </Button>
               ) : (
                 <div className="space-y-4">
@@ -244,11 +253,12 @@ const LivestreamDashboard = () => {
             <CardContent>
               <div className="aspect-video bg-black rounded-lg flex items-center justify-center">
                 {streamData && isStreaming ? (
-                  <Player
+                  <video
                     src={streamData.playbackUrl}
                     autoPlay
                     muted
                     className="w-full h-full rounded-lg"
+                    controls
                   />
                 ) : (
                   <div className="text-white text-center">
