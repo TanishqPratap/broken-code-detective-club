@@ -52,11 +52,23 @@ const CreatorProfilePage = () => {
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [trailers, setTrailers] = useState<TrailerContent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (creatorId) {
+      // Validate creatorId format (should be UUID)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(creatorId)) {
+        setError("Invalid creator ID format");
+        setLoading(false);
+        return;
+      }
+      
       fetchCreatorData();
       fetchTrailers();
+    } else {
+      setError("Creator ID is required");
+      setLoading(false);
     }
   }, [creatorId, user]);
 
@@ -64,14 +76,25 @@ const CreatorProfilePage = () => {
     if (!creatorId) return;
 
     try {
+      setError(null);
+      
       // Fetch creator profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
         .eq('id', creatorId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw new Error('Failed to fetch creator profile');
+      }
+
+      if (!profileData) {
+        setError("Creator not found");
+        setLoading(false);
+        return;
+      }
 
       // Get subscriber count
       const { count: subscriberCount } = await supabase
@@ -106,11 +129,12 @@ const CreatorProfilePage = () => {
         post_count: postCount || 0,
         is_subscribed: isSubscribed
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching creator data:', error);
+      setError(error.message || 'Failed to load creator profile');
       toast({
         title: "Error",
-        description: "Failed to load creator profile",
+        description: error.message || "Failed to load creator profile",
         variant: "destructive",
       });
     } finally {
@@ -211,16 +235,32 @@ const CreatorProfilePage = () => {
     );
   }
 
-  if (!creator) {
+  if (error || !creator) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
         <div className="container mx-auto px-4 py-8 sm:py-16">
-          <div className="text-center">
-            <h1 className="text-xl sm:text-2xl font-bold mb-4">Creator Not Found</h1>
-            <p className="text-sm sm:text-base text-gray-600">The requested creator profile could not be found.</p>
+          <div className="text-center max-w-md mx-auto">
+            <div className="text-6xl mb-4">😕</div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-4">
+              {error === "Creator not found" ? "Creator Not Found" : "Something went wrong"}
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mb-6">
+              {error === "Creator not found" 
+                ? "The creator you're looking for doesn't exist or may have been removed."
+                : error || "We couldn't load this creator's profile. Please try again."}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button asChild>
+                <Link to="/discover">Discover Creators</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/">Go Home</Link>
+              </Button>
+            </div>
           </div>
         </div>
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
   }

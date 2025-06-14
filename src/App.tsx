@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
@@ -39,6 +39,10 @@ const App = () => (
             <Route path="/watch/:streamId" element={<Watch />} />
             <Route path="/dm" element={<PaidDM />} />
             <Route path="/stream-payment-success" element={<StreamPaymentSuccess />} />
+            {/* Handle legacy routes */}
+            <Route path="/creators/:creatorId" element={<Navigate to="/creator/:creatorId" replace />} />
+            <Route path="/user/:userId" element={<Navigate to="/creator/:userId" replace />} />
+            {/* Catch all 404s */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
