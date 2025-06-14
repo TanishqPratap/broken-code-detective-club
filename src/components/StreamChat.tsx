@@ -18,10 +18,8 @@ interface Comment {
   comment: string;
   created_at: string;
   user_id: string;
-  profiles?: {
-    username: string;
-    display_name: string;
-  } | null;
+  username?: string;
+  display_name?: string;
 }
 
 const StreamChat = ({ streamId }: StreamChatProps) => {
@@ -47,17 +45,37 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
 
   const fetchComments = async () => {
     try {
-      const { data, error } = await supabase
+      // First get comments
+      const { data: commentsData, error: commentsError } = await supabase
         .from('stream_comments')
-        .select(`
-          *,
-          profiles!inner(username, display_name)
-        `)
+        .select('*')
         .eq('stream_id', streamId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      setComments(data || []);
+      if (commentsError) throw commentsError;
+
+      if (commentsData && commentsData.length > 0) {
+        // Get user profiles for the comments
+        const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+
+        // Merge comments with profile data
+        const commentsWithProfiles = commentsData.map(comment => {
+          const profile = profilesData?.find(p => p.id === comment.user_id);
+          return {
+            ...comment,
+            username: profile?.username,
+            display_name: profile?.display_name
+          };
+        });
+
+        setComments(commentsWithProfiles);
+      } else {
+        setComments([]);
+      }
     } catch (error: any) {
       console.error('Error fetching comments:', error);
     }
@@ -65,7 +83,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
 
   const subscribeToComments = () => {
     const channel = supabase
-      .channel(`stream-comments-${streamId}`)
+      .channel(`stream-comments-${streamId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -75,19 +93,20 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
           filter: `stream_id=eq.${streamId}`
         },
         async (payload) => {
-          // Fetch the complete comment with profile data
-          const { data } = await supabase
-            .from('stream_comments')
-            .select(`
-              *,
-              profiles!inner(username, display_name)
-            `)
-            .eq('id', payload.new.id)
+          // Fetch the user profile for the new comment
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, display_name')
+            .eq('id', payload.new.user_id)
             .single();
 
-          if (data) {
-            setComments(prev => [...prev, data]);
-          }
+          const newComment = {
+            ...payload.new,
+            username: profile?.username,
+            display_name: profile?.display_name
+          } as Comment;
+
+          setComments(prev => [...prev, newComment]);
         }
       )
       .subscribe();
@@ -162,7 +181,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
               <div key={comment.id} className="text-sm">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-primary">
-                    {comment.profiles?.display_name || comment.profiles?.username || 'Anonymous'}
+                    {comment.display_name || comment.username || 'Anonymous'}
                   </span>
                   <span className="text-xs text-gray-500">
                     {formatTime(comment.created_at)}

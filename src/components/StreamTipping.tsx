@@ -20,10 +20,8 @@ interface Tip {
   amount: number;
   message: string | null;
   created_at: string;
-  profiles?: {
-    username: string;
-    display_name: string;
-  } | null;
+  username?: string;
+  display_name?: string;
 }
 
 const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
@@ -45,18 +43,38 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
   const fetchRecentTips = async () => {
     try {
-      const { data, error } = await supabase
+      // First get tips
+      const { data: tipsData, error: tipsError } = await supabase
         .from('stream_tips')
-        .select(`
-          *,
-          profiles!inner(username, display_name)
-        `)
+        .select('*')
         .eq('stream_id', streamId)
         .order('created_at', { ascending: false })
         .limit(5);
 
-      if (error) throw error;
-      setRecentTips(data || []);
+      if (tipsError) throw tipsError;
+
+      if (tipsData && tipsData.length > 0) {
+        // Get user profiles for the tips
+        const userIds = [...new Set(tipsData.map(tip => tip.tipper_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+
+        // Merge tips with profile data
+        const tipsWithProfiles = tipsData.map(tip => {
+          const profile = profilesData?.find(p => p.id === tip.tipper_id);
+          return {
+            ...tip,
+            username: profile?.username,
+            display_name: profile?.display_name
+          };
+        });
+
+        setRecentTips(tipsWithProfiles);
+      } else {
+        setRecentTips([]);
+      }
 
       // Calculate total tips
       const { data: totalData, error: totalError } = await supabase
@@ -75,7 +93,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
 
   const subscribeToTips = () => {
     const channel = supabase
-      .channel(`stream-tips-${streamId}`)
+      .channel(`stream-tips-${streamId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -85,20 +103,21 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
           filter: `stream_id=eq.${streamId}`
         },
         async (payload) => {
-          // Fetch the complete tip with profile data
-          const { data } = await supabase
-            .from('stream_tips')
-            .select(`
-              *,
-              profiles!inner(username, display_name)
-            `)
-            .eq('id', payload.new.id)
+          // Fetch the user profile for the new tip
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, display_name')
+            .eq('id', payload.new.tipper_id)
             .single();
 
-          if (data) {
-            setRecentTips(prev => [data, ...prev.slice(0, 4)]);
-            setTotalTips(prev => prev + parseFloat(data.amount.toString()));
-          }
+          const newTip = {
+            ...payload.new,
+            username: profile?.username,
+            display_name: profile?.display_name
+          } as Tip;
+
+          setRecentTips(prev => [newTip, ...prev.slice(0, 4)]);
+          setTotalTips(prev => prev + parseFloat(newTip.amount.toString()));
         }
       )
       .subscribe();
@@ -254,7 +273,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
                 <div key={tip.id} className="p-2 bg-gray-50 rounded text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium">
-                      {tip.profiles?.display_name || tip.profiles?.username || 'Anonymous'}
+                      {tip.display_name || tip.username || 'Anonymous'}
                     </span>
                     <Badge variant="secondary" className="text-xs">
                       ${tip.amount}
