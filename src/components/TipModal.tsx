@@ -28,6 +28,16 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleTip = async () => {
     const tipAmount = parseFloat(amount);
     if (!tipAmount || tipAmount <= 0) {
@@ -42,42 +52,98 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
     setLoading(true);
 
     try {
-      // For DM tips, we'll create a direct payment without using stream infrastructure
-      // First, let's create a simple tip record in the database
-      const { data: tipData, error: tipError } = await supabase
-        .from('tips')
-        .insert({
-          tipper_id: (await supabase.auth.getUser()).data.user?.id,
-          creator_id: recipientId,
+      // Load Razorpay script if not already loaded
+      const isRazorpayLoaded = await loadRazorpayScript();
+      if (!isRazorpayLoaded) {
+        throw new Error("Failed to load Razorpay. Please check your internet connection.");
+      }
+
+      // Create payment order via edge function
+      const { data: orderData, error: orderError } = await supabase.functions.invoke('create-tip-payment', {
+        body: {
+          recipientId: recipientId,
           amount: tipAmount,
-          message: message.trim() || null
-        })
-        .select()
-        .single();
-
-      if (tipError) throw tipError;
-
-      // For now, we'll simulate a successful payment
-      // In a real implementation, you'd integrate with Razorpay here
-      console.log('Tip created:', tipData);
-      
-      onTipSent(tipAmount, message.trim() || undefined);
-      onClose();
-      setAmount("");
-      setMessage("");
-      
-      toast({
-        title: "Tip Sent!",
-        description: `Successfully sent $${tipAmount} tip`,
+          message: message.trim() || undefined
+        }
       });
+
+      if (orderError) throw orderError;
+
+      console.log('Payment order created:', orderData);
+
+      // Get current user for payment
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Tip Payment",
+        description: `Tip of $${tipAmount}${message.trim() ? ` - ${message.trim()}` : ''}`,
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          console.log('Razorpay payment successful:', response);
+          
+          try {
+            // Verify payment with backend
+            const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-tip-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                recipientId: recipientId,
+                amount: tipAmount,
+                message: message.trim() || undefined
+              }
+            });
+
+            if (verificationError) throw verificationError;
+
+            console.log('Payment verified successfully:', verificationData);
+            
+            onTipSent(tipAmount, message.trim() || undefined);
+            onClose();
+            setAmount("");
+            setMessage("");
+            
+            toast({
+              title: "Tip Sent!",
+              description: `Successfully sent $${tipAmount} tip`,
+            });
+          } catch (verifyError: any) {
+            console.error('Payment verification failed:', verifyError);
+            toast({
+              title: "Payment Verification Failed",
+              description: "Payment was processed but verification failed. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          email: user.email || '',
+        },
+        theme: {
+          color: "#9333ea"
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Razorpay payment cancelled');
+            setLoading(false);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+      
     } catch (error: any) {
-      console.error('Error sending tip:', error);
+      console.error('Error creating tip payment:', error);
       toast({
-        title: "Tip Error",
-        description: "Failed to send tip. Please try again.",
+        title: "Payment Error",
+        description: error.message || "Failed to process payment. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };

@@ -38,9 +38,9 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { streamId, amount, message } = await req.json();
+    const { recipientId, amount, message } = await req.json();
 
-    if (!streamId || !amount) {
+    if (!recipientId || !amount) {
       throw new Error("Missing required parameters");
     }
 
@@ -51,11 +51,11 @@ serve(async (req) => {
       throw new Error("Razorpay credentials not configured");
     }
 
-    // Get stream details
-    const { data: streamData } = await supabaseClient
-      .from('live_streams')
-      .select('title, creator_id')
-      .eq('id', streamId)
+    // Get recipient details
+    const { data: recipientData } = await supabaseClient
+      .from('profiles')
+      .select('display_name, username')
+      .eq('id', recipientId)
       .single();
 
     // Get current USD to INR exchange rate
@@ -68,8 +68,8 @@ serve(async (req) => {
 
     // Create a shorter receipt (max 40 chars)
     const timestamp = Date.now().toString().slice(-8);
-    const streamIdShort = streamId.slice(0, 8);
-    const receipt = `tip_${streamIdShort}_${timestamp}`;
+    const recipientIdShort = recipientId.slice(0, 8);
+    const receipt = `dmtip_${recipientIdShort}_${timestamp}`;
 
     // Create Razorpay order
     const orderData = {
@@ -77,19 +77,18 @@ serve(async (req) => {
       currency: "INR",
       receipt: receipt,
       notes: {
-        streamId,
+        recipientId,
         userId: user.id,
-        creatorId: streamData?.creator_id,
-        streamTitle: streamData?.title || 'Live Stream',
+        recipientName: recipientData?.display_name || recipientData?.username || 'Unknown',
         originalAmountUSD: amount,
         exchangeRate: exchangeRate,
         amountINR: amountInINR,
         message: message || '',
-        type: 'tip'
+        type: 'dm_tip'
       }
     };
 
-    console.log('Creating Razorpay order for tip:', orderData);
+    console.log('Creating Razorpay order for DM tip:', orderData);
 
     const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
     
@@ -126,7 +125,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    console.error('Error creating tip payment:', error);
+    console.error('Error creating DM tip payment:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
