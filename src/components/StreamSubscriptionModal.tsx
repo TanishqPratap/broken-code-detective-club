@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,6 +104,8 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
 
       if (error) throw error;
 
+      console.log('Payment order created:', data);
+
       // Store payment info for display
       setPaymentInfo({
         amountUSD: data.amount_usd,
@@ -128,8 +129,10 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
         },
         handler: async function (response: any) {
           try {
+            console.log('Payment response received:', response);
+            
             // Verify payment on backend
-            const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -140,12 +143,17 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
 
             if (verifyError) throw verifyError;
 
+            console.log('Payment verified successfully:', verifyData);
+
             toast({
               title: "Payment Successful!",
               description: "You now have access to the livestream",
             });
             
+            // Close modal and trigger success callback
+            onClose();
             onSubscriptionSuccess();
+            
           } catch (error: any) {
             console.error('Payment verification failed:', error);
             toast({

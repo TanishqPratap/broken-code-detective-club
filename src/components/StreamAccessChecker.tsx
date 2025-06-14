@@ -28,6 +28,8 @@ const StreamAccessChecker = ({ streamId, children }: StreamAccessCheckerProps) =
 
   const checkStreamAccess = async () => {
     try {
+      setLoading(true);
+      
       // Fetch stream details
       const { data: stream, error: streamError } = await supabase
         .from('live_streams')
@@ -54,8 +56,9 @@ const StreamAccessChecker = ({ streamId, children }: StreamAccessCheckerProps) =
           .eq('subscriber_id', user.id)
           .eq('status', 'active')
           .gte('expires_at', new Date().toISOString())
-          .single();
+          .maybeSingle();
 
+        console.log('Subscription check result:', subscription);
         setHasAccess(!!subscription);
       } else {
         setHasAccess(false);
@@ -75,7 +78,10 @@ const StreamAccessChecker = ({ streamId, children }: StreamAccessCheckerProps) =
   const handleSubscriptionSuccess = () => {
     setHasAccess(true);
     setShowSubscriptionModal(false);
-    checkStreamAccess();
+    // Refresh access check to ensure we have the latest status
+    setTimeout(() => {
+      checkStreamAccess();
+    }, 1000);
     toast({
       title: "Access Granted!",
       description: "You now have access to this paid stream",

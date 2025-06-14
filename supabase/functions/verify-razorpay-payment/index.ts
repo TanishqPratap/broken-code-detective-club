@@ -61,12 +61,16 @@ serve(async (req) => {
     const message = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = await createSignature(message, razorpayKeySecret);
 
+    console.log('Verifying signature:', { message, expectedSignature, receivedSignature: razorpay_signature });
+
     if (expectedSignature !== razorpay_signature) {
       throw new Error("Payment verification failed - invalid signature");
     }
 
+    console.log('Payment signature verified successfully');
+
     // Update subscription status to active
-    const { error: updateError } = await supabaseClient
+    const { data: updateData, error: updateError } = await supabaseClient
       .from('stream_subscriptions')
       .update({ 
         status: 'active',
@@ -74,15 +78,24 @@ serve(async (req) => {
       })
       .eq('stream_id', streamId)
       .eq('subscriber_id', user.id)
-      .eq('stripe_payment_intent_id', razorpay_order_id);
+      .eq('stripe_payment_intent_id', razorpay_order_id)
+      .select();
 
     if (updateError) {
+      console.error('Database update error:', updateError);
       throw new Error(`Failed to update subscription: ${updateError.message}`);
+    }
+
+    console.log('Subscription updated successfully:', updateData);
+
+    if (!updateData || updateData.length === 0) {
+      throw new Error("No subscription found to update");
     }
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: "Payment verified and subscription activated"
+      message: "Payment verified and subscription activated",
+      subscription: updateData[0]
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

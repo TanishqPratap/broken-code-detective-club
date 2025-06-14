@@ -111,17 +111,38 @@ serve(async (req) => {
 
     const order = JSON.parse(responseText);
 
-    // Create pending subscription record with INR amount
-    await supabaseClient
+    // Check if subscription already exists and update it, otherwise create new one
+    const { data: existingSubscription } = await supabaseClient
       .from('stream_subscriptions')
-      .insert({
-        stream_id: streamId,
-        subscriber_id: user.id,
-        amount: amountInINR, // Store the INR amount
-        stripe_payment_intent_id: order.id, // Using this field for Razorpay order ID
-        status: 'pending',
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-      });
+      .select('id')
+      .eq('stream_id', streamId)
+      .eq('subscriber_id', user.id)
+      .single();
+
+    if (existingSubscription) {
+      // Update existing subscription
+      await supabaseClient
+        .from('stream_subscriptions')
+        .update({
+          amount: amountInINR,
+          stripe_payment_intent_id: order.id,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq('id', existingSubscription.id);
+    } else {
+      // Create new subscription record
+      await supabaseClient
+        .from('stream_subscriptions')
+        .insert({
+          stream_id: streamId,
+          subscriber_id: user.id,
+          amount: amountInINR,
+          stripe_payment_intent_id: order.id,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+    }
 
     return new Response(JSON.stringify({ 
       order_id: order.id,
