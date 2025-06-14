@@ -156,6 +156,8 @@ export type Database = {
           description: string | null
           ended_at: string | null
           id: string
+          is_paid: boolean | null
+          price: number | null
           started_at: string | null
           status: string
           stream_key: string
@@ -169,6 +171,8 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          is_paid?: boolean | null
+          price?: number | null
           started_at?: string | null
           status?: string
           stream_key?: string
@@ -182,6 +186,8 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          is_paid?: boolean | null
+          price?: number | null
           started_at?: string | null
           status?: string
           stream_key?: string

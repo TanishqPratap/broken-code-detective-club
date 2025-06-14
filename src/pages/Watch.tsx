@@ -1,6 +1,7 @@
 
 import { useParams } from "react-router-dom";
 import LivestreamViewer from "@/components/LivestreamViewer";
+import StreamAccessChecker from "@/components/StreamAccessChecker";
 import Navbar from "@/components/Navbar";
 import { useState } from "react";
 import AuthModal from "@/components/auth/AuthModal";
@@ -27,7 +28,9 @@ const Watch = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <LivestreamViewer streamId={streamId} creatorId="" />
+      <StreamAccessChecker streamId={streamId}>
+        <LivestreamViewer streamId={streamId} creatorId="" />
+      </StreamAccessChecker>
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );

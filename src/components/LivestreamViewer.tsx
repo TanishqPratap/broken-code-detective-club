@@ -1,28 +1,26 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Heart, MessageCircle, Share, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, DollarSign, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import StreamSubscriptionModal from "./StreamSubscriptionModal";
 
 interface LivestreamViewerProps {
   streamId: string;
-  creatorId?: string;
+  creatorId: string;
 }
 
 const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [streamData, setStreamData] = useState<any>(null);
-  const [creatorProfile, setCreatorProfile] = useState<any>(null);
-  const [viewerCount, setViewerCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStreamData();
@@ -30,79 +28,46 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
 
   const fetchStreamData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch stream details
+      const { data: stream, error: streamError } = await supabase
         .from('live_streams')
-        .select(`
-          *,
-          profiles:creator_id (
-            id,
-            display_name,
-            username,
-            bio,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('id', streamId)
         .single();
 
-      if (error) throw error;
-      setStreamData(data);
-      setCreatorProfile(data.profiles);
-      
-      if (user) {
-        await checkStreamAccess(data.creator_id);
+      if (streamError) throw streamError;
+      setStreamData(stream);
+
+      // Check if user has access to paid streams
+      if (stream.is_paid && user) {
+        const { data: subscription } = await supabase
+          .from('stream_subscriptions')
+          .select('*')
+          .eq('stream_id', streamId)
+          .eq('subscriber_id', user.id)
+          .eq('status', 'active')
+          .single();
+
+        setHasAccess(!!subscription);
+      } else if (!stream.is_paid) {
+        setHasAccess(true);
       }
-    } catch (error) {
-      console.error('Error fetching stream:', error);
+    } catch (error: any) {
+      console.error('Error fetching stream data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load stream data",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const checkStreamAccess = async (creatorId: string) => {
-    if (!user) return;
-
-    try {
-      // Check if user has an active subscription for this stream
-      const { data, error } = await supabase
-        .from('stream_subscriptions')
-        .select('*')
-        .eq('stream_id', streamId)
-        .eq('subscriber_id', user.id)
-        .eq('status', 'active')
-        .gte('expires_at', new Date().toISOString())
-        .limit(1);
-
-      if (error) throw error;
-      
-      // User has access if they're the creator or have an active subscription
-      const isCreator = creatorId === user.id;
-      const hasSubscription = data && data.length > 0;
-      
-      setHasAccess(isCreator || hasSubscription);
-    } catch (error) {
-      console.error('Error checking stream access:', error);
-    }
-  };
-
-  const handleFollow = async () => {
-    setIsFollowing(!isFollowing);
-  };
-
-  const handleSubscribe = () => {
-    if (!user) {
-      // Handle authentication required
-      return;
-    }
-    setShowSubscriptionModal(true);
-  };
-
   const handleSubscriptionSuccess = () => {
-    setShowSubscriptionModal(false);
     setHasAccess(true);
-    if (streamData?.creator_id) {
-      checkStreamAccess(streamData.creator_id);
-    }
+    setShowSubscriptionModal(false);
+    fetchStreamData();
   };
 
   if (loading) {
@@ -116,158 +81,158 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
     );
   }
 
-  if (!streamData || !creatorProfile) {
+  if (!streamData) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Stream not found</h1>
+          <h1 className="text-2xl font-bold mb-4">Stream Not Found</h1>
           <p className="text-gray-600">The requested stream could not be found.</p>
         </div>
       </div>
     );
   }
 
-  const playbackUrl = streamData.status === 'live' 
-    ? `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`
-    : null;
+  // Show subscription requirement for paid streams
+  if (streamData.is_paid && !hasAccess) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Lock className="w-8 h-8 text-orange-500" />
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                ${streamData.price}
+              </Badge>
+            </div>
+            <CardTitle>{streamData.title}</CardTitle>
+            <CardDescription>This is a paid livestream</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Subscribe to access this exclusive livestream content
+            </p>
+            <Button 
+              onClick={() => setShowSubscriptionModal(true)}
+              className="w-full"
+              disabled={!user}
+            >
+              {user ? "Subscribe to Watch" : "Sign in to Subscribe"}
+            </Button>
+            {!user && (
+              <p className="text-sm text-gray-500">
+                Please sign in to subscribe to this stream
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-  const canWatchStream = hasAccess || streamData.creator_id === user?.id;
+        <StreamSubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={() => setShowSubscriptionModal(false)}
+          streamId={streamId}
+          onSubscriptionSuccess={handleSubscriptionSuccess}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main Stream Player */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="p-0">
-              <div className="aspect-video bg-black rounded-t-lg overflow-hidden relative">
-                {streamData.status === 'live' && playbackUrl && canWatchStream ? (
-                  <video
-                    src={playbackUrl}
-                    autoPlay
-                    muted
-                    className="w-full h-full"
-                    controls
-                  />
-                ) : streamData.status === 'live' && !canWatchStream ? (
-                  <div className="w-full h-full flex items-center justify-center text-white bg-gray-900">
-                    <div className="text-center">
-                      <Lock className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <div className="text-xl mb-2">Premium Content</div>
-                      <p className="text-gray-400 mb-4">Subscribe to watch this livestream</p>
-                      <Button onClick={handleSubscribe} size="lg">
-                        Subscribe to Watch
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white">
-                    <div className="text-center">
-                      <div className="text-xl mb-2">Stream Offline</div>
-                      <p className="text-gray-400">This creator is not currently live</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h1 className="text-2xl font-bold">{streamData.title}</h1>
-                  <Badge variant={streamData.status === 'live' ? "default" : "secondary"}>
-                    {streamData.status === 'live' ? "LIVE" : "OFFLINE"}
-                  </Badge>
-                </div>
-                
-                <p className="text-gray-600 mb-4">{streamData.description}</p>
-                
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span>{viewerCount} viewers</span>
-                  </div>
-                  
-                  {canWatchStream && (
-                    <>
-                      <Button variant="outline" size="sm">
-                        <Heart className="w-4 h-4 mr-2" />
-                        Like
-                      </Button>
-                      
-                      <Button variant="outline" size="sm">
-                        <Share className="w-4 h-4 mr-2" />
-                        Share
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">{streamData.title}</h1>
+            {streamData.description && (
+              <p className="text-gray-600 mt-2">{streamData.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {streamData.is_paid && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                ${streamData.price}
+              </Badge>
+            )}
+            <Badge variant={streamData.status === 'live' ? "default" : "secondary"}>
+              {streamData.status === 'live' ? "LIVE" : "OFFLINE"}
+            </Badge>
+          </div>
         </div>
 
-        {/* Creator Info & Chat */}
-        <div className="space-y-6">
-          {/* Creator Info */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={creatorProfile.avatar_url} />
-                  <AvatarFallback>{creatorProfile.display_name?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{creatorProfile.display_name}</h3>
-                  <p className="text-sm text-gray-600">@{creatorProfile.username}</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">{creatorProfile.bio}</p>
-              <div className="space-y-2">
-                <Button 
-                  onClick={handleFollow}
-                  variant={isFollowing ? "outline" : "default"}
-                  className="w-full"
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </Button>
-                
-                {!canWatchStream && streamData.status === 'live' && (
-                  <Button onClick={handleSubscribe} className="w-full">
-                    Subscribe to Watch
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Live Chat */}
-          {canWatchStream && (
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Video Player */}
+          <div className="lg:col-span-3">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5" />
-                  Live Chat
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-96 bg-gray-50 rounded-lg p-4 overflow-y-auto">
-                  <div className="text-center text-gray-500 text-sm">
-                    Chat will appear here when the stream is live
-                  </div>
+              <CardContent className="p-0">
+                <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                  {streamData.status === 'live' ? (
+                    <video
+                      className="w-full h-full"
+                      controls
+                      autoPlay
+                      muted
+                    >
+                      <source src={`https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`} type="application/x-mpegURL" />
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg opacity-75">Stream is offline</p>
+                        <p className="text-sm opacity-50">Check back later when the creator goes live</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          )}
+          </div>
+
+          {/* Chat/Info Sidebar */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Viewers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{streamData.viewer_count || 0}</div>
+                <p className="text-sm text-gray-600">Watching now</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Stream Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Status:</span>
+                  <Badge variant={streamData.status === 'live' ? "default" : "secondary"}>
+                    {streamData.status}
+                  </Badge>
+                </div>
+                {streamData.is_paid && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Price:</span>
+                    <span className="text-sm font-medium">${streamData.price}</span>
+                  </div>
+                )}
+                {streamData.started_at && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Started:</span>
+                    <span className="text-sm">{new Date(streamData.started_at).toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-
-      <StreamSubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        streamId={streamId}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
     </div>
   );
 };
