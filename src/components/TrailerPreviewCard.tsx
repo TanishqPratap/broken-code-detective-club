@@ -225,7 +225,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
   };
 
   const handleShare = async () => {
-    // Generate unique trailer URL
+    // Generate unique trailer URL that works for unauthenticated users
     const trailerUrl = `${window.location.origin}/creator/${trailer.creator.id}/trailer/${trailer.id}`;
     const shareData = {
       title: `Check out this trailer by ${trailer.creator.display_name || trailer.creator.username}`,

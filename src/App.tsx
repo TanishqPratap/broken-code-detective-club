@@ -13,6 +13,7 @@ import Discover from "./pages/Discover";
 import Watch from "./pages/Watch";
 import Posts from "./pages/Posts";
 import PostView from "./pages/PostView";
+import TrailerView from "./pages/TrailerView";
 import NotFound from "./pages/NotFound";
 import StreamPaymentSuccess from "./pages/StreamPaymentSuccess";
 import PaidDM from "./pages/PaidDM";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/creator" element={<Creator />} />
             <Route path="/creator/:creatorId" element={<CreatorProfile />} />
+            <Route path="/creator/:creatorId/trailer/:trailerId" element={<TrailerView />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/posts" element={<Posts />} />
             <Route path="/posts/:postId" element={<PostView />} />
