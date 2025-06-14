@@ -29,7 +29,7 @@ const PostFeed = () => {
 
   const fetchPosts = async () => {
     try {
-      // Get posts with user profiles using the correct join syntax
+      // First, get all posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -39,21 +39,38 @@ const PostFeed = () => {
           text_content,
           media_url,
           media_type,
-          created_at,
-          profiles (
-            display_name,
-            username,
-            avatar_url
-          )
+          created_at
         `)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (postsError) throw postsError;
 
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        return;
+      }
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+
+      // Fetch profiles for all users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile for quick lookup
+      const profilesMap = new Map();
+      (profilesData || []).forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
       // Get likes count and user's like status for each post
-      const postsWithLikes = await Promise.all(
-        (postsData || []).map(async (post) => {
+      const postsWithData = await Promise.all(
+        postsData.map(async (post) => {
           // Get likes count
           const { count: likesCount } = await supabase
             .from('posts_interactions')
@@ -75,16 +92,24 @@ const PostFeed = () => {
             userLiked = !!userLikeData;
           }
 
+          // Get the profile for this post's user
+          const profile = profilesMap.get(post.user_id) || {
+            display_name: null,
+            username: 'Unknown',
+            avatar_url: null
+          };
+
           return {
             ...post,
             content_type: post.content_type as 'text' | 'image' | 'video',
+            profiles: profile,
             likes_count: likesCount || 0,
             user_liked: userLiked
           };
         })
       );
 
-      setPosts(postsWithLikes);
+      setPosts(postsWithData);
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
