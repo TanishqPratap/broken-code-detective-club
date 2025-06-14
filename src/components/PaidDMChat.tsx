@@ -80,6 +80,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   useEffect(() => {
     let ignore = false;
     if (!sessionInfo) return;
+    
     async function fetchMessages() {
       const { data } = await supabase
         .from("messages")
@@ -111,6 +112,13 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const m = payload.new as MessageRow;
+          console.log("New message received:", {
+            sender: m.sender_id,
+            recipient: m.recipient_id,
+            content: m.content.substring(0, 50),
+            isFromOtherUser: m.sender_id !== currentUserId
+          });
+          
           if (
             (m.sender_id === sessionInfo?.creator_id &&
               m.recipient_id === sessionInfo?.subscriber_id) ||
@@ -119,9 +127,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           ) {
             setMessages((prev) => [...prev, { ...m }]);
             
-            // Handle video call signaling messages
-            if (m.content.startsWith("VIDEO_CALL_") || m.content.includes("📹")) {
-              console.log("Processing video call message:", m.content);
+            // Process ALL video call related messages, including signaling
+            if (m.content.startsWith("VIDEO_CALL_") && m.sender_id !== currentUserId) {
+              console.log("Processing video call signaling message from other user:", m.content);
               handleVideoCallMessage(m.content, m.sender_id);
             }
           }
@@ -133,7 +141,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       ignore = true;
       supabase.removeChannel(channel);
     };
-  }, [sessionInfo, sessionId, handleVideoCallMessage]);
+  }, [sessionInfo, sessionId, handleVideoCallMessage, currentUserId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -221,7 +229,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     [sessionInfo, currentUserId, toast]
   );
 
-  // Video call functions - updated for better flow
+  // Video call functions - improved for better debugging
   const startVideoCall = useCallback(async () => {
     if (!sessionInfo) return;
     
@@ -232,7 +240,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
     
-    // Send both display message and the actual call start signal
+    console.log("Sending call start message to:", recipient_id);
+    
+    // Send display message
     await supabase.from("messages").insert({
       sender_id: currentUserId,
       recipient_id,
@@ -291,7 +301,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const handleVideoCallOfferCreated = useCallback(async (offer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
     
-    console.log("Sending video call offer");
+    console.log("Sending video call offer to other user");
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
     
     try {
@@ -300,7 +310,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         recipient_id,
         content: `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`,
       });
-      console.log("Video call offer sent successfully");
+      console.log("Video call offer sent successfully to:", recipient_id);
     } catch (error) {
       console.error("Failed to send video call offer:", error);
       toast({
@@ -457,7 +467,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         )}
       </div>
       
-      {/* Call pickup modal with improved state handling */}
+      {/* Call pickup modal */}
       <CallPickupModal 
         isOpen={showCallPickup} 
         callerName={incomingCallFrom} 
@@ -465,7 +475,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         onDecline={declineCall} 
       />
       
-      {/* Video call component with improved props */}
+      {/* Video call component */}
       {showVideoCall && (
         <VideoCall
           isInitiator={isVideoCallInitiator}

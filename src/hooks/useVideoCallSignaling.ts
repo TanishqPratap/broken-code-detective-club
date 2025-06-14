@@ -34,14 +34,14 @@ export function useVideoCallSignaling(
         return;
       }
 
-      console.log("Processing video call signaling message:", content.substring(0, 50));
+      console.log("Processing signaling message from:", senderId, "Content:", content.substring(0, 100));
 
       try {
         if (content.startsWith("VIDEO_CALL_OFFER:")) {
           console.log("Received video call offer from:", senderId);
           const offerData = JSON.parse(content.replace("VIDEO_CALL_OFFER:", ""));
           
-          // Clear previous state first
+          // Clear previous state
           videoCallState.resetVideoCallState();
           
           // Set the new offer
@@ -51,7 +51,7 @@ export function useVideoCallSignaling(
           const callerName = senderId === sessionInfo?.creator_id ? "Creator" : 
                             senderId === sessionInfo?.subscriber_id ? "Subscriber" : "Unknown User";
           
-          console.log("Setting up incoming call from:", callerName);
+          console.log("Setting up incoming call from:", callerName, "Showing pickup modal");
           videoCallState.setIncomingCallFrom(callerName);
           videoCallState.setShowCallPickup(true);
           videoCallState.setIsVideoCallInitiator(false);
@@ -65,11 +65,6 @@ export function useVideoCallSignaling(
           console.log("Received video call answer from:", senderId);
           const answerData = JSON.parse(content.replace("VIDEO_CALL_ANSWER:", ""));
           videoCallState.setVideoCallAnswer(answerData);
-          
-          toast({
-            title: "Call Connected",
-            description: "Video call is now connecting...",
-          });
           
         } else if (content.startsWith("VIDEO_CALL_ICE:")) {
           console.log("Received ICE candidate from:", senderId);
