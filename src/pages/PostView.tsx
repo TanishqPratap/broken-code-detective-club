@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -5,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "@/components/PostCard";
-import ThumbnailService from "@/components/ThumbnailService";
+import MetaTagInjector from "@/components/MetaTagInjector";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -169,17 +170,18 @@ const PostView = () => {
     ? post.text_content.slice(0, 160) + (post.text_content.length > 160 ? '...' : '')
     : `Check out this amazing ${post.content_type} from ${post.profiles.display_name || post.profiles.username} on Content Creator Platform`;
 
-  // Update document title immediately
-  document.title = postTitle;
+  // Determine the best image for sharing
+  const shareImage = post.thumbnail_url || 
+    (post.media_url && !post.media_url.includes('.mp4') && !post.media_url.includes('.webm') ? post.media_url : null) ||
+    'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center&auto=format&q=80';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <ThumbnailService
-        postId={post.id}
-        thumbnailUrl={post.thumbnail_url}
-        mediaUrl={post.media_url}
+      <MetaTagInjector
         title={postTitle}
         description={postDescription}
+        imageUrl={shareImage}
+        pageUrl={`/posts/${post.id}`}
         contentType={post.content_type}
       />
       

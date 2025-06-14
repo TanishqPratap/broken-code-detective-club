@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +10,7 @@ import { Play, Heart, ArrowLeft, Video, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
-import ThumbnailService from "@/components/ThumbnailService";
+import MetaTagInjector from "@/components/MetaTagInjector";
 import { toast } from "sonner";
 
 interface Creator {
@@ -144,17 +145,18 @@ const TrailerView = () => {
     ? trailer.description.slice(0, 160) + (trailer.description.length > 160 ? '...' : '')
     : `Watch this exclusive ${trailer.content_type} trailer from ${trailer.creator.display_name || trailer.creator.username}. Join now for more amazing content!`;
 
-  // Update document title immediately
-  document.title = trailerTitle;
+  // Determine the best image for sharing
+  const shareImage = trailer.thumbnail_url || 
+    (trailer.media_url && !trailer.media_url.includes('.mp4') && !trailer.media_url.includes('.webm') ? trailer.media_url : null) ||
+    'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=1200&h=630&fit=crop&crop=center&auto=format&q=80';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <ThumbnailService
-        trailerId={trailer.id}
-        thumbnailUrl={trailer.thumbnail_url}
-        mediaUrl={trailer.media_url}
+      <MetaTagInjector
         title={trailerTitle}
         description={trailerDescription}
+        imageUrl={shareImage}
+        pageUrl={`/trailer/${trailer.id}`}
         contentType={trailer.content_type}
       />
       
