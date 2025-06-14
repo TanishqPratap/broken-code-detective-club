@@ -58,7 +58,6 @@ export function useVideoCallSignaling(
       try {
         if (content.startsWith("VIDEO_CALL_OFFER:")) {
           console.log("=== PROCESSING VIDEO CALL OFFER ===");
-          console.log("Full offer content:", content);
           
           const offerJson = content.replace("VIDEO_CALL_OFFER:", "");
           console.log("Extracted offer JSON:", offerJson);
@@ -68,7 +67,6 @@ export function useVideoCallSignaling(
             offerData = JSON.parse(offerJson);
           } catch (parseError) {
             console.error("Failed to parse offer JSON:", parseError);
-            console.error("Raw JSON string:", offerJson);
             toast({
               title: "Call Error",
               description: "Invalid call data received",
@@ -79,14 +77,6 @@ export function useVideoCallSignaling(
           
           console.log("Parsed offer data:", offerData);
           
-          // Clear previous state
-          console.log("Resetting video call state before processing offer");
-          videoCallState.resetVideoCallState();
-          
-          // Set the new offer
-          console.log("Setting video call offer");
-          videoCallState.setVideoCallOffer(offerData);
-          
           // Determine caller name based on session info
           let callerName = "Unknown User";
           if (senderId === sessionInfo.creator_id) {
@@ -95,23 +85,18 @@ export function useVideoCallSignaling(
             callerName = "Subscriber";
           }
           
-          console.log("=== SHOWING PICKUP MODAL ===");
+          console.log("=== SETTING UP PICKUP MODAL ===");
           console.log("Caller name:", callerName);
-          console.log("Setting incoming call from:", callerName);
-          console.log("About to set showCallPickup to true");
           
-          // Set incoming call state
+          // Reset and set new state
+          videoCallState.resetVideoCallState();
+          videoCallState.setVideoCallOffer(offerData);
           videoCallState.setIncomingCallFrom(callerName);
-          videoCallState.setShowCallPickup(true);
           videoCallState.setIsVideoCallInitiator(false);
           
-          console.log("Pickup modal state set, showing toast");
-          
-          // Force a state update check
-          setTimeout(() => {
-            console.log("=== POST-OFFER STATE CHECK ===");
-            console.log("showCallPickup should now be true");
-          }, 100);
+          // Show pickup modal
+          console.log("Showing pickup modal");
+          videoCallState.setShowCallPickup(true);
           
           toast({
             title: "Incoming Video Call",
@@ -124,11 +109,10 @@ export function useVideoCallSignaling(
           let answerData;
           try {
             answerData = JSON.parse(answerJson);
+            videoCallState.setVideoCallAnswer(answerData);
           } catch (parseError) {
             console.error("Failed to parse answer JSON:", parseError);
-            return;
           }
-          videoCallState.setVideoCallAnswer(answerData);
           
         } else if (content.startsWith("VIDEO_CALL_ICE:")) {
           console.log("Received ICE candidate from:", senderId);
@@ -136,11 +120,10 @@ export function useVideoCallSignaling(
           let iceData;
           try {
             iceData = JSON.parse(iceJson);
+            videoCallState.setVideoCallIceCandidate(iceData);
           } catch (parseError) {
             console.error("Failed to parse ICE JSON:", parseError);
-            return;
           }
-          videoCallState.setVideoCallIceCandidate(iceData);
           
         } else if (content === "VIDEO_CALL_END") {
           console.log("Received video call end signal from:", senderId);
@@ -173,8 +156,7 @@ export function useVideoCallSignaling(
           });
         }
       } catch (error) {
-        console.error("Error parsing video call signaling message:", error);
-        console.error("Message content that failed:", content);
+        console.error("Error processing video call signaling message:", error);
         toast({
           title: "Call Error",
           description: "Failed to process video call signal",
