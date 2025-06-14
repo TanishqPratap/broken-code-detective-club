@@ -1,109 +1,233 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, Users, Star, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Star, Users, TrendingUp, Shield } from "lucide-react";
+import CreatorProfile from "@/components/CreatorProfile";
+import SubscriptionCard from "@/components/SubscriptionCard";
+import ContentFeed from "@/components/ContentFeed";
+import CreatorDashboard from "@/components/CreatorDashboard";
+import Navbar from "@/components/Navbar";
+import AuthModal from "@/components/auth/AuthModal";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
-const Index = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-primary">CreatorHub</h1>
-          <div className="flex gap-4">
-            <Button variant="ghost">Sign In</Button>
-            <Button>Join Now</Button>
-          </div>
+const HomeContent = () => {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user, loading } = useAuth();
+
+  const subscriptionTiers = [
+    {
+      id: "basic",
+      name: "Basic",
+      price: 9.99,
+      description: "Essential features for getting started",
+      features: ["Access to basic content", "Monthly updates", "Community access"],
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      price: 19.99,
+      description: "Advanced features for serious creators",
+      features: ["All basic features", "Premium content", "Priority support", "Advanced analytics"],
+      isPopular: true,
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: 39.99,
+      description: "Complete solution for professional creators",
+      features: ["All premium features", "Custom branding", "API access", "1-on-1 support"],
+    }
+  ];
+
+  const samplePosts = [
+    {
+      id: "1",
+      creator: {
+        username: "sarah_creator",
+        displayName: "Sarah Johnson",
+        avatar: "",
+        isVerified: true,
+      },
+      content: {
+        type: "image" as const,
+        text: "Just finished my latest photoshoot! What do you think? 📸✨",
+      },
+      isLocked: !user,
+      likes: 142,
+      comments: 23,
+      timestamp: "2 hours ago",
+      isLiked: false,
+    },
+    {
+      id: "2",
+      creator: {
+        username: "mike_fitness",
+        displayName: "Mike Thompson",
+        avatar: "",
+        isVerified: false,
+      },
+      content: {
+        type: "video" as const,
+        text: "New workout routine dropping tomorrow! Get ready to sweat 💪",
+      },
+      isLocked: false,
+      likes: 89,
+      comments: 15,
+      timestamp: "4 hours ago",
+      isLiked: true,
+    },
+  ];
+
+  const sampleCreator = {
+    id: "1",
+    username: "sarah_creator",
+    displayName: "Sarah Johnson",
+    bio: "Professional photographer and content creator. Sharing behind-the-scenes moments and exclusive content with my amazing subscribers! 📸✨",
+    avatar: "",
+    coverImage: "",
+    subscriberCount: 15420,
+    postCount: 127,
+    isSubscribed: !!user,
+    subscriptionPrice: 19.99,
+  };
+
+  const handleSubscribe = (tierId: string) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    console.log("Subscribing to tier:", tierId);
+  };
+
+  const handlePostAction = (postId: string) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    console.log("Post action for:", postId);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
         </div>
-      </nav>
+      </div>
+    );
+  }
 
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">
-        <h2 className="text-4xl font-bold mb-6">
-          The Ultimate Platform for <span className="text-primary">Content Creators</span>
-        </h2>
-        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Connect with your audience, share exclusive content, and build a sustainable income doing what you love.
+        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          Create. Connect. Monetize.
+        </h1>
+        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          The ultimate platform for content creators to build their community and generate income through subscriptions, tips, and exclusive content.
         </p>
         <div className="flex gap-4 justify-center">
-          <Button size="lg">Start Creating</Button>
-          <Button size="lg" variant="outline">Browse Creators</Button>
+          <Button size="lg" onClick={() => setShowAuthModal(true)}>
+            {user ? "Dashboard" : "Get Started"}
+          </Button>
+          <Button variant="outline" size="lg">
+            Learn More
+          </Button>
         </div>
       </section>
 
       {/* Features */}
       <section className="container mx-auto px-4 py-16">
-        <h3 className="text-3xl font-bold text-center mb-12">Why Choose CreatorHub?</h3>
+        <h2 className="text-3xl font-bold text-center mb-12">Why Choose ContentOasis?</h2>
         <div className="grid md:grid-cols-3 gap-8">
           <Card>
             <CardHeader>
-              <Users className="w-10 h-10 text-primary mb-4" />
-              <CardTitle>Grow Your Audience</CardTitle>
+              <Users className="w-12 h-12 text-primary mb-4" />
+              <CardTitle>Build Your Community</CardTitle>
               <CardDescription>
-                Connect with fans who truly appreciate your content and build lasting relationships.
+                Connect with fans and followers through exclusive content and direct messaging
               </CardDescription>
             </CardHeader>
           </Card>
+
           <Card>
             <CardHeader>
-              <Lock className="w-10 h-10 text-primary mb-4" />
-              <CardTitle>Exclusive Content</CardTitle>
+              <TrendingUp className="w-12 h-12 text-primary mb-4" />
+              <CardTitle>Multiple Revenue Streams</CardTitle>
               <CardDescription>
-                Share premium content with your subscribers and offer exclusive perks.
+                Earn through subscriptions, tips, pay-per-view content, and live streaming
               </CardDescription>
             </CardHeader>
           </Card>
+
           <Card>
             <CardHeader>
-              <Star className="w-10 h-10 text-primary mb-4" />
-              <CardTitle>Earn More</CardTitle>
+              <Shield className="w-12 h-12 text-primary mb-4" />
+              <CardTitle>Secure & Private</CardTitle>
               <CardDescription>
-                Keep up to 90% of your earnings with our creator-friendly revenue model.
+                Advanced security features to protect your content and maintain your privacy
               </CardDescription>
             </CardHeader>
           </Card>
         </div>
       </section>
 
-      {/* Featured Creators */}
-      <section className="container mx-auto px-4 py-16 bg-muted/30">
-        <h3 className="text-3xl font-bold text-center mb-12">Featured Creators</h3>
+      {/* Subscription Tiers */}
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12">Choose Your Plan</h2>
         <div className="grid md:grid-cols-3 gap-8">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="overflow-hidden">
-              <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/40"></div>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/20"></div>
-                  <div>
-                    <h4 className="font-semibold">Creator {i}</h4>
-                    <p className="text-sm text-muted-foreground">@creator{i}</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Creating amazing content for my community. Join for exclusive posts and behind-the-scenes content!
-                </p>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-4 h-4 text-red-500" />
-                    <span className="text-sm">{Math.floor(Math.random() * 1000) + 100}</span>
-                  </div>
-                  <Button size="sm">Subscribe</Button>
-                </div>
-              </CardContent>
-            </Card>
+          {subscriptionTiers.map((tier) => (
+            <SubscriptionCard
+              key={tier.id}
+              tier={tier}
+              onSubscribe={handleSubscribe}
+              isSubscribed={false}
+            />
           ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2024 CreatorHub. All rights reserved.</p>
+      {/* Sample Content Feed */}
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12">Discover Amazing Content</h2>
+        <ContentFeed
+          posts={samplePosts}
+          onLike={handlePostAction}
+          onComment={handlePostAction}
+          onShare={handlePostAction}
+        />
+      </section>
+
+      {/* Sample Creator Profile */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 mb-12">
+          <h2 className="text-3xl font-bold text-center">Featured Creator</h2>
         </div>
-      </footer>
+        <CreatorProfile creator={sampleCreator} />
+      </section>
+
+      {user && (
+        <section className="py-16">
+          <CreatorDashboard />
+        </section>
+      )}
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <HomeContent />
+    </AuthProvider>
   );
 };
 
