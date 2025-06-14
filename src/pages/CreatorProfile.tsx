@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Users, Star, MessageSquare, UserPlus, Heart } from "lucide-react";
+import { Users, Star, MessageSquare, UserPlus, Heart, UserMinus } from "lucide-react";
 
 interface CreatorProfile {
   id: string;
@@ -138,6 +138,39 @@ const CreatorProfile = () => {
     }
   };
 
+  const handleUnsubscribe = async () => {
+    if (!user || !creator) return;
+
+    setSubscribing(true);
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ status: 'cancelled' })
+        .eq('creator_id', creator.id)
+        .eq('subscriber_id', user.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      toast({
+        title: "Unsubscribed successfully",
+        description: `You have unsubscribed from ${creator.display_name}`,
+      });
+
+      // Refresh creator data
+      await fetchCreatorProfile();
+    } catch (error) {
+      console.error('Error unsubscribing:', error);
+      toast({
+        title: "Unsubscribe failed",
+        description: "There was an error processing your request.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   const handleStartPaidDM = () => {
     if (!user) {
       setShowAuthModal(true);
@@ -219,10 +252,21 @@ const CreatorProfile = () => {
 
               <div className="flex flex-col gap-3">
                 {creator.is_subscribed ? (
-                  <Badge variant="default" className="px-4 py-2">
-                    <Heart className="w-4 h-4 mr-2" />
-                    Subscribed
-                  </Badge>
+                  <div className="flex flex-col gap-2">
+                    <Badge variant="default" className="px-4 py-2 justify-center">
+                      <Heart className="w-4 h-4 mr-2" />
+                      Subscribed
+                    </Badge>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleUnsubscribe} 
+                      disabled={subscribing}
+                      size="sm"
+                    >
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      {subscribing ? "Unsubscribing..." : "Unsubscribe"}
+                    </Button>
+                  </div>
                 ) : (
                   <Button onClick={handleSubscribe} disabled={subscribing} size="lg">
                     <UserPlus className="w-4 h-4 mr-2" />
