@@ -46,9 +46,9 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, streamId, amount, message } = await req.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, recipientId, amount, message } = await req.json();
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !streamId || !amount) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !recipientId || !amount) {
       throw new Error("Missing required payment verification parameters");
     }
 
@@ -61,22 +61,23 @@ serve(async (req) => {
     const verificationMessage = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = await createSignature(verificationMessage, razorpayKeySecret);
 
-    console.log('Verifying tip payment signature:', { verificationMessage, expectedSignature, receivedSignature: razorpay_signature });
+    console.log('Verifying DM tip payment signature:', { verificationMessage, expectedSignature, receivedSignature: razorpay_signature });
 
     if (expectedSignature !== razorpay_signature) {
       throw new Error("Payment verification failed - invalid signature");
     }
 
-    console.log('Tip payment signature verified successfully');
+    console.log('DM tip payment signature verified successfully');
 
-    // Insert the tip into the database
+    // Insert the tip into the tips table (for DMs)
     const { data: tipData, error: tipError } = await supabaseClient
-      .from('stream_tips')
+      .from('tips')
       .insert({
-        stream_id: streamId,
         tipper_id: user.id,
+        creator_id: recipientId,
         amount: amount,
-        message: message || null
+        message: message || null,
+        stripe_payment_intent_id: razorpay_payment_id
       })
       .select()
       .single();
@@ -86,7 +87,7 @@ serve(async (req) => {
       throw new Error(`Failed to save tip: ${tipError.message}`);
     }
 
-    console.log('Tip saved successfully:', tipData);
+    console.log('DM tip saved successfully:', tipData);
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -97,7 +98,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    console.error('Error verifying tip payment:', error);
+    console.error('Error verifying DM tip payment:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
