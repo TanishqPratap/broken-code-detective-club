@@ -1,12 +1,25 @@
 
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Heart, MessageCircle, Share, MoreHorizontal, Send, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+
+interface Comment {
+  id: string;
+  user_id: string;
+  comment_text: string;
+  created_at: string;
+  profiles: {
+    display_name: string | null;
+    username: string;
+    avatar_url: string | null;
+  };
+}
 
 interface Post {
   id: string;
@@ -32,9 +45,70 @@ interface PostCardProps {
 
 const PostCard = ({ post, onDelete }: PostCardProps) => {
   const { user } = useAuth();
-  const [likes, setLikes] = useState(post.likes_count || 0);
-  const [userLiked, setUserLiked] = useState(post.user_liked || false);
-  const [isLiking, setIsLiking] = useState(false);
+  const [isLiked, setIsLiked] = useState(post.user_liked || false);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch comments when component loads or when showComments changes
+  useEffect(() => {
+    if (showComments) {
+      fetchComments();
+    }
+  }, [showComments, post.id]);
+
+  // Fetch comments count on component mount
+  useEffect(() => {
+    fetchCommentsCount();
+  }, [post.id]);
+
+  const fetchComments = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('posts_interactions')
+        .select(`
+          id,
+          user_id,
+          comment_text,
+          created_at,
+          profiles!posts_interactions_user_id_fkey (
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('post_id', post.id)
+        .eq('interaction_type', 'comment')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toast.error("Failed to load comments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCommentsCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('posts_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id)
+        .eq('interaction_type', 'comment');
+
+      if (error) throw error;
+      setCommentsCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching comments count:', error);
+    }
+  };
 
   const handleLike = async () => {
     if (!user) {
@@ -42,10 +116,8 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
       return;
     }
 
-    setIsLiking(true);
-
     try {
-      if (userLiked) {
+      if (isLiked) {
         // Unlike
         const { error } = await supabase
           .from('posts_interactions')
@@ -55,9 +127,8 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
           .eq('interaction_type', 'like');
 
         if (error) throw error;
-
-        setLikes(prev => prev - 1);
-        setUserLiked(false);
+        setIsLiked(false);
+        setLikesCount(prev => prev - 1);
       } else {
         // Like
         const { error } = await supabase
@@ -69,20 +140,75 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
           });
 
         if (error) throw error;
-
-        setLikes(prev => prev + 1);
-        setUserLiked(true);
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Error handling like:', error);
       toast.error("Failed to update like");
-    } finally {
-      setIsLiking(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleComment = async () => {
+    if (!user) {
+      toast.error("Please sign in to comment");
+      return;
+    }
+
+    if (!commentText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('posts_interactions')
+        .insert({
+          post_id: post.id,
+          user_id: user.id,
+          interaction_type: 'comment',
+          comment_text: commentText.trim()
+        });
+
+      if (error) throw error;
+
+      setCommentText("");
+      setCommentsCount(prev => prev + 1);
+      
+      // Refresh comments if they're currently displayed
+      if (showComments) {
+        fetchComments();
+      }
+      
+      toast.success("Comment added!");
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error("Failed to add comment");
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: `Check out this post by ${post.profiles.display_name || post.profiles.username}`,
+      text: post.text_content || `Amazing content from ${post.profiles.display_name || post.profiles.username}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success("Post shared successfully!");
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error("Failed to share post");
+    }
+  };
+
+  const handleDeletePost = async () => {
     if (!user || user.id !== post.user_id) return;
+
+    if (!confirm("Are you sure you want to delete this post?")) return;
 
     try {
       const { error } = await supabase
@@ -91,7 +217,7 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         .eq('id', post.id);
 
       if (error) throw error;
-
+      
       toast.success("Post deleted successfully");
       onDelete?.();
     } catch (error) {
@@ -100,97 +226,160 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
+    <Card>
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={post.profiles.avatar_url || ''} />
+              <AvatarImage src={post.profiles.avatar_url || ""} />
               <AvatarFallback>
-                {post.profiles.display_name?.[0] || post.profiles.username[0] || 'U'}
+                {(post.profiles.display_name || post.profiles.username)[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold">
+              <h4 className="font-semibold">
                 {post.profiles.display_name || post.profiles.username}
-              </p>
-              <p className="text-sm text-gray-500">
-                @{post.profiles.username} • {formatDate(post.created_at)}
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                @{post.profiles.username} • {formatTimeAgo(post.created_at)}
               </p>
             </div>
           </div>
-          {user?.id === post.user_id && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              className="text-red-500 hover:text-red-700"
-            >
-              <Trash2 className="w-4 h-4" />
+          <div className="flex items-center gap-2">
+            {user && user.id === post.user_id && (
+              <Button variant="ghost" size="sm" onClick={handleDeletePost}>
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </Button>
+            )}
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="w-4 h-4" />
             </Button>
-          )}
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {post.content_type === 'text' && post.text_content && (
-          <p className="text-gray-800 mb-4">{post.text_content}</p>
+      
+      <CardContent className="pt-0">
+        {/* Content */}
+        {post.text_content && (
+          <p className="mb-4 whitespace-pre-wrap">{post.text_content}</p>
         )}
-
-        {post.content_type === 'image' && post.media_url && (
-          <div className="mb-4">
-            <img 
-              src={post.media_url} 
-              alt="Post content" 
-              className="w-full rounded-lg max-h-96 object-cover"
-            />
+        
+        {post.media_url && (
+          <div className="mb-4 rounded-lg overflow-hidden">
+            {post.content_type === 'image' ? (
+              <img 
+                src={post.media_url} 
+                alt="Post content" 
+                className="w-full h-auto max-h-96 object-cover"
+              />
+            ) : post.content_type === 'video' ? (
+              <video 
+                src={post.media_url} 
+                controls 
+                className="w-full h-auto max-h-96"
+              />
+            ) : null}
           </div>
         )}
-
-        {post.content_type === 'video' && post.media_url && (
-          <div className="mb-4">
-            <video 
-              src={post.media_url} 
-              controls 
-              className="w-full rounded-lg max-h-96"
+        
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center gap-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={isLiked ? "text-red-500" : ""}
+              onClick={handleLike}
             >
-              Your browser does not support the video tag.
-            </video>
+              <Heart className={`w-4 h-4 mr-1 ${isLiked ? "fill-current" : ""}`} />
+              {likesCount}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowComments(!showComments)}
+            >
+              <MessageCircle className="w-4 h-4 mr-1" />
+              {commentsCount}
+            </Button>
+            
+            <Button variant="ghost" size="sm" onClick={handleShare}>
+              <Share className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Comments Section */}
+        {showComments && (
+          <div className="mt-4 space-y-4 border-t pt-4">
+            {/* Add Comment Input */}
+            {user && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleComment();
+                    }
+                  }}
+                />
+                <Button 
+                  size="sm" 
+                  onClick={handleComment}
+                  disabled={!commentText.trim()}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Display Comments */}
+            <div className="space-y-3">
+              {loading ? (
+                <p className="text-center text-muted-foreground">Loading comments...</p>
+              ) : comments.length === 0 ? (
+                <p className="text-center text-muted-foreground">No comments yet</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={comment.profiles.avatar_url || ""} />
+                      <AvatarFallback>
+                        {(comment.profiles.display_name || comment.profiles.username)[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {comment.profiles.display_name || comment.profiles.username}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeAgo(comment.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.comment_text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
-
-        <div className="flex items-center gap-4 pt-3 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLike}
-            disabled={isLiking}
-            className={`flex items-center gap-2 ${userLiked ? 'text-red-500' : 'text-gray-500'}`}
-          >
-            <Heart className={`w-4 h-4 ${userLiked ? 'fill-current' : ''}`} />
-            {likes}
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-500">
-            <MessageCircle className="w-4 h-4" />
-            Comment
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-500">
-            <Share className="w-4 h-4" />
-            Share
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
