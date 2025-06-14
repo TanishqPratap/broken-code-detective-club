@@ -83,6 +83,7 @@ const TrailerView = () => {
 
       console.log('TrailerView - Full trailer data:', trailerWithCreator);
       console.log('TrailerView - Thumbnail URL from DB:', trailerWithCreator.thumbnail_url);
+      console.log('TrailerView - Media URL from DB:', trailerWithCreator.media_url);
 
       setTrailer(trailerWithCreator);
 
@@ -133,14 +134,17 @@ const TrailerView = () => {
     );
   }
 
-  const trailerTitle = `${trailer.title} by ${trailer.creator.display_name || trailer.creator.username}`;
-  const trailerDescription = trailer.description || `Watch this amazing trailer from ${trailer.creator.display_name || trailer.creator.username}`;
+  const trailerTitle = `${trailer.title} - ${trailer.creator.display_name || trailer.creator.username} | Content Creator Platform`;
+  const trailerDescription = trailer.description || `Watch this amazing ${trailer.content_type} trailer from ${trailer.creator.display_name || trailer.creator.username} on Content Creator Platform`;
   const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
 
   console.log('TrailerView - Passing to SEOHead:');
+  console.log('  - title:', trailerTitle);
+  console.log('  - description:', trailerDescription);
   console.log('  - thumbnailUrl:', trailer.thumbnail_url);
   console.log('  - image:', trailer.media_url);
   console.log('  - videoUrl:', trailer.content_type === 'video' ? trailer.media_url : undefined);
+  console.log('  - url:', trailerUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">

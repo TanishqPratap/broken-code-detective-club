@@ -118,6 +118,7 @@ const PostView = () => {
 
       console.log('PostView - Full post data:', typedPost);
       console.log('PostView - Thumbnail URL from DB:', typedPost.thumbnail_url);
+      console.log('PostView - Media URL from DB:', typedPost.media_url);
 
       setPost(typedPost);
     } catch (error) {
@@ -155,16 +156,19 @@ const PostView = () => {
     );
   }
 
-  const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
-  const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
+  const postTitle = `${post.text_content ? post.text_content.slice(0, 100) + '...' : 'Post'} by ${post.profiles.display_name || post.profiles.username}`;
+  const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username} on Content Creator Platform`;
   
-  // CRITICAL: Ensure we always pass the thumbnail_url directly to SEOHead
+  // Ensure we always pass the correct URLs to SEOHead
   const postUrl = `${window.location.origin}/posts/${post.id}`;
 
   console.log('PostView - Passing to SEOHead:');
+  console.log('  - title:', postTitle);
+  console.log('  - description:', postDescription);
   console.log('  - thumbnailUrl:', post.thumbnail_url);
   console.log('  - image:', post.media_url);
   console.log('  - videoUrl:', post.content_type === 'video' ? post.media_url : undefined);
+  console.log('  - url:', postUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
@@ -173,7 +177,7 @@ const PostView = () => {
         description={postDescription}
         image={post.media_url || undefined}
         url={postUrl}
-        type="article"
+        type={post.content_type === 'video' ? 'video' : 'article'}
         videoUrl={post.content_type === 'video' ? post.media_url || undefined : undefined}
         thumbnailUrl={post.thumbnail_url || undefined}
       />
