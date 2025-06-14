@@ -673,7 +673,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      clear_chat: {
+        Args: { user1_id: string; user2_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "creator" | "subscriber" | "admin"

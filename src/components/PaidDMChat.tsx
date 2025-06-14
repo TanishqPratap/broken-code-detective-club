@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -178,9 +177,12 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     if (!sessionInfo) return;
     setClearingChat(true);
     try {
-      await supabase.from("messages").delete().or(
-        `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
-      );
+      // Use the new RPC to clear the chat securely
+      const { error } = await supabase.rpc("clear_chat", {
+        user1_id: sessionInfo.creator_id,
+        user2_id: sessionInfo.subscriber_id,
+      });
+      if (error) throw error;
       setMessages([]);
       toast({ title: "Chat Cleared", description: "All messages deleted." });
     } catch (error) {
