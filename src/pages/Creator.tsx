@@ -38,8 +38,8 @@ const Creator = () => {
     id: user?.id ?? "",
     name: user?.user_metadata?.display_name || user?.email || "Unknown",
     chatRate:
-      typeof user?.chat_rate === "number"
-        ? Number(user.chat_rate)
+      typeof user?.user_metadata?.chat_rate === "number"
+        ? Number(user.user_metadata.chat_rate)
         : user?.user_metadata?.chat_rate
         ? Number(user.user_metadata.chat_rate)
         : 20,

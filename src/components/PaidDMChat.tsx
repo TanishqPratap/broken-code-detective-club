@@ -16,6 +16,7 @@ interface MessageRow {
   recipient_id: string;
   content: string;
   created_at: string;
+  updated_at: string;
 }
 
 const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
@@ -55,7 +56,8 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               typeof m.sender_id === "string" &&
               typeof m.recipient_id === "string" &&
               typeof m.content === "string" &&
-              typeof m.created_at === "string"
+              typeof m.created_at === "string" &&
+              typeof m.updated_at === "string"
           )
         );
       }
@@ -84,6 +86,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
                 recipient_id: m.recipient_id,
                 content: m.content,
                 created_at: m.created_at,
+                updated_at: m.updated_at,
               },
             ]);
           }
