@@ -38,32 +38,46 @@ export function useVideoCallSignaling(
 
       try {
         if (content.startsWith("VIDEO_CALL_OFFER:")) {
-          console.log("Received video call offer");
+          console.log("Received video call offer from:", senderId);
           const offerData = JSON.parse(content.replace("VIDEO_CALL_OFFER:", ""));
           
-          // Clear previous state and set new offer
-          videoCallState.setVideoCallAnswer(null);
-          videoCallState.setVideoCallIceCandidate(null);
+          // Clear previous state first
+          videoCallState.resetVideoCallState();
+          
+          // Set the new offer
           videoCallState.setVideoCallOffer(offerData);
           
-          const callerName = senderId === sessionInfo?.creator_id ? "Creator" : "Subscriber";
+          // Determine caller name based on session info
+          const callerName = senderId === sessionInfo?.creator_id ? "Creator" : 
+                            senderId === sessionInfo?.subscriber_id ? "Subscriber" : "Unknown User";
+          
+          console.log("Setting up incoming call from:", callerName);
           videoCallState.setIncomingCallFrom(callerName);
           videoCallState.setShowCallPickup(true);
+          videoCallState.setIsVideoCallInitiator(false);
           
-          console.log("Showing call pickup modal for offer from:", callerName);
+          toast({
+            title: "Incoming Video Call",
+            description: `${callerName} is calling you`,
+          });
           
         } else if (content.startsWith("VIDEO_CALL_ANSWER:")) {
-          console.log("Received video call answer");
+          console.log("Received video call answer from:", senderId);
           const answerData = JSON.parse(content.replace("VIDEO_CALL_ANSWER:", ""));
           videoCallState.setVideoCallAnswer(answerData);
           
+          toast({
+            title: "Call Connected",
+            description: "Video call is now connecting...",
+          });
+          
         } else if (content.startsWith("VIDEO_CALL_ICE:")) {
-          console.log("Received ICE candidate");
+          console.log("Received ICE candidate from:", senderId);
           const iceData = JSON.parse(content.replace("VIDEO_CALL_ICE:", ""));
           videoCallState.setVideoCallIceCandidate(iceData);
           
         } else if (content === "VIDEO_CALL_END") {
-          console.log("Received video call end signal");
+          console.log("Received video call end signal from:", senderId);
           videoCallState.setShowVideoCall(false);
           videoCallState.setShowCallPickup(false);
           videoCallState.resetVideoCallState();
@@ -74,7 +88,7 @@ export function useVideoCallSignaling(
           });
           
         } else if (content === "VIDEO_CALL_DECLINED") {
-          console.log("Received video call declined signal");
+          console.log("Received video call declined signal from:", senderId);
           videoCallState.setShowVideoCall(false);
           videoCallState.setShowCallPickup(false);
           videoCallState.resetVideoCallState();
@@ -83,6 +97,13 @@ export function useVideoCallSignaling(
             title: "Call Declined",
             description: "The other participant declined the video call",
             variant: "destructive",
+          });
+          
+        } else if (content === "VIDEO_CALL_ACCEPTED") {
+          console.log("Remote user accepted the call");
+          toast({
+            title: "Call Accepted",
+            description: "The other participant accepted your call",
           });
         }
       } catch (error) {

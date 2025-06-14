@@ -56,13 +56,15 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   }, [sessionId]);
 
   const resetVideoCallState = useCallback(() => {
+    console.log("Resetting video call state");
     setVideoCallOffer(null);
     setVideoCallAnswer(null);
     setVideoCallIceCandidate(null);
     setIsVideoCallInitiator(false);
+    setIncomingCallFrom("");
   }, []);
 
-  // -- Video call signaling handler is now via custom hook --
+  // Video call signaling handler
   const handleVideoCallMessage = useVideoCallSignaling(currentUserId, sessionInfo, {
     showVideoCall,
     setShowVideoCall,
@@ -116,7 +118,12 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
               m.recipient_id === sessionInfo?.creator_id)
           ) {
             setMessages((prev) => [...prev, { ...m }]);
-            handleVideoCallMessage(m.content, m.sender_id);
+            
+            // Handle video call signaling messages
+            if (m.content.startsWith("VIDEO_CALL_") || m.content.includes("📹")) {
+              console.log("Processing video call message:", m.content);
+              handleVideoCallMessage(m.content, m.sender_id);
+            }
           }
         }
       )
@@ -177,7 +184,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     if (!sessionInfo) return;
     setClearingChat(true);
     try {
-      // Use the new RPC to clear the chat securely
       const { error } = await supabase.rpc("clear_chat", {
         user1_id: sessionInfo.creator_id,
         user2_id: sessionInfo.subscriber_id,
@@ -215,13 +221,18 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     [sessionInfo, currentUserId, toast]
   );
 
-  // --- VIDEO CALL logic, moved close to usage for clarity ---
+  // Video call functions - updated for better flow
   const startVideoCall = useCallback(async () => {
     if (!sessionInfo) return;
+    
+    console.log("Starting video call as initiator");
     resetVideoCallState();
     setShowVideoCall(true);
     setIsVideoCallInitiator(true);
+    
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
+    
+    // Send both display message and the actual call start signal
     await supabase.from("messages").insert({
       sender_id: currentUserId,
       recipient_id,
@@ -229,47 +240,142 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   }, [sessionInfo, currentUserId, resetVideoCallState]);
 
-  const acceptCall = useCallback(() => {
+  const acceptCall = useCallback(async () => {
+    if (!sessionInfo) return;
+    
+    console.log("Accepting incoming video call");
     setShowCallPickup(false);
     setShowVideoCall(true);
     setIsVideoCallInitiator(false);
-  }, []);
+    
+    const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
+    
+    // Send acceptance signal
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "VIDEO_CALL_ACCEPTED",
+    });
+    
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "📹 Joined the video call",
+    });
+  }, [sessionInfo, currentUserId]);
 
   const declineCall = useCallback(async () => {
     if (!sessionInfo) return;
+    
+    console.log("Declining incoming video call");
     setShowCallPickup(false);
     resetVideoCallState();
+    
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: "VIDEO_CALL_DECLINED" });
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: "📹 Video call declined" });
+    
+    // Send decline signals
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "VIDEO_CALL_DECLINED",
+    });
+    
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "📹 Video call declined",
+    });
   }, [sessionInfo, currentUserId, resetVideoCallState]);
 
+  // Updated video call handlers with better error handling and logging
   const handleVideoCallOfferCreated = useCallback(async (offer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
+    
+    console.log("Sending video call offer");
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: `VIDEO_CALL_OFFER:${JSON.stringify(offer)}` });
-  }, [sessionInfo, currentUserId]);
+    
+    try {
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`,
+      });
+      console.log("Video call offer sent successfully");
+    } catch (error) {
+      console.error("Failed to send video call offer:", error);
+      toast({
+        title: "Call Error",
+        description: "Failed to send call invitation",
+        variant: "destructive",
+      });
+    }
+  }, [sessionInfo, currentUserId, toast]);
 
   const handleVideoCallAnswerCreated = useCallback(async (answer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
+    
+    console.log("Sending video call answer");
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: `VIDEO_CALL_ANSWER:${JSON.stringify(answer)}` });
-  }, [sessionInfo, currentUserId]);
+    
+    try {
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: `VIDEO_CALL_ANSWER:${JSON.stringify(answer)}`,
+      });
+      console.log("Video call answer sent successfully");
+    } catch (error) {
+      console.error("Failed to send video call answer:", error);
+      toast({
+        title: "Call Error",
+        description: "Failed to respond to call",
+        variant: "destructive",
+      });
+    }
+  }, [sessionInfo, currentUserId, toast]);
 
   const handleVideoCallIceCandidate = useCallback(async (candidate: RTCIceCandidate) => {
     if (!sessionInfo) return;
+    
+    console.log("Sending ICE candidate");
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: `VIDEO_CALL_ICE:${JSON.stringify(candidate)}` });
+    
+    try {
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: `VIDEO_CALL_ICE:${JSON.stringify(candidate)}`,
+      });
+    } catch (error) {
+      console.error("Failed to send ICE candidate:", error);
+    }
   }, [sessionInfo, currentUserId]);
 
   const endVideoCall = useCallback(async () => {
     if (!sessionInfo) return;
+    
+    console.log("Ending video call");
     setShowVideoCall(false);
     setShowCallPickup(false);
     resetVideoCallState();
+    
     const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: "VIDEO_CALL_END" });
-    await supabase.from("messages").insert({ sender_id: currentUserId, recipient_id, content: "📹 Video call ended" });
+    
+    try {
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: "VIDEO_CALL_END",
+      });
+      
+      await supabase.from("messages").insert({
+        sender_id: currentUserId,
+        recipient_id,
+        content: "📹 Video call ended",
+      });
+    } catch (error) {
+      console.error("Failed to send call end signal:", error);
+    }
   }, [sessionInfo, currentUserId, resetVideoCallState]);
 
   if (!sessionInfo) return <div className="p-4">Loading chat...</div>;
@@ -324,7 +430,14 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
             <Button type="button" variant="outline" size="sm" onClick={() => setShowTipModal(true)} className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50" >
               <DollarSign className="w-3 h-3" /> Tip
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={startVideoCall} disabled={uploadingMedia || showVideoCall || showCallPickup} className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50" >
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={startVideoCall} 
+              disabled={uploadingMedia || showVideoCall || showCallPickup} 
+              className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50" 
+            >
               <Video className="w-3 h-3" /> Video Call
             </Button>
           </div>
@@ -343,7 +456,16 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           />
         )}
       </div>
-      <CallPickupModal isOpen={showCallPickup} callerName={incomingCallFrom} onAccept={acceptCall} onDecline={declineCall} />
+      
+      {/* Call pickup modal with improved state handling */}
+      <CallPickupModal 
+        isOpen={showCallPickup} 
+        callerName={incomingCallFrom} 
+        onAccept={acceptCall} 
+        onDecline={declineCall} 
+      />
+      
+      {/* Video call component with improved props */}
       {showVideoCall && (
         <VideoCall
           isInitiator={isVideoCallInitiator}
