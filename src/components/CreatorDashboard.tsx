@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare } from "lucide-react";
 import LivestreamDashboard from "./LivestreamDashboard";
 import PaidDMPricing from "./PaidDMPricing";
+import ContentManagement from "./ContentManagement";
 
 const CreatorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -150,10 +151,7 @@ const CreatorDashboard = () => {
         </TabsContent>
 
         <TabsContent value="content">
-          <div className="text-center py-8">
-            <h3 className="text-lg font-semibold mb-2">Content Management</h3>
-            <p className="text-gray-600">Content management features coming soon...</p>
-          </div>
+          <ContentManagement />
         </TabsContent>
       </Tabs>
     </div>
