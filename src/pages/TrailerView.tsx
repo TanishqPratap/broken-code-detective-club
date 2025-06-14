@@ -280,7 +280,18 @@ const TrailerView = () => {
 
   const trailerTitle = `${trailer.title} by ${creator.display_name || creator.username}`;
   const trailerDescription = trailer.description || `Watch this amazing trailer from ${creator.display_name || creator.username}`;
-  const trailerImage = trailer.media_url;
+  
+  // For video trailers, we need to handle the thumbnail differently
+  let trailerImage = "/placeholder.svg";
+  if (trailer.media_url) {
+    if (trailer.content_type === 'image') {
+      trailerImage = trailer.media_url;
+    } else if (trailer.content_type === 'video') {
+      // For videos, we'll use the placeholder as thumbnail since we can't generate video thumbnails client-side
+      trailerImage = "/placeholder.svg";
+    }
+  }
+  
   const trailerUrl = `${window.location.origin}/creator/${creatorId}/trailer/${trailerId}`;
 
   return (
@@ -291,6 +302,7 @@ const TrailerView = () => {
         image={trailerImage}
         url={trailerUrl}
         type="video"
+        videoUrl={trailer.content_type === 'video' ? trailer.media_url : undefined}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />

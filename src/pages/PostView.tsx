@@ -152,7 +152,18 @@ const PostView = () => {
 
   const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
   const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
-  const postImage = post.media_url || "/placeholder.svg";
+  
+  // Handle post image for social sharing
+  let postImage = "/placeholder.svg";
+  if (post.media_url) {
+    if (post.content_type === 'image') {
+      postImage = post.media_url;
+    } else if (post.content_type === 'video') {
+      // For videos, use placeholder as thumbnail
+      postImage = "/placeholder.svg";
+    }
+  }
+  
   const postUrl = `${window.location.origin}/posts/${post.id}`;
 
   return (
@@ -163,6 +174,7 @@ const PostView = () => {
         image={postImage}
         url={postUrl}
         type="article"
+        videoUrl={post.content_type === 'video' ? post.media_url : undefined}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />

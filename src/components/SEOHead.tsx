@@ -7,6 +7,7 @@ interface SEOHeadProps {
   image?: string;
   url?: string;
   type?: 'website' | 'article' | 'video' | 'profile';
+  videoUrl?: string;
 }
 
 const SEOHead = ({ 
@@ -14,7 +15,8 @@ const SEOHead = ({
   description = "Discover amazing content creators and their exclusive content",
   image = "/placeholder.svg",
   url = window.location.href,
-  type = "website"
+  type = "website",
+  videoUrl
 }: SEOHeadProps) => {
   useEffect(() => {
     // Update document title
@@ -33,18 +35,43 @@ const SEOHead = ({
       meta.content = content;
     };
 
+    // Ensure we have a proper image URL for social sharing
+    let shareImage = image;
+    
+    // If the image is a video file, use a placeholder or try to extract a thumbnail
+    if (image && (image.includes('.mp4') || image.includes('.webm') || image.includes('.mov'))) {
+      // For video files, we'll use a placeholder since we can't generate thumbnails client-side
+      shareImage = "/placeholder.svg";
+    }
+    
+    // Ensure the image URL is absolute
+    if (shareImage && !shareImage.startsWith('http')) {
+      shareImage = `${window.location.origin}${shareImage}`;
+    }
+
     // Open Graph meta tags
     updateMetaTag('og:title', title);
     updateMetaTag('og:description', description);
-    updateMetaTag('og:image', image);
+    updateMetaTag('og:image', shareImage);
+    updateMetaTag('og:image:width', '1200');
+    updateMetaTag('og:image:height', '630');
+    updateMetaTag('og:image:alt', title);
     updateMetaTag('og:url', url);
     updateMetaTag('og:type', type);
+    updateMetaTag('og:site_name', 'Content Creator Platform');
+
+    // For video content, add video-specific tags
+    if (type === 'video' && videoUrl) {
+      updateMetaTag('og:video', videoUrl);
+      updateMetaTag('og:video:type', 'video/mp4');
+    }
 
     // Twitter Card meta tags
     updateMetaTag('twitter:card', 'summary_large_image', true);
     updateMetaTag('twitter:title', title, true);
     updateMetaTag('twitter:description', description, true);
-    updateMetaTag('twitter:image', image, true);
+    updateMetaTag('twitter:image', shareImage, true);
+    updateMetaTag('twitter:image:alt', title, true);
 
     // General meta tags
     updateMetaTag('description', description, true);
@@ -53,7 +80,7 @@ const SEOHead = ({
     return () => {
       document.title = "Content Creator Platform";
     };
-  }, [title, description, image, url, type]);
+  }, [title, description, image, url, type, videoUrl]);
 
   return null; // This component doesn't render anything visible
 };
