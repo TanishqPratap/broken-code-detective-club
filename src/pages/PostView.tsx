@@ -50,6 +50,7 @@ const PostView = () => {
         .from('posts')
         .select(`
           *,
+          thumbnail_url,
           profiles!posts_user_id_fkey (
             display_name,
             username,

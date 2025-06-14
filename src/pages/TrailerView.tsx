@@ -54,7 +54,7 @@ const TrailerView = () => {
       // Fetch the specific trailer
       const { data: trailerData, error: trailerError } = await supabase
         .from('trailer_content')
-        .select('*')
+        .select('*, thumbnail_url')
         .eq('id', trailerId)
         .single();
 
@@ -86,7 +86,7 @@ const TrailerView = () => {
       // Fetch all trailers from the same creator
       const { data: allTrailersData, error: allTrailersError } = await supabase
         .from('trailer_content')
-        .select('*')
+        .select('*, thumbnail_url')
         .eq('creator_id', trailerData.creator_id)
         .order('order_position');
 
