@@ -9,6 +9,7 @@ import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare } from "
 import LivestreamDashboard from "./LivestreamDashboard";
 import PaidDMPricing from "./PaidDMPricing";
 import ContentManagement from "./ContentManagement";
+import CreatorSettings from "./CreatorSettings";
 
 const CreatorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -31,7 +32,7 @@ const CreatorDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="livestream">
             <Video className="w-4 h-4 mr-2" />
@@ -42,6 +43,7 @@ const CreatorDashboard = () => {
             Paid DM
           </TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
@@ -152,6 +154,10 @@ const CreatorDashboard = () => {
 
         <TabsContent value="content">
           <ContentManagement />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <CreatorSettings />
         </TabsContent>
       </Tabs>
     </div>
