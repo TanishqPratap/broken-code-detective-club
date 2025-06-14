@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import Creator from "./pages/Creator";
+import CreatorProfile from "./pages/CreatorProfile";
 import Discover from "./pages/Discover";
 import Watch from "./pages/Watch";
 import Posts from "./pages/Posts";
@@ -27,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/creator" element={<Creator />} />
+            <Route path="/creator/:creatorId" element={<CreatorProfile />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/posts" element={<Posts />} />
             <Route path="/watch/:streamId" element={<Watch />} />

@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share, Lock, Play } from "lucide-react";
+import { Heart, MessageCircle, Share, Lock, Play, UserPlus, MessageSquare } from "lucide-react";
 
 interface CreatorProfileProps {
   creator: {
@@ -17,9 +17,11 @@ interface CreatorProfileProps {
     isSubscribed: boolean;
     subscriptionPrice: number;
   };
+  onSubscribe?: () => void;
+  onStartPaidDM?: () => void;
 }
 
-const CreatorProfile = ({ creator }: CreatorProfileProps) => {
+const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileProps) => {
   const posts = [
     {
       id: 1,
@@ -83,18 +85,26 @@ const CreatorProfile = ({ creator }: CreatorProfileProps) => {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3">
               <Button variant="outline" size="sm">
                 <Share className="w-4 h-4 mr-2" />
                 Share
               </Button>
               {creator.isSubscribed ? (
-                <Button>Subscribed</Button>
-              ) : (
                 <Button>
+                  <Heart className="w-4 h-4 mr-2" />
+                  Subscribed
+                </Button>
+              ) : (
+                <Button onClick={onSubscribe}>
+                  <UserPlus className="w-4 h-4 mr-2" />
                   Subscribe for ${creator.subscriptionPrice}/month
                 </Button>
               )}
+              <Button variant="outline" onClick={onStartPaidDM}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Paid DM
+              </Button>
             </div>
           </div>
         </div>

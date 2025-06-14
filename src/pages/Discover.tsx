@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -261,7 +260,11 @@ const Discover = () => {
           <TabsContent value="creators" className="mt-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {creators.map((creator) => (
-                <Card key={creator.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <Card 
+                  key={creator.id} 
+                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/creator/${creator.id}`)}
+                >
                   <CardHeader className="text-center">
                     <div className="flex flex-col items-center gap-4">
                       <Avatar className="w-20 h-20">
@@ -300,26 +303,44 @@ const Discover = () => {
                       </div>
                     </div>
 
-                    {creator.is_subscribed ? (
+                    <div className="flex gap-2">
+                      {creator.is_subscribed ? (
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnsubscribe(creator.id);
+                          }}
+                          className="flex-1"
+                          variant="outline"
+                          disabled={subscribing === creator.id}
+                        >
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          {subscribing === creator.id ? "Processing..." : "Subscribed"}
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSubscribe(creator.id);
+                          }}
+                          className="flex-1"
+                          disabled={subscribing === creator.id}
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          {subscribing === creator.id ? "Subscribing..." : "Subscribe"}
+                        </Button>
+                      )}
                       <Button 
-                        onClick={() => handleUnsubscribe(creator.id)}
-                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/creator/${creator.id}`);
+                        }}
                         variant="outline"
-                        disabled={subscribing === creator.id}
+                        size="icon"
                       >
-                        <UserCheck className="w-4 h-4 mr-2" />
-                        {subscribing === creator.id ? "Processing..." : "Subscribed"}
+                        <Play className="w-4 h-4" />
                       </Button>
-                    ) : (
-                      <Button 
-                        onClick={() => handleSubscribe(creator.id)}
-                        className="w-full"
-                        disabled={subscribing === creator.id}
-                      >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        {subscribing === creator.id ? "Subscribing..." : "Subscribe"}
-                      </Button>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
