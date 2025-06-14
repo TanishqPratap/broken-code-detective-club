@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Video } from "lucide-react";
+import { User, Video, Upload } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,12 +18,59 @@ interface AuthModalProps {
 const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [accountType, setAccountType] = useState<"creator" | "subscriber">("subscriber");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setProfilePicture(file);
+    }
+  };
+
   const handleSignUp = async () => {
+    if (!username.trim()) {
+      toast({
+        title: "Username required",
+        description: "Please enter a username.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!displayName.trim()) {
+      toast({
+        title: "Display name required",
+        description: "Please enter a display name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -31,7 +78,8 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         password,
         options: {
           data: {
-            display_name: displayName,
+            username: username.trim(),
+            display_name: displayName.trim(),
             role: accountType,
           },
           emailRedirectTo: `${window.location.origin}/`
@@ -84,7 +132,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Welcome to ContentOasis</DialogTitle>
         </DialogHeader>
@@ -153,32 +201,82 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="signup-name">Display Name</Label>
+              <Label htmlFor="signup-username">Username *</Label>
+              <Input
+                id="signup-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="signup-name">Display Name *</Label>
               <Input
                 id="signup-name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Enter your display name"
+                required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
+              <Label htmlFor="signup-profile-picture">Profile Picture (Optional)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="signup-profile-picture"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('signup-profile-picture')?.click()}
+                  className="w-full"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {profilePicture ? profilePicture.name : "Choose Profile Picture"}
+                </Button>
+              </div>
+              {profilePicture && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Selected: {profilePicture.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setProfilePicture(null)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="signup-email">Email *</Label>
               <Input
                 id="signup-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
+              <Label htmlFor="signup-password">Password *</Label>
               <Input
                 id="signup-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                required
               />
             </div>
             <Button onClick={handleSignUp} disabled={loading} className="w-full">
