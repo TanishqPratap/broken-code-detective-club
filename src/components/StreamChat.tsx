@@ -21,7 +21,7 @@ interface Comment {
   profiles?: {
     username: string;
     display_name: string;
-  };
+  } | null;
 }
 
 const StreamChat = ({ streamId }: StreamChatProps) => {
@@ -50,7 +50,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
         .from('stream_comments')
         .select(`
           *,
-          profiles:user_id (
+          profiles!stream_comments_user_id_fkey (
             username,
             display_name
           )
@@ -82,7 +82,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
             .from('stream_comments')
             .select(`
               *,
-              profiles:user_id (
+              profiles!stream_comments_user_id_fkey (
                 username,
                 display_name
               )

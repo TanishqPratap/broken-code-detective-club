@@ -23,7 +23,7 @@ interface Tip {
   profiles?: {
     username: string;
     display_name: string;
-  };
+  } | null;
 }
 
 const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
@@ -48,7 +48,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
         .from('stream_tips')
         .select(`
           *,
-          profiles:tipper_id (
+          profiles!stream_tips_tipper_id_fkey (
             username,
             display_name
           )
@@ -92,7 +92,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
             .from('stream_tips')
             .select(`
               *,
-              profiles:tipper_id (
+              profiles!stream_tips_tipper_id_fkey (
                 username,
                 display_name
               )
