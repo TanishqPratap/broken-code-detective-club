@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
