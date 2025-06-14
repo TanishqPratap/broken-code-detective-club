@@ -41,8 +41,8 @@ const LivestreamDashboard = () => {
         id: livepeerStreamId,
         streamKey: streamKey,
         playbackId: playbackId,
-        playbackUrl: `https://livepeercdn.com/hls/${playbackId}/index.m3u8`,
-        rtmpIngestUrl: `rtmp://rtmp.livepeer.com/live/${streamKey}`
+        playbackUrl: `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
+        rtmpIngestUrl: `rtmp://rtmp.livepeer.studio/live/${streamKey}`
       });
     } catch (error: any) {
       console.error('Error saving stream:', error);
@@ -296,6 +296,66 @@ const LivestreamDashboard = () => {
       </div>
     </div>
   );
+
+  async function handleStartStream() {
+    if (!streamData || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('live_streams')
+        .update({
+          status: 'live',
+          started_at: new Date().toISOString()
+        })
+        .eq('creator_id', user.id)
+        .eq('stream_key', streamData.streamKey);
+
+      if (error) throw error;
+
+      setIsStreaming(true);
+      toast({
+        title: "Stream Started",
+        description: "Your livestream is now live!",
+      });
+    } catch (error: any) {
+      console.error('Error starting stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start stream",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function handleEndStream() {
+    if (!streamData || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('live_streams')
+        .update({
+          status: 'offline',
+          ended_at: new Date().toISOString()
+        })
+        .eq('creator_id', user.id)
+        .eq('stream_key', streamData.streamKey);
+
+      if (error) throw error;
+
+      setIsStreaming(false);
+      toast({
+        title: "Stream Ended",
+        description: "Your livestream has ended",
+      });
+    } catch (error: any) {
+      console.error('Error ending stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to end stream",
+        variant: "destructive",
+      });
+    }
+  }
 };
 
 export default LivestreamDashboard;

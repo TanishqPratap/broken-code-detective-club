@@ -66,7 +66,7 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
   }
 
   const playbackUrl = streamData.status === 'live' 
-    ? `https://livepeercdn.com/hls/${streamData.stream_key}/index.m3u8`
+    ? `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`
     : null;
 
   return (

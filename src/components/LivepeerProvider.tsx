@@ -7,15 +7,9 @@ interface LivepeerProviderProps {
 }
 
 const LivepeerProvider = ({ children }: LivepeerProviderProps) => {
-  const client = createReactClient({
-    provider: studioProvider({ apiKey: 'dummy-key' }), // We'll use edge functions for actual API calls
-  });
-
-  return (
-    <LivepeerConfig client={client}>
-      {children}
-    </LivepeerConfig>
-  );
+  // For now, we'll use a simple wrapper without the Livepeer client
+  // since we're handling API calls through our edge function
+  return <>{children}</>;
 };
 
 export default LivepeerProvider;
