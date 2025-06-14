@@ -77,7 +77,6 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
           lowLatencyMode: true,
           backBufferLength: 90,
           maxLoadingDelay: 4,
-          maxRetries: 2,
           retryDelayInMs: 1000
         });
 
