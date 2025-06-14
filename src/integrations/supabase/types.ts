@@ -213,6 +213,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          media_type: string | null
+          media_url: string | null
           recipient_id: string
           sender_id: string
           updated_at: string
@@ -221,6 +223,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           recipient_id: string
           sender_id: string
           updated_at?: string
@@ -229,6 +233,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           recipient_id?: string
           sender_id?: string
           updated_at?: string
