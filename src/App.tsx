@@ -1,40 +1,43 @@
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import Navbar from "@/components/Navbar";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import PaidDM from "@/pages/PaidDM";
-import Watch from "@/pages/Watch";
-import LivepeerProvider from "@/components/LivepeerProvider";
-import { StreamVideoProvider } from "@/components/StreamVideoProvider";
 import { AuthProvider } from "@/hooks/useAuth";
+import Index from "./pages/Index";
+import Profile from "./pages/Profile";
+import Creator from "./pages/Creator";
+import Discover from "./pages/Discover";
+import Watch from "./pages/Watch";
+import Posts from "./pages/Posts";
+import NotFound from "./pages/NotFound";
+import StreamPaymentSuccess from "./pages/StreamPaymentSuccess";
+import PaidDM from "./pages/PaidDM";
 
 const queryClient = new QueryClient();
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
       <AuthProvider>
         <BrowserRouter>
-          <LivepeerProvider>
-            <StreamVideoProvider>
-              <div className="min-h-screen bg-background font-sans antialiased">
-                <Navbar onAuthClick={() => {}} />
-                <main className="container mx-auto px-4 py-8">
-                  <Routes>
-                    <Route path="/" element={<div>Home Page</div>} />
-                    <Route path="/watch/:assetId" element={<Watch />} />
-                    <Route path="/paiddm" element={<PaidDM />} />
-                  </Routes>
-                </main>
-                <Toaster />
-              </div>
-            </StreamVideoProvider>
-          </LivepeerProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/creator" element={<Creator />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/posts" element={<Posts />} />
+            <Route path="/watch/:streamId" element={<Watch />} />
+            <Route path="/dm" element={<PaidDM />} />
+            <Route path="/stream-payment-success" element={<StreamPaymentSuccess />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </AuthProvider>
-    </QueryClientProvider>
-  );
-}
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
