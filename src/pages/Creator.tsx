@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -24,7 +23,7 @@ const Creator = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [showPaidDM, setShowPaidDM] = useState(false);
-  const [activeChatSession, setActiveChatSession] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [creatorDMProps, setCreatorDMProps] = useState<{
     creatorId: string;
     creatorName: string;
@@ -92,46 +91,44 @@ const Creator = () => {
                 </Button>
               )}
             </div>
-            {activeChatSession ? (
-              <PaidDMChat
-                sessionId={activeChatSession}
-                currentUserId={user.id}
+            {activeSessionId && (
+              <PaidDMChat 
+                sessionId={activeSessionId} 
+                currentUserId={user.id} 
+                onBack={() => setActiveSessionId(null)}
               />
-            ) : (
-              <>
-                {activeSection === "overview" && <CreatorDashboard />}
-                {activeSection === "livestream" && <LivestreamDashboard />}
-                {activeSection === "content" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Content Management</CardTitle>
-                      <CardDescription>
-                        Upload and manage your premium content
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-center text-gray-500 py-8">
-                        Content management coming soon...
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                {activeSection === "settings" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Creator Settings</CardTitle>
-                      <CardDescription>
-                        Configure your creator preferences
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-center text-gray-500 py-8">
-                        Creator settings coming soon...
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
+            )}
+            {activeSection === "overview" && <CreatorDashboard />}
+            {activeSection === "livestream" && <LivestreamDashboard />}
+            {activeSection === "content" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Content Management</CardTitle>
+                  <CardDescription>
+                    Upload and manage your premium content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">
+                    Content management coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {activeSection === "settings" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Creator Settings</CardTitle>
+                  <CardDescription>
+                    Configure your creator preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center text-gray-500 py-8">
+                    Creator settings coming soon...
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </main>
         </div>
@@ -145,7 +142,7 @@ const Creator = () => {
           creatorName={creatorDMProps.creatorName}
           chatRate={creatorDMProps.creatorChatRate}
           subscriberId={creatorDMProps.subscriberId}
-          onSessionCreated={sessionId => setActiveChatSession(sessionId)}
+          onSessionCreated={sessionId => setActiveSessionId(sessionId)}
         />
       )}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
