@@ -35,7 +35,6 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
     if (streamData && hasAccess && streamData.status === 'live' && videoRef.current) {
       initializeVideoPlayer();
     }
-
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -45,91 +44,74 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
 
   const initializeVideoPlayer = () => {
     const video = videoRef.current;
-    if (!video || !streamData.stream_key) return;
+    // -- Updated: use playback_id, fallback to stream_key for max compatibility --
+    const playKey = streamData.playback_id || streamData.stream_key;
+    if (!video || !playKey) return;
 
-    // Try multiple HLS URL formats for Livepeer
+    // Use playback_id for playback URLs (Livepeer documentation)
     const hlsUrls = [
-      `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`,
-      `https://lp-playback.studio/hls/${streamData.stream_key}/index.m3u8`,
-      `https://livepeer.studio/api/asset/hls/${streamData.stream_key}/index.m3u8`
+      `https://livepeercdn.studio/hls/${playKey}/index.m3u8`,
+      `https://lp-playback.studio/hls/${playKey}/index.m3u8`,
+      `https://livepeer.studio/api/asset/hls/${playKey}/index.m3u8`
     ];
-    
-    console.log('Attempting to load stream with key:', streamData.stream_key);
+
+    console.log('Attempting to load stream with key:', playKey);
     console.log('Trying URLs:', hlsUrls);
 
     let currentUrlIndex = 0;
-
     const tryNextUrl = () => {
       if (currentUrlIndex >= hlsUrls.length) {
         setVideoError('All stream URLs failed to load. The stream may not be properly configured.');
         return;
       }
-
       const hlsUrl = hlsUrls[currentUrlIndex];
       console.log(`Trying URL ${currentUrlIndex + 1}:`, hlsUrl);
 
       if (Hls.isSupported()) {
-        // Clean up previous instance
         if (hlsRef.current) {
           hlsRef.current.destroy();
         }
-
         const hls = new Hls({
           enableWorker: false,
           lowLatencyMode: true,
           backBufferLength: 90,
           maxLoadingDelay: 4
         });
-
         hlsRef.current = hls;
         hls.loadSource(hlsUrl);
         hls.attachMedia(video);
-
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('HLS manifest parsed successfully for URL:', hlsUrl);
           video.play().catch(err => {
-            console.log('Autoplay prevented:', err);
             setVideoError('Click play to start the stream');
           });
           setVideoError(null);
         });
-
         hls.on(Hls.Events.ERROR, (event, data) => {
-          console.error('HLS error for URL:', hlsUrl, data);
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                console.log('Network error, trying next URL...');
                 currentUrlIndex++;
                 setTimeout(tryNextUrl, 1000);
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                console.log('Media error, trying to recover...');
                 hls.recoverMediaError();
                 break;
               default:
-                console.log('Fatal error, trying next URL...');
                 currentUrlIndex++;
                 setTimeout(tryNextUrl, 1000);
                 break;
             }
           }
         });
-
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS support
         video.src = hlsUrl;
         video.addEventListener('loadedmetadata', () => {
-          console.log('Native HLS loaded successfully for URL:', hlsUrl);
           video.play().catch(err => {
-            console.log('Autoplay prevented:', err);
             setVideoError('Click play to start the stream');
           });
           setVideoError(null);
         });
-        
         video.addEventListener('error', () => {
-          console.log('Native HLS error for URL:', hlsUrl);
           currentUrlIndex++;
           setTimeout(tryNextUrl, 1000);
         });
@@ -137,8 +119,6 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
         setVideoError('Your browser does not support HLS streaming');
       }
     };
-
-    // Start trying URLs
     tryNextUrl();
   };
 

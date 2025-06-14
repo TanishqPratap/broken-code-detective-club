@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,11 @@ const LivestreamDashboard = () => {
   const [viewerCount, setViewerCount] = useState(0);
   const [isCreatingStream, setIsCreatingStream] = useState(false);
 
-  const saveStreamToDatabase = async (livepeerStreamId: string, streamKey: string, playbackId: string) => {
+  const saveStreamToDatabase = async (
+    livepeerStreamId: string,
+    streamKey: string,
+    playbackId: string
+  ) => {
     if (!user) return;
 
     try {
@@ -34,6 +37,7 @@ const LivestreamDashboard = () => {
           title: streamTitle,
           description: streamDescription,
           stream_key: streamKey,
+          playback_id: playbackId, // Store the playbackId!
           status: 'offline',
           is_paid: isPaidStream,
           price: isPaidStream ? parseFloat(streamPrice) : null
@@ -41,7 +45,6 @@ const LivestreamDashboard = () => {
 
       if (error) throw error;
       
-      // Store the Livepeer stream data locally
       setStreamData({
         id: livepeerStreamId,
         streamKey: streamKey,

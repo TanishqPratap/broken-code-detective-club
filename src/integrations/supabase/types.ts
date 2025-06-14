@@ -157,6 +157,7 @@ export type Database = {
           ended_at: string | null
           id: string
           is_paid: boolean | null
+          playback_id: string | null
           price: number | null
           started_at: string | null
           status: string
@@ -172,6 +173,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_paid?: boolean | null
+          playback_id?: string | null
           price?: number | null
           started_at?: string | null
           status?: string
@@ -187,6 +189,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_paid?: boolean | null
+          playback_id?: string | null
           price?: number | null
           started_at?: string | null
           status?: string
