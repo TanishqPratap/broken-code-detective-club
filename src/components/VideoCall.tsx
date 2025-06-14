@@ -40,6 +40,9 @@ const VideoCall = ({
   const pendingIceCandidates = useRef<RTCIceCandidate[]>([]);
   const { toast } = useToast();
 
+  // Track initialization status so we know when we're ready to process an incoming offer
+  const [isPeerConnectionReady, setIsPeerConnectionReady] = useState(false);
+
   useEffect(() => {
     initializeCall();
     return () => {
@@ -47,26 +50,33 @@ const VideoCall = ({
     };
   }, []);
 
-  // NEW: add effect to reset offerProcessed when remoteOffer changes (for new incoming call)
+  // NEW: Track when peer connection is ready
+  useEffect(() => {
+    if (peerConnectionRef.current && localStream) {
+      setIsPeerConnectionReady(true);
+    }
+  }, [peerConnectionRef.current, localStream]);
+
+  // Reset offerProcessed when new offer arrives and we are callee
   useEffect(() => {
     if (!isInitiator && remoteOffer) {
       setOfferProcessed(false);
     }
   }, [remoteOffer, isInitiator]);
 
-  // MODIFIED: useEffect for handling remote offer
+  // Ensure the remote offer is processed only after the peer connection and local stream are ready
   useEffect(() => {
     if (
-      remoteOffer && 
-      peerConnectionRef.current && 
-      !isInitiator && 
+      remoteOffer &&
+      !isInitiator &&
+      isPeerConnectionReady &&
       !offerProcessed
     ) {
       console.log('[VideoCall] Processing remote offer:', remoteOffer);
       handleRemoteOffer(remoteOffer);
       setOfferProcessed(true);
     }
-  }, [remoteOffer, isInitiator, offerProcessed]);
+  }, [remoteOffer, isInitiator, isPeerConnectionReady, offerProcessed]);
 
   useEffect(() => {
     if (remoteAnswer && peerConnectionRef.current && isInitiator) {

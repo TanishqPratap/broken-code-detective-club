@@ -438,9 +438,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   // Accept incoming call
   const acceptCall = () => {
     console.log('Accepting incoming video call');
-    // Bump offer state to trigger VideoCall processing of the remote offer.
-    setVideoCallOffer((offer) => (offer ? { ...offer } : offer));
+    // Close the pickup modal, only then open the video call modal.
     setShowCallPickup(false);
+    // Only open the video call modal. No need to "bump" the offer.
     setShowVideoCall(true);
     setIsVideoCallInitiator(false);
   };
