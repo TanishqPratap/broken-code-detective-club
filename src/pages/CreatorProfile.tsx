@@ -273,12 +273,16 @@ const CreatorProfilePage = () => {
           />
 
           <PaidDMModal
-            isOpen={showPaidDMModal}
+            open={showPaidDMModal}
             onClose={() => setShowPaidDMModal(false)}
             creatorId={creator.id}
             creatorName={creator.display_name || creator.username}
-            hourlyRate={creator.chat_rate || 0}
-            onPaymentSuccess={handlePaidDMSuccess}
+            chatRate={creator.chat_rate || 0}
+            subscriberId={user?.id || ''}
+            onSessionCreated={(sessionId) => {
+              console.log('Chat session created:', sessionId);
+              handlePaidDMSuccess();
+            }}
           />
         </>
       )}

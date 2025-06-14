@@ -447,15 +447,19 @@ const Discover = () => {
           />
 
           <PaidDMModal
-            isOpen={showPaidDMModal}
+            open={showPaidDMModal}
             onClose={() => {
               setShowPaidDMModal(false);
               setSelectedCreator(null);
             }}
             creatorId={selectedCreator.id}
             creatorName={selectedCreator.display_name || selectedCreator.username}
-            hourlyRate={selectedCreator.chat_rate || 0}
-            onPaymentSuccess={handlePaidDMSuccess}
+            chatRate={selectedCreator.chat_rate || 0}
+            subscriberId={user?.id || ''}
+            onSessionCreated={(sessionId) => {
+              console.log('Chat session created:', sessionId);
+              handlePaidDMSuccess();
+            }}
           />
         </>
       )}
