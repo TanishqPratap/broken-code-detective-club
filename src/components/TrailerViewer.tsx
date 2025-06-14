@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Play, Image, Video, Heart, Star } from "lucide-react";
 
 interface TrailerContent {
@@ -112,20 +113,24 @@ const TrailerViewer = ({ creatorId, creatorName, subscriptionPrice, onSubscribe 
             <Card>
               <CardContent className="p-0">
                 <div className="relative">
-                  {selectedTrailer.content_type === 'video' ? (
-                    <video
-                      src={selectedTrailer.media_url}
-                      className="w-full h-64 lg:h-96 object-cover rounded-t-lg"
-                      controls
-                      autoPlay
-                    />
-                  ) : (
-                    <img
-                      src={selectedTrailer.media_url}
-                      alt={selectedTrailer.title}
-                      className="w-full h-64 lg:h-96 object-cover rounded-t-lg"
-                    />
-                  )}
+                  <AspectRatio ratio={16/9}>
+                    <div className="w-full h-full bg-black rounded-t-lg overflow-hidden">
+                      {selectedTrailer.content_type === 'video' ? (
+                        <video
+                          src={selectedTrailer.media_url}
+                          className="w-full h-full object-contain"
+                          controls
+                          autoPlay
+                        />
+                      ) : (
+                        <img
+                          src={selectedTrailer.media_url}
+                          alt={selectedTrailer.title}
+                          className="w-full h-full object-contain"
+                        />
+                      )}
+                    </div>
+                  </AspectRatio>
                   <Badge className="absolute top-4 left-4 bg-green-600">
                     Free Preview
                   </Badge>
@@ -165,19 +170,23 @@ const TrailerViewer = ({ creatorId, creatorName, subscriptionPrice, onSubscribe 
               <CardContent className="p-4">
                 <div className="flex gap-3">
                   <div className="relative flex-shrink-0">
-                    {trailer.content_type === 'video' ? (
-                      <video
-                        src={trailer.media_url}
-                        className="w-16 h-16 object-cover rounded"
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={trailer.media_url}
-                        alt={trailer.title}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    )}
+                    <AspectRatio ratio={16/9} className="w-16">
+                      <div className="w-full h-full bg-black rounded overflow-hidden">
+                        {trailer.content_type === 'video' ? (
+                          <video
+                            src={trailer.media_url}
+                            className="w-full h-full object-contain"
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={trailer.media_url}
+                            alt={trailer.title}
+                            className="w-full h-full object-contain"
+                          />
+                        )}
+                      </div>
+                    </AspectRatio>
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
                       <Play className="w-4 h-4 text-white" />
                     </div>

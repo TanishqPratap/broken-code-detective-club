@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Play, Star, UserPlus, Eye } from "lucide-react";
 
 interface TrailerPreviewCardProps {
@@ -83,53 +84,57 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
           )}
         </div>
 
-        {/* Media Content */}
-        <div 
-          className="relative h-64 bg-muted rounded-lg overflow-hidden cursor-pointer group"
-          onClick={handlePreviewClick}
-        >
-          {trailer.content_type === 'video' ? (
-            <>
-              {isPlaying ? (
-                <video
-                  src={trailer.media_url}
-                  className="w-full h-full object-cover"
-                  controls
-                  autoPlay
-                />
+        {/* Media Content with proper aspect ratio */}
+        <div className="relative rounded-lg overflow-hidden">
+          <AspectRatio ratio={16/9}>
+            <div 
+              className="w-full h-full bg-muted cursor-pointer group relative"
+              onClick={handlePreviewClick}
+            >
+              {trailer.content_type === 'video' ? (
+                <>
+                  {isPlaying ? (
+                    <video
+                      src={trailer.media_url}
+                      className="w-full h-full object-contain bg-black"
+                      controls
+                      autoPlay
+                    />
+                  ) : (
+                    <>
+                      <video
+                        src={trailer.media_url}
+                        className="w-full h-full object-contain bg-black"
+                        muted
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-40 transition-all">
+                        <div className="bg-white bg-opacity-90 rounded-full p-3">
+                          <Play className="w-6 h-6 text-black fill-current" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
               ) : (
                 <>
-                  <video
+                  <img
                     src={trailer.media_url}
-                    className="w-full h-full object-cover"
-                    muted
+                    alt={trailer.title}
+                    className="w-full h-full object-contain bg-black"
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-40 transition-all">
-                    <div className="bg-white bg-opacity-90 rounded-full p-3">
-                      <Play className="w-6 h-6 text-black fill-current" />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white bg-opacity-90 rounded-full p-3">
+                      <Eye className="w-6 h-6 text-black" />
                     </div>
                   </div>
                 </>
               )}
-            </>
-          ) : (
-            <>
-              <img
-                src={trailer.media_url}
-                alt={trailer.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white bg-opacity-90 rounded-full p-3">
-                  <Eye className="w-6 h-6 text-black" />
-                </div>
-              </div>
-            </>
-          )}
-          
-          <Badge className="absolute top-3 left-3 bg-purple-600">
-            Trailer {trailer.order_position}
-          </Badge>
+              
+              <Badge className="absolute top-3 left-3 bg-purple-600">
+                Trailer {trailer.order_position}
+              </Badge>
+            </div>
+          </AspectRatio>
         </div>
 
         {/* Actions */}
