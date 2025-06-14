@@ -7,6 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Function to get USD to INR exchange rate
+async function getUSDToINRRate(): Promise<number> {
+  try {
+    // Using a free exchange rate API
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const data = await response.json();
+    return data.rates.INR || 83; // Fallback to approximate rate if API fails
+  } catch (error) {
+    console.log('Exchange rate API failed, using fallback rate:', error);
+    return 83; // Fallback exchange rate (approximate USD to INR)
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -46,6 +59,14 @@ serve(async (req) => {
       .eq('id', streamId)
       .single();
 
+    // Get current USD to INR exchange rate
+    const exchangeRate = await getUSDToINRRate();
+    console.log('Current USD to INR exchange rate:', exchangeRate);
+
+    // Convert USD amount to INR
+    const amountInINR = amount * exchangeRate;
+    console.log(`Converting ${amount} USD to ${amountInINR} INR`);
+
     // Create a shorter receipt (max 40 chars)
     const timestamp = Date.now().toString().slice(-8); // Last 8 digits
     const streamIdShort = streamId.slice(0, 8); // First 8 chars of stream ID
@@ -53,13 +74,16 @@ serve(async (req) => {
 
     // Create Razorpay order
     const orderData = {
-      amount: Math.round(amount * 100), // Convert to paise (smallest currency unit)
+      amount: Math.round(amountInINR * 100), // Convert INR to paise (smallest currency unit)
       currency: "INR",
       receipt: receipt, // Now under 40 characters
       notes: {
         streamId,
         userId: user.id,
-        streamTitle: streamData?.title || 'Live Stream'
+        streamTitle: streamData?.title || 'Live Stream',
+        originalAmountUSD: amount,
+        exchangeRate: exchangeRate,
+        amountINR: amountInINR
       }
     };
 
@@ -87,13 +111,13 @@ serve(async (req) => {
 
     const order = JSON.parse(responseText);
 
-    // Create pending subscription record
+    // Create pending subscription record with INR amount
     await supabaseClient
       .from('stream_subscriptions')
       .insert({
         stream_id: streamId,
         subscriber_id: user.id,
-        amount: amount,
+        amount: amountInINR, // Store the INR amount
         stripe_payment_intent_id: order.id, // Using this field for Razorpay order ID
         status: 'pending',
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
@@ -103,7 +127,10 @@ serve(async (req) => {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
-      key_id: razorpayKeyId
+      key_id: razorpayKeyId,
+      amount_usd: amount,
+      amount_inr: amountInINR,
+      exchange_rate: exchangeRate
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

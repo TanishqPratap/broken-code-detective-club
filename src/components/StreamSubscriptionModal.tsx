@@ -26,6 +26,11 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
   const { toast } = useToast();
   const [streamData, setStreamData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    amountUSD: number;
+    amountINR: number;
+    exchangeRate: number;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -99,6 +104,13 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
       });
 
       if (error) throw error;
+
+      // Store payment info for display
+      setPaymentInfo({
+        amountUSD: data.amount_usd,
+        amountINR: data.amount_inr,
+        exchangeRate: data.exchange_rate
+      });
 
       // Initialize Razorpay payment
       const options = {
@@ -194,9 +206,19 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
             <CardDescription>{streamData.description || "Premium livestream access"}</CardDescription>
             <div className="text-2xl font-bold flex items-center justify-center gap-1">
               <DollarSign className="w-6 h-6" />
-              {streamData.price}
+              {streamData.price} USD
+              {paymentInfo && (
+                <div className="text-sm font-normal text-muted-foreground ml-2">
+                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
+                </div>
+              )}
               <span className="text-sm font-normal text-muted-foreground">/access</span>
             </div>
+            {paymentInfo && (
+              <p className="text-xs text-muted-foreground">
+                Exchange rate: 1 USD = ₹{paymentInfo.exchangeRate.toFixed(2)} INR
+              </p>
+            )}
           </CardHeader>
           
           <CardContent>
@@ -225,7 +247,7 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
               disabled={loading}
               size="lg"
             >
-              {loading ? "Processing..." : `Pay ₹${streamData.price} with Razorpay`}
+              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${streamData.price} with Razorpay`}
             </Button>
           </CardContent>
         </Card>
