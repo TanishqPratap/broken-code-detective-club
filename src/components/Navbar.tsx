@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { User, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface NavbarProps {
   onAuthClick: () => void;
@@ -11,11 +12,21 @@ interface NavbarProps {
 
 const Navbar = ({ onAuthClick }: NavbarProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 px-4 py-3">
       <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-primary">ContentOasis</h1>
+        <h1 
+          className="text-2xl font-bold text-primary cursor-pointer" 
+          onClick={() => navigate("/")}
+        >
+          ContentOasis
+        </h1>
         
         <div className="flex items-center gap-4">
           {user ? (
@@ -31,7 +42,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleProfileClick}>
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
