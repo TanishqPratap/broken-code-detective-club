@@ -55,7 +55,6 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
   };
 
   const handleFollow = async () => {
-    // Implementation for follow/unfollow functionality
     setIsFollowing(!isFollowing);
   };
 
@@ -77,10 +76,10 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
               <div className="aspect-video bg-black rounded-t-lg overflow-hidden">
                 {streamData.status === 'live' ? (
                   <Player
-                    playbackId={streamData.stream_key}
-                    className="w-full h-full"
+                    src={`https://livepeercdn.com/hls/${streamData.stream_key}/index.m3u8`}
                     autoPlay
                     muted
+                    className="w-full h-full"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white">

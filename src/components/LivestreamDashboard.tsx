@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Broadcast, Player, useCreateStream } from "@livepeer/react";
-import { Play, Square, Users, Eye, Settings } from "lucide-react";
+import { Player, useCreateStream } from "@livepeer/react";
+import { Play, Square, Users, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,6 @@ const LivestreamDashboard = () => {
   useEffect(() => {
     if (createdStream) {
       setStreamData(createdStream);
-      // Save stream data to Supabase
       saveStreamToDatabase(createdStream);
     }
   }, [createdStream]);
@@ -177,10 +176,10 @@ const LivestreamDashboard = () => {
               {!streamData ? (
                 <Button 
                   onClick={handleCreateStream} 
-                  disabled={createStatus === 'loading'}
+                  disabled={createStatus === 'pending'}
                   className="w-full"
                 >
-                  {createStatus === 'loading' ? "Creating..." : "Create Stream"}
+                  {createStatus === 'pending' ? "Creating..." : "Create Stream"}
                 </Button>
               ) : (
                 <div className="space-y-4">
@@ -235,7 +234,7 @@ const LivestreamDashboard = () => {
           </Card>
         </div>
 
-        {/* Stream Preview/Broadcast */}
+        {/* Stream Preview */}
         <div>
           <Card>
             <CardHeader>
@@ -245,8 +244,10 @@ const LivestreamDashboard = () => {
             <CardContent>
               <div className="aspect-video bg-black rounded-lg flex items-center justify-center">
                 {streamData && isStreaming ? (
-                  <Broadcast
-                    streamKey={streamData.streamKey}
+                  <Player
+                    src={streamData.playbackUrl}
+                    autoPlay
+                    muted
                     className="w-full h-full rounded-lg"
                   />
                 ) : (

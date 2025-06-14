@@ -1,8 +1,10 @@
 
 import { createReactClient, studioProvider } from '@livepeer/react';
 
-export const livepeerClient = createReactClient({
+const client = createReactClient({
   provider: studioProvider({
-    apiKey: process.env.LIVEPEER_API_KEY || '',
+    apiKey: process.env.REACT_APP_LIVEPEER_API_KEY || '',
   }),
 });
+
+export { client as livepeerClient };
