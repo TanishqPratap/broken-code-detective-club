@@ -1,12 +1,28 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Play, Star, UserPlus, Eye } from "lucide-react";
+import { Play, Star, UserPlus, Eye, Heart, MessageCircle, Share, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+interface Comment {
+  id: string;
+  user_id: string;
+  comment_text: string;
+  created_at: string;
+  profiles: {
+    display_name: string | null;
+    username: string;
+    avatar_url: string | null;
+  };
+}
 
 interface TrailerPreviewCardProps {
   trailer: {
@@ -30,7 +46,205 @@ interface TrailerPreviewCardProps {
 
 const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchLikesAndComments();
+  }, [trailer.id, user]);
+
+  useEffect(() => {
+    if (showComments) {
+      fetchComments();
+    }
+  }, [showComments, trailer.id]);
+
+  const fetchLikesAndComments = async () => {
+    try {
+      // Fetch likes count
+      const { count: likesCountData, error: likesError } = await supabase
+        .from('posts_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', trailer.id)
+        .eq('interaction_type', 'like');
+
+      if (likesError) throw likesError;
+      setLikesCount(likesCountData || 0);
+
+      // Check if current user liked this trailer
+      if (user) {
+        const { data: userLike, error: userLikeError } = await supabase
+          .from('posts_interactions')
+          .select('id')
+          .eq('post_id', trailer.id)
+          .eq('user_id', user.id)
+          .eq('interaction_type', 'like')
+          .maybeSingle();
+
+        if (userLikeError) throw userLikeError;
+        setIsLiked(!!userLike);
+      }
+
+      // Fetch comments count
+      const { count: commentsCountData, error: commentsError } = await supabase
+        .from('posts_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', trailer.id)
+        .eq('interaction_type', 'comment');
+
+      if (commentsError) throw commentsError;
+      setCommentsCount(commentsCountData || 0);
+    } catch (error) {
+      console.error('Error fetching likes and comments:', error);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      setLoading(true);
+      
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('posts_interactions')
+        .select('id, user_id, comment_text, created_at')
+        .eq('post_id', trailer.id)
+        .eq('interaction_type', 'comment')
+        .order('created_at', { ascending: true });
+
+      if (commentsError) throw commentsError;
+
+      if (!commentsData || commentsData.length === 0) {
+        setComments([]);
+        return;
+      }
+
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const profilesMap = new Map(
+        profilesData?.map(profile => [profile.id, profile]) || []
+      );
+
+      const commentsWithProfiles = commentsData.map(comment => ({
+        ...comment,
+        profiles: profilesMap.get(comment.user_id) || {
+          display_name: null,
+          username: 'Unknown User',
+          avatar_url: null
+        }
+      }));
+
+      setComments(commentsWithProfiles);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toast.error("Failed to load comments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!user) {
+      toast.error("Please sign in to like trailers");
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        const { error } = await supabase
+          .from('posts_interactions')
+          .delete()
+          .eq('post_id', trailer.id)
+          .eq('user_id', user.id)
+          .eq('interaction_type', 'like');
+
+        if (error) throw error;
+        setIsLiked(false);
+        setLikesCount(prev => prev - 1);
+      } else {
+        const { error } = await supabase
+          .from('posts_interactions')
+          .insert({
+            post_id: trailer.id,
+            user_id: user.id,
+            interaction_type: 'like'
+          });
+
+        if (error) throw error;
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error handling like:', error);
+      toast.error("Failed to update like");
+    }
+  };
+
+  const handleComment = async () => {
+    if (!user) {
+      toast.error("Please sign in to comment");
+      return;
+    }
+
+    if (!commentText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('posts_interactions')
+        .insert({
+          post_id: trailer.id,
+          user_id: user.id,
+          interaction_type: 'comment',
+          comment_text: commentText.trim()
+        });
+
+      if (error) throw error;
+
+      setCommentText("");
+      setCommentsCount(prev => prev + 1);
+      
+      if (showComments) {
+        fetchComments();
+      }
+      
+      toast.success("Comment added!");
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error("Failed to add comment");
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: `Check out this trailer by ${trailer.creator.display_name || trailer.creator.username}`,
+      text: trailer.description || `Amazing trailer content from ${trailer.creator.display_name || trailer.creator.username}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success("Trailer shared successfully!");
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error("Failed to share trailer");
+    }
+  };
 
   const handleCreatorClick = () => {
     navigate(`/creator/${trailer.creator.id}`);
@@ -42,6 +256,17 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
     } else {
       navigate(`/creator/${trailer.creator.id}`);
     }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   return (
@@ -84,7 +309,6 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
           )}
         </div>
 
-        {/* Media Content with proper aspect ratio */}
         <div className="relative rounded-lg overflow-hidden">
           <AspectRatio ratio={16/9}>
             <div 
@@ -138,12 +362,36 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t">
-          <div className="text-sm text-muted-foreground">
-            {new Date(trailer.created_at).toLocaleDateString()}
+        <div className="flex items-center justify-between pt-3 border-t mt-4">
+          <div className="flex items-center gap-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={isLiked ? "text-red-500" : ""}
+              onClick={handleLike}
+            >
+              <Heart className={`w-4 h-4 mr-1 ${isLiked ? "fill-current" : ""}`} />
+              {likesCount}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowComments(!showComments)}
+            >
+              <MessageCircle className="w-4 h-4 mr-1" />
+              {commentsCount}
+            </Button>
+            
+            <Button variant="ghost" size="sm" onClick={handleShare}>
+              <Share className="w-4 h-4" />
+            </Button>
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              {formatTimeAgo(trailer.created_at)}
+            </div>
             {trailer.creator.subscription_price && (
               <span className="text-sm font-medium text-green-600">
                 ${trailer.creator.subscription_price}/month
@@ -155,6 +403,63 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
             </Button>
           </div>
         </div>
+
+        {/* Comments Section */}
+        {showComments && (
+          <div className="mt-4 space-y-4 border-t pt-4">
+            {user && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleComment();
+                    }
+                  }}
+                />
+                <Button 
+                  size="sm" 
+                  onClick={handleComment}
+                  disabled={!commentText.trim()}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {loading ? (
+                <p className="text-center text-muted-foreground">Loading comments...</p>
+              ) : comments.length === 0 ? (
+                <p className="text-center text-muted-foreground">No comments yet</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={comment.profiles.avatar_url || ""} />
+                      <AvatarFallback>
+                        {(comment.profiles.display_name || comment.profiles.username)[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {comment.profiles.display_name || comment.profiles.username}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeAgo(comment.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.comment_text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
