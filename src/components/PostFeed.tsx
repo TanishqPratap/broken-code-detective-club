@@ -29,7 +29,7 @@ const PostFeed = () => {
 
   const fetchPosts = async () => {
     try {
-      // First get posts with user profiles
+      // First get posts with user profiles - fix the join syntax
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -40,7 +40,7 @@ const PostFeed = () => {
           media_url,
           media_type,
           created_at,
-          profiles:user_id (
+          profiles!posts_user_id_fkey (
             display_name,
             username,
             avatar_url
@@ -77,6 +77,7 @@ const PostFeed = () => {
 
           return {
             ...post,
+            content_type: post.content_type as 'text' | 'image' | 'video',
             likes_count: likesCount || 0,
             user_liked: userLiked
           };
