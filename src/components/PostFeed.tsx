@@ -69,7 +69,7 @@ const PostFeed = () => {
 
       if (postsError) throw postsError;
 
-      // Fetch trailer content with creator profiles
+      // Fetch trailer content
       const { data: trailersData, error: trailersError } = await supabase
         .from('trailer_content')
         .select(`
@@ -80,15 +80,7 @@ const PostFeed = () => {
           media_url,
           order_position,
           created_at,
-          creator_id,
-          profiles!trailer_content_creator_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url,
-            is_verified,
-            subscription_price
-          )
+          creator_id
         `)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -150,21 +142,40 @@ const PostFeed = () => {
         processedPosts = postsWithData.map(post => ({ type: 'post' as const, data: post }));
       }
 
-      // Process trailer content
-      const processedTrailers: FeedItem[] = (trailersData || []).map(trailer => ({
-        type: 'trailer' as const,
-        data: {
-          ...trailer,
-          creator: {
-            id: trailer.creator_id,
-            username: trailer.profiles?.username || 'Unknown',
-            display_name: trailer.profiles?.display_name || null,
-            avatar_url: trailer.profiles?.avatar_url || null,
-            is_verified: trailer.profiles?.is_verified || false,
-            subscription_price: trailer.profiles?.subscription_price || null,
-          }
-        }
-      }));
+      // Process trailer content - fetch creator profiles separately
+      let processedTrailers: FeedItem[] = [];
+      if (trailersData && trailersData.length > 0) {
+        const creatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
+        const { data: creatorProfilesData, error: creatorProfilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, is_verified, subscription_price')
+          .in('id', creatorIds);
+
+        if (creatorProfilesError) throw creatorProfilesError;
+
+        const creatorProfilesMap = new Map(
+          creatorProfilesData?.map(profile => [profile.id, profile]) || []
+        );
+
+        processedTrailers = trailersData.map(trailer => {
+          const creatorProfile = creatorProfilesMap.get(trailer.creator_id);
+          
+          return {
+            type: 'trailer' as const,
+            data: {
+              ...trailer,
+              creator: {
+                id: trailer.creator_id,
+                username: creatorProfile?.username || 'Unknown',
+                display_name: creatorProfile?.display_name || null,
+                avatar_url: creatorProfile?.avatar_url || null,
+                is_verified: creatorProfile?.is_verified || false,
+                subscription_price: creatorProfile?.subscription_price || null,
+              }
+            }
+          };
+        });
+      }
 
       // Combine and sort by created_at
       const allItems = [...processedPosts, ...processedTrailers].sort((a, b) => 
