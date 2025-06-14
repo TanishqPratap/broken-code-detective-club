@@ -51,6 +51,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         .select("creator_id,subscriber_id")
         .eq("id", sessionId)
         .maybeSingle();
+      console.log("Loaded session info:", data);
       setSessionInfo(data ?? null);
     })();
   }, [sessionId]);
@@ -112,26 +113,35 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const m = payload.new as MessageRow;
-          console.log("New message received:", {
+          console.log("=== NEW MESSAGE RECEIVED ===");
+          console.log("Message:", {
+            id: m.id,
             sender: m.sender_id,
             recipient: m.recipient_id,
-            content: m.content.substring(0, 50),
-            isFromOtherUser: m.sender_id !== currentUserId
+            content: m.content.substring(0, 100),
+            isFromOtherUser: m.sender_id !== currentUserId,
+            isVideoCallRelated: m.content.startsWith("VIDEO_CALL_")
           });
           
-          if (
-            (m.sender_id === sessionInfo?.creator_id &&
-              m.recipient_id === sessionInfo?.subscriber_id) ||
-            (m.sender_id === sessionInfo?.subscriber_id &&
-              m.recipient_id === sessionInfo?.creator_id)
-          ) {
+          // Check if this message is for this conversation
+          const isForThisConversation = 
+            (m.sender_id === sessionInfo?.creator_id && m.recipient_id === sessionInfo?.subscriber_id) ||
+            (m.sender_id === sessionInfo?.subscriber_id && m.recipient_id === sessionInfo?.creator_id);
+          
+          if (isForThisConversation) {
+            console.log("Message is for this conversation, adding to messages");
             setMessages((prev) => [...prev, { ...m }]);
             
-            // Process ALL video call related messages, including signaling
+            // Process video call signaling messages from other users
             if (m.content.startsWith("VIDEO_CALL_") && m.sender_id !== currentUserId) {
-              console.log("Processing video call signaling message from other user:", m.content);
+              console.log("=== PROCESSING VIDEO CALL SIGNALING ===");
+              console.log("Content:", m.content);
+              console.log("From user:", m.sender_id);
+              console.log("Current user:", currentUserId);
               handleVideoCallMessage(m.content, m.sender_id);
             }
+          } else {
+            console.log("Message not for this conversation, ignoring");
           }
         }
       )
@@ -142,6 +152,13 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       supabase.removeChannel(channel);
     };
   }, [sessionInfo, sessionId, handleVideoCallMessage, currentUserId]);
+
+  useEffect(() => {
+    console.log("=== VIDEO CALL STATE DEBUG ===");
+    console.log("showCallPickup:", showCallPickup);
+    console.log("incomingCallFrom:", incomingCallFrom);
+    console.log("videoCallOffer:", !!videoCallOffer);
+  }, [showCallPickup, incomingCallFrom, videoCallOffer]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

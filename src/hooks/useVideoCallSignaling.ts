@@ -28,18 +28,27 @@ export function useVideoCallSignaling(
 
   return useCallback(
     (content: string, senderId: string) => {
+      console.log("=== Video Call Signaling Debug ===");
+      console.log("Message content:", content);
+      console.log("Sender ID:", senderId);
+      console.log("Current User ID:", currentUserId);
+      console.log("Session Info:", sessionInfo);
+
       // Only process signaling messages from other users
       if (senderId === currentUserId) {
         console.log("Ignoring signaling message from self");
         return;
       }
 
-      console.log("Processing signaling message from:", senderId, "Content:", content.substring(0, 100));
+      console.log("Processing signaling message from:", senderId);
 
       try {
         if (content.startsWith("VIDEO_CALL_OFFER:")) {
-          console.log("Received video call offer from:", senderId);
+          console.log("=== PROCESSING VIDEO CALL OFFER ===");
+          console.log("Full offer content:", content);
+          
           const offerData = JSON.parse(content.replace("VIDEO_CALL_OFFER:", ""));
+          console.log("Parsed offer data:", offerData);
           
           // Clear previous state
           videoCallState.resetVideoCallState();
@@ -48,13 +57,25 @@ export function useVideoCallSignaling(
           videoCallState.setVideoCallOffer(offerData);
           
           // Determine caller name based on session info
-          const callerName = senderId === sessionInfo?.creator_id ? "Creator" : 
-                            senderId === sessionInfo?.subscriber_id ? "Subscriber" : "Unknown User";
+          let callerName = "Unknown User";
+          if (sessionInfo) {
+            if (senderId === sessionInfo.creator_id) {
+              callerName = "Creator";
+            } else if (senderId === sessionInfo.subscriber_id) {
+              callerName = "Subscriber";
+            }
+          }
           
-          console.log("Setting up incoming call from:", callerName, "Showing pickup modal");
+          console.log("=== SHOWING PICKUP MODAL ===");
+          console.log("Caller name:", callerName);
+          console.log("Setting incoming call from:", callerName);
+          
+          // Set incoming call state
           videoCallState.setIncomingCallFrom(callerName);
           videoCallState.setShowCallPickup(true);
           videoCallState.setIsVideoCallInitiator(false);
+          
+          console.log("Pickup modal state set, showing toast");
           
           toast({
             title: "Incoming Video Call",
