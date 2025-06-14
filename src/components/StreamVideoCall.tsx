@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
   Call,
@@ -41,7 +40,7 @@ const StreamVideoCall: React.FC<StreamVideoCallProps> = ({
           // Create and join the call as initiator
           await newCall.getOrCreate({
             data: {
-              members: [{ user_id: client.currentUser?.id }],
+              members: [{ user_id: client.user.id }],
             },
           });
         } else {

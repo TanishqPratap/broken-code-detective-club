@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PaidDM from "@/pages/PaidDM";
 import Watch from "@/pages/Watch";
-import { LivepeerProvider } from "@/components/LivepeerProvider";
+import LivepeerProvider from "@/components/LivepeerProvider";
 import { StreamVideoProvider } from "@/components/StreamVideoProvider";
 
 const queryClient = new QueryClient();
