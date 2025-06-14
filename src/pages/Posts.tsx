@@ -13,10 +13,10 @@ const Posts = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Posts</h1>
-          <p className="text-gray-600">Share and discover amazing content</p>
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Posts</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Share and discover amazing content</p>
         </div>
 
         <PostFeed />

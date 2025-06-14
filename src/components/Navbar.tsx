@@ -32,22 +32,23 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <Heart className="w-8 h-8 text-primary" />
-            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <Heart className="w-6 sm:w-8 h-6 sm:h-8 text-primary" />
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               CreatorHub
             </span>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Navigation Links - Hidden on mobile */}
           <div className="hidden md:flex items-center space-x-1">
             {navItems.map(({ path, label, icon: Icon }) => (
               <Link key={path} to={path}>
                 <Button
                   variant={isActive(path) ? "default" : "ghost"}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-sm"
+                  size="sm"
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -57,7 +58,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
           </div>
 
           {/* User Actions */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -70,7 +71,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-white" align="end" forceMount>
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
@@ -89,7 +90,9 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={onAuthClick}>Sign In</Button>
+              <Button onClick={onAuthClick} size="sm" className="text-sm">
+                Sign In
+              </Button>
             )}
           </div>
         </div>
@@ -102,10 +105,10 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                 <Button
                   variant={isActive(path) ? "default" : "ghost"}
                   size="sm"
-                  className="flex flex-col items-center gap-1 h-auto py-2"
+                  className="flex flex-col items-center gap-1 h-auto py-2 px-2 min-w-0"
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="text-xs">{label}</span>
+                  <span className="text-xs truncate">{label}</span>
                 </Button>
               </Link>
             ))}

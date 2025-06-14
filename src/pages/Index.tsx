@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Loading...</p>
@@ -39,20 +40,20 @@ const Index = () => {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
         
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
           {/* Welcome Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent px-2">
               Welcome back!
             </h1>
-            <p className="text-xl text-gray-600 mb-8">Ready to create amazing content?</p>
+            <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 px-4">Ready to create amazing content?</p>
             
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Button size="lg" onClick={() => navigate("/creator")}>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+              <Button size="lg" onClick={() => navigate("/creator")} className="w-full sm:w-auto">
                 <Video className="w-5 h-5 mr-2" />
                 Creator Dashboard
               </Button>
-              <Button variant="outline" size="lg" onClick={() => navigate("/discover")}>
+              <Button variant="outline" size="lg" onClick={() => navigate("/discover")} className="w-full sm:w-auto">
                 <Compass className="w-5 h-5 mr-2" />
                 Discover Content
               </Button>
@@ -60,13 +61,13 @@ const Index = () => {
           </div>
 
           {/* Feed Content */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 text-center">Latest Posts</h2>
+          <div className="mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Latest Posts</h2>
             <PostFeed />
           </div>
 
           {/* Quick Stats */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12 px-2">
             <Card className="text-center">
               <CardContent className="pt-6">
                 <Users className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -83,7 +84,7 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="text-center">
+            <Card className="text-center sm:col-span-2 lg:col-span-1">
               <CardContent className="pt-6">
                 <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
                 <h3 className="font-semibold mb-1">Security</h3>
@@ -105,28 +106,28 @@ const Index = () => {
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
             Create. Connect. Earn.
           </h1>
-          <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-600 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
             The ultimate platform for content creators to build their community and monetize their passion through subscriptions and exclusive content.
           </p>
           
-          <div className="flex gap-4 justify-center flex-wrap mb-16">
-            <Button size="lg" className="text-lg px-8 py-4" onClick={handleGetStarted}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-12 sm:mb-16 px-4">
+            <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto" onClick={handleGetStarted}>
               <Play className="w-5 h-5 mr-2" />
               Start Creating
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-4" onClick={() => navigate("/discover")}>
+            <Button variant="outline" size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto" onClick={() => navigate("/discover")}>
               <Compass className="w-5 h-5 mr-2" />
               Explore Creators
             </Button>
           </div>
 
           {/* Trust Indicators */}
-          <div className="flex items-center justify-center gap-8 text-sm text-gray-500 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
               <span>Trusted by creators</span>
@@ -144,36 +145,36 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16">Everything you need to succeed</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12 sm:mb-16">Everything you need to succeed</h2>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Users className="w-12 h-12 text-primary mx-auto mb-4" />
-                <CardTitle>Build Community</CardTitle>
-                <CardDescription className="text-base">
+              <CardHeader className="pb-4">
+                <Users className="w-10 sm:w-12 h-10 sm:h-12 text-primary mx-auto mb-3 sm:mb-4" />
+                <CardTitle className="text-lg sm:text-xl">Build Community</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Connect directly with your audience through exclusive content and personal interactions
                 </CardDescription>
               </CardHeader>
             </Card>
 
             <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <TrendingUp className="w-12 h-12 text-primary mx-auto mb-4" />
-                <CardTitle>Multiple Revenue Streams</CardTitle>
-                <CardDescription className="text-base">
+              <CardHeader className="pb-4">
+                <TrendingUp className="w-10 sm:w-12 h-10 sm:h-12 text-primary mx-auto mb-3 sm:mb-4" />
+                <CardTitle className="text-lg sm:text-xl">Multiple Revenue Streams</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Earn through subscriptions, tips, exclusive content, and live streaming
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <Shield className="w-12 h-12 text-primary mx-auto mb-4" />
-                <CardTitle>Secure Platform</CardTitle>
-                <CardDescription className="text-base">
+            <Card className="text-center border-0 shadow-lg sm:col-span-2 lg:col-span-1">
+              <CardHeader className="pb-4">
+                <Shield className="w-10 sm:w-12 h-10 sm:h-12 text-primary mx-auto mb-3 sm:mb-4" />
+                <CardTitle className="text-lg sm:text-xl">Secure Platform</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Advanced security features protect your content and ensure safe transactions
                 </CardDescription>
               </CardHeader>
@@ -183,13 +184,13 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to start your journey?</h2>
-          <p className="text-lg text-gray-600 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Ready to start your journey?</h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 px-2">
             Join thousands of creators who are already building their communities and earning from their passion.
           </p>
-          <Button size="lg" className="text-lg px-8 py-4" onClick={handleGetStarted}>
+          <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto" onClick={handleGetStarted}>
             Get Started Today
           </Button>
         </div>
