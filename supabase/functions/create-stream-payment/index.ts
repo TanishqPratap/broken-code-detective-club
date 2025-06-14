@@ -27,9 +27,9 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { streamId, tierId, amount } = await req.json();
+    const { streamId, amount } = await req.json();
 
-    if (!streamId || !tierId || !amount) {
+    if (!streamId || !amount) {
       throw new Error("Missing required parameters");
     }
 
@@ -72,7 +72,6 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/`,
       metadata: {
         streamId,
-        tierId,
         userId: user.id,
       },
     });
@@ -83,7 +82,6 @@ serve(async (req) => {
       .insert({
         stream_id: streamId,
         subscriber_id: user.id,
-        tier_id: tierId,
         amount: amount,
         stripe_payment_intent_id: session.payment_intent,
         status: 'pending',

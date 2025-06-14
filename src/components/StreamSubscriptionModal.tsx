@@ -2,20 +2,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Star } from "lucide-react";
+import { Check, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-
-interface SubscriptionTier {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  features: string[];
-}
 
 interface StreamSubscriptionModalProps {
   isOpen: boolean;
@@ -27,37 +18,36 @@ interface StreamSubscriptionModalProps {
 const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSuccess }: StreamSubscriptionModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
+  const [streamData, setStreamData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [processingTierId, setProcessingTierId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      fetchSubscriptionTiers();
+      fetchStreamData();
     }
-  }, [isOpen]);
+  }, [isOpen, streamId]);
 
-  const fetchSubscriptionTiers = async () => {
+  const fetchStreamData = async () => {
     try {
       const { data, error } = await supabase
-        .from('subscription_tiers')
+        .from('live_streams')
         .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
+        .eq('id', streamId)
+        .single();
 
       if (error) throw error;
-      setTiers(data || []);
+      setStreamData(data);
     } catch (error) {
-      console.error('Error fetching subscription tiers:', error);
+      console.error('Error fetching stream data:', error);
       toast({
         title: "Error",
-        description: "Failed to load subscription options",
+        description: "Failed to load stream information",
         variant: "destructive",
       });
     }
   };
 
-  const handleSubscribe = async (tierId: string, price: number) => {
+  const handleSubscribe = async () => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -67,7 +57,15 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
       return;
     }
 
-    setProcessingTierId(tierId);
+    if (!streamData?.price) {
+      toast({
+        title: "Error",
+        description: "Stream price not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -75,8 +73,7 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
       const { data, error } = await supabase.functions.invoke('create-stream-payment', {
         body: {
           streamId,
-          tierId,
-          amount: price
+          amount: streamData.price
         }
       });
 
@@ -95,60 +92,73 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
       });
     } finally {
       setLoading(false);
-      setProcessingTierId(null);
     }
   };
 
+  if (!streamData) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading stream information...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Subscribe to Watch Stream</DialogTitle>
           <DialogDescription>
-            Choose a subscription tier to access this livestream
+            Get access to this livestream
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-3 gap-4 mt-6">
-          {tiers.map((tier, index) => (
-            <Card key={tier.id} className={`relative ${index === 1 ? 'ring-2 ring-primary' : ''}`}>
-              {index === 1 && (
-                <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                  <Star className="w-3 h-3 mr-1" />
-                  Most Popular
-                </Badge>
-              )}
-              
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl">{tier.name}</CardTitle>
-                <CardDescription>{tier.description}</CardDescription>
-                <div className="text-2xl font-bold">
-                  ${tier.price}
-                  <span className="text-sm font-normal text-muted-foreground">/access</span>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <ul className="space-y-2 mb-6">
-                  {tier.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleSubscribe(tier.id, tier.price)}
-                  disabled={loading}
-                >
-                  {processingTierId === tier.id ? "Processing..." : "Subscribe Now"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="mt-6">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">{streamData.title}</CardTitle>
+            <CardDescription>{streamData.description || "Premium livestream access"}</CardDescription>
+            <div className="text-2xl font-bold flex items-center justify-center gap-1">
+              <DollarSign className="w-6 h-6" />
+              {streamData.price}
+              <span className="text-sm font-normal text-muted-foreground">/access</span>
+            </div>
+          </CardHeader>
+          
+          <CardContent>
+            <ul className="space-y-2 mb-6">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                <span className="text-sm">24-hour stream access</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                <span className="text-sm">HD streaming quality</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                <span className="text-sm">Chat participation</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                <span className="text-sm">Instant access after payment</span>
+              </li>
+            </ul>
+            
+            <Button 
+              className="w-full" 
+              onClick={handleSubscribe}
+              disabled={loading}
+              size="lg"
+            >
+              {loading ? "Processing..." : `Subscribe for $${streamData.price}`}
+            </Button>
+          </CardContent>
+        </Card>
       </DialogContent>
     </Dialog>
   );
