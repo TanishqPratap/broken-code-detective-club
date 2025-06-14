@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Paperclip, Image, Video, Mic } from "lucide-react";
+import { MessageCircle, Paperclip, Image, Video, Mic, DollarSign } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import TipModal from "./TipModal";
 
 interface PaidDMChatProps {
   sessionId: string;
@@ -26,8 +28,10 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { toast } = useToast();
 
   // Fetch chat session info (creator & subscriber IDs)
   const [sessionInfo, setSessionInfo] = useState<{ creator_id: string; subscriber_id: string; } | null>(null);
@@ -143,6 +147,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       return { url: publicUrl, type: mediaType };
     } catch (error) {
       console.error('Error uploading media:', error);
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload media file. Please try again.",
+        variant: "destructive",
+      });
       return null;
     } finally {
       setUploadingMedia(false);
@@ -190,6 +199,27 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
     setInput("");
     setLoading(false);
+  };
+
+  const handleTipSent = async (amount: number, message?: string) => {
+    if (!sessionInfo) return;
+
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    // Send a message indicating a tip was sent
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: `💰 Sent a tip of $${amount}${message ? `: ${message}` : ''}`
+    });
+
+    toast({
+      title: "Tip Sent!",
+      description: `Successfully sent $${amount} tip`,
+    });
   };
 
   const renderMediaMessage = (message: MessageRow) => {
@@ -264,7 +294,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       </div>
       
       <div className="space-y-2">
-        {/* Media Upload Button */}
+        {/* Media Upload and Tip Buttons */}
         <div className="flex gap-2 justify-center">
           <input
             ref={fileInputRef}
@@ -326,6 +356,16 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           >
             <Mic className="w-3 h-3" />
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTipModal(true)}
+            className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
+          >
+            <DollarSign className="w-3 h-3" />
+            Tip
+          </Button>
         </div>
 
         {/* Text Message Form */}
@@ -347,6 +387,16 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           </Button>
         </form>
       </div>
+
+      {/* Tip Modal */}
+      {showTipModal && sessionInfo && (
+        <TipModal
+          isOpen={showTipModal}
+          onClose={() => setShowTipModal(false)}
+          recipientId={currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id}
+          onTipSent={handleTipSent}
+        />
+      )}
     </div>
   );
 };
