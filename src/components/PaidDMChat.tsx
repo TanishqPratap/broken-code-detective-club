@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Paperclip, Image, Video, Mic, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TipModal from "./TipModal";
+import VideoCall from "./VideoCall";
 
 interface PaidDMChatProps {
   sessionId: string;
@@ -29,6 +29,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isVideoCallInitiator, setIsVideoCallInitiator] = useState(false);
+  const [videoCallOffer, setVideoCallOffer] = useState<RTCSessionDescriptionInit | null>(null);
+  const [videoCallAnswer, setVideoCallAnswer] = useState<RTCSessionDescriptionInit | null>(null);
+  const [videoCallIceCandidate, setVideoCallIceCandidate] = useState<RTCIceCandidate | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
@@ -282,140 +287,288 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  const handleVideoCallMessage = (content: string, senderId: string) => {
+    try {
+      if (content.startsWith('VIDEO_CALL_OFFER:')) {
+        const offerData = JSON.parse(content.replace('VIDEO_CALL_OFFER:', ''));
+        if (senderId !== currentUserId) {
+          setVideoCallOffer(offerData);
+          setShowVideoCall(true);
+          setIsVideoCallInitiator(false);
+        }
+      } else if (content.startsWith('VIDEO_CALL_ANSWER:')) {
+        const answerData = JSON.parse(content.replace('VIDEO_CALL_ANSWER:', ''));
+        if (senderId !== currentUserId) {
+          setVideoCallAnswer(answerData);
+        }
+      } else if (content.startsWith('VIDEO_CALL_ICE:')) {
+        const iceData = JSON.parse(content.replace('VIDEO_CALL_ICE:', ''));
+        if (senderId !== currentUserId) {
+          setVideoCallIceCandidate(iceData);
+        }
+      } else if (content === 'VIDEO_CALL_END') {
+        if (senderId !== currentUserId) {
+          setShowVideoCall(false);
+          toast({
+            title: "Call Ended",
+            description: "The other participant ended the video call",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing video call message:', error);
+    }
+  };
+
+  const startVideoCall = async () => {
+    if (!sessionInfo) return;
+    
+    setShowVideoCall(true);
+    setIsVideoCallInitiator(true);
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    // Send a regular message to notify about video call
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "📹 Started a video call"
+    });
+  };
+
+  const handleVideoCallOfferCreated = async (offer: RTCSessionDescriptionInit) => {
+    if (!sessionInfo) return;
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: `VIDEO_CALL_OFFER:${JSON.stringify(offer)}`
+    });
+  };
+
+  const handleVideoCallAnswerCreated = async (answer: RTCSessionDescriptionInit) => {
+    if (!sessionInfo) return;
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: `VIDEO_CALL_ANSWER:${JSON.stringify(answer)}`
+    });
+  };
+
+  const handleVideoCallIceCandidate = async (candidate: RTCIceCandidate) => {
+    if (!sessionInfo) return;
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: `VIDEO_CALL_ICE:${JSON.stringify(candidate)}`
+    });
+  };
+
+  const endVideoCall = async () => {
+    if (!sessionInfo) return;
+    
+    setShowVideoCall(false);
+    
+    const recipient_id =
+      currentUserId === sessionInfo.creator_id
+        ? sessionInfo.subscriber_id
+        : sessionInfo.creator_id;
+
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "VIDEO_CALL_END"
+    });
+
+    // Send a regular message to notify about call end
+    await supabase.from("messages").insert({
+      sender_id: currentUserId,
+      recipient_id,
+      content: "📹 Video call ended"
+    });
+  };
+
   if (!sessionInfo) return <div className="p-4">Loading chat...</div>;
 
   return (
-    <div className="flex flex-col h-[400px] border rounded-lg shadow p-4 bg-white">
-      <div className="font-bold flex items-center gap-2 mb-2">
-        <MessageCircle className="w-5 h-5" />
-        Paid Direct Messages
-      </div>
-      <div className="flex-1 overflow-y-auto space-y-2 mb-3">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`max-w-[70%] ${
-              m.sender_id === currentUserId
-                ? "ml-auto bg-purple-100 text-right"
-                : "mr-auto bg-gray-100 text-left"
-            } px-3 py-1 rounded`}
-          >
-            <div className="text-xs text-muted-foreground mb-1">
-              {m.sender_id === currentUserId ? "You" : "Them"}
-              <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+    <>
+      <div className="flex flex-col h-[400px] border rounded-lg shadow p-4 bg-white">
+        <div className="font-bold flex items-center gap-2 mb-2">
+          <MessageCircle className="w-5 h-5" />
+          Paid Direct Messages
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2 mb-3">
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={`max-w-[70%] ${
+                m.sender_id === currentUserId
+                  ? "ml-auto bg-purple-100 text-right"
+                  : "mr-auto bg-gray-100 text-left"
+              } px-3 py-1 rounded`}
+            >
+              <div className="text-xs text-muted-foreground mb-1">
+                {m.sender_id === currentUserId ? "You" : "Them"}
+                <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+              </div>
+              <div>{m.content}</div>
+              {renderMediaMessage(m)}
             </div>
-            <div>{m.content}</div>
-            {renderMediaMessage(m)}
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        
+        <div className="space-y-2">
+          {/* Media Upload, Video Call, and Tip Buttons */}
+          <div className="flex gap-2 justify-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,audio/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingMedia}
+              className="flex items-center gap-1"
+            >
+              <Paperclip className="w-3 h-3" />
+              {uploadingMedia ? "Uploading..." : "Media"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = "image/*";
+                  fileInputRef.current.click();
+                }
+              }}
+              disabled={uploadingMedia}
+            >
+              <Image className="w-3 h-3" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = "video/*";
+                  fileInputRef.current.click();
+                }
+              }}
+              disabled={uploadingMedia}
+            >
+              <Video className="w-3 h-3" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = "audio/*";
+                  fileInputRef.current.click();
+                }
+              }}
+              disabled={uploadingMedia}
+            >
+              <Mic className="w-3 h-3" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTipModal(true)}
+              className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
+            >
+              <DollarSign className="w-3 h-3" />
+              Tip
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={startVideoCall}
+              disabled={uploadingMedia || showVideoCall}
+              className="flex items-center gap-1 text-blue-600 border-blue-600 hover:bg-blue-50"
+            >
+              <Video className="w-3 h-3" />
+              Video Call
+            </Button>
           </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-      
-      <div className="space-y-2">
-        {/* Media Upload and Tip Buttons */}
-        <div className="flex gap-2 justify-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*,audio/*"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingMedia}
-            className="flex items-center gap-1"
-          >
-            <Paperclip className="w-3 h-3" />
-            {uploadingMedia ? "Uploading..." : "Media"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (fileInputRef.current) {
-                fileInputRef.current.accept = "image/*";
-                fileInputRef.current.click();
-              }
+
+          {/* Text Message Form */}
+          <form
+            className="flex gap-2"
+            onSubmit={e => {
+              e.preventDefault();
+              sendMessage();
             }}
-            disabled={uploadingMedia}
           >
-            <Image className="w-3 h-3" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (fileInputRef.current) {
-                fileInputRef.current.accept = "video/*";
-                fileInputRef.current.click();
-              }
-            }}
-            disabled={uploadingMedia}
-          >
-            <Video className="w-3 h-3" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (fileInputRef.current) {
-                fileInputRef.current.accept = "audio/*";
-                fileInputRef.current.click();
-              }
-            }}
-            disabled={uploadingMedia}
-          >
-            <Mic className="w-3 h-3" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTipModal(true)}
-            className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
-          >
-            <DollarSign className="w-3 h-3" />
-            Tip
-          </Button>
+            <Input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Type your message..."
+              disabled={loading || uploadingMedia}
+            />
+            <Button type="submit" disabled={loading || !input.trim() || uploadingMedia}>
+              Send
+            </Button>
+          </form>
         </div>
 
-        {/* Text Message Form */}
-        <form
-          className="flex gap-2"
-          onSubmit={e => {
-            e.preventDefault();
-            sendMessage();
-          }}
-        >
-          <Input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={loading || uploadingMedia}
+        {/* Tip Modal */}
+        {showTipModal && sessionInfo && (
+          <TipModal
+            isOpen={showTipModal}
+            onClose={() => setShowTipModal(false)}
+            recipientId={currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id}
+            onTipSent={handleTipSent}
           />
-          <Button type="submit" disabled={loading || !input.trim() || uploadingMedia}>
-            Send
-          </Button>
-        </form>
+        )}
       </div>
 
-      {/* Tip Modal */}
-      {showTipModal && sessionInfo && (
-        <TipModal
-          isOpen={showTipModal}
-          onClose={() => setShowTipModal(false)}
-          recipientId={currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id}
-          onTipSent={handleTipSent}
+      {/* Video Call Modal */}
+      {showVideoCall && (
+        <VideoCall
+          isInitiator={isVideoCallInitiator}
+          onClose={endVideoCall}
+          onOfferCreated={handleVideoCallOfferCreated}
+          onAnswerCreated={handleVideoCallAnswerCreated}
+          onIceCandidateGenerated={handleVideoCallIceCandidate}
+          remoteOffer={videoCallOffer}
+          remoteAnswer={videoCallAnswer}
+          remoteIceCandidate={videoCallIceCandidate}
         />
       )}
-    </div>
+    </>
   );
 };
 
