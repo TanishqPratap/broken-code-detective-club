@@ -76,8 +76,7 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
           enableWorker: false,
           lowLatencyMode: true,
           backBufferLength: 90,
-          maxLoadingDelay: 4,
-          retryDelayInMs: 1000
+          maxLoadingDelay: 4
         });
 
         hlsRef.current = hls;
