@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Star, Users, TrendingUp, Shield, Compass, Video, Play } from "lucide-re
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostFeed from "@/components/PostFeed";
+import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -93,6 +93,7 @@ const Index = () => {
           </div>
         </div>
 
+        <Footer />
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
@@ -194,6 +195,7 @@ const Index = () => {
         </div>
       </section>
 
+      <Footer />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
