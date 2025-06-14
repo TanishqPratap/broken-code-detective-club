@@ -29,6 +29,7 @@ const VideoCall = ({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [setupStep, setSetupStep] = useState<'requesting-media' | 'initializing-connection' | 'ready'>('requesting-media');
   const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const setupInProgressRef = useRef(false);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -84,10 +85,11 @@ const VideoCall = ({
     }
   }, [remoteStream]);
 
-  // Main setup effect - simplified dependency array
+  // Main setup effect - run only once and track completion
   useEffect(() => {
-    if (isSetupComplete) return;
+    if (isSetupComplete || setupInProgressRef.current) return;
 
+    setupInProgressRef.current = true;
     let mounted = true;
 
     const setupVideoCall = async () => {
@@ -102,7 +104,7 @@ const VideoCall = ({
           isInitiator
         });
 
-        // Step 1: Request media permissions
+        // Step 1: Request media permissions if needed
         if (!localStream && !isInitializing && !hasMediaPermissions) {
           console.log("Step 1: Requesting media permissions");
           setSetupStep('requesting-media');
@@ -112,7 +114,7 @@ const VideoCall = ({
             if (!mounted) return;
           } catch (error) {
             console.error("Failed to get media permissions:", error);
-            if (!mounted) return;
+            setupInProgressRef.current = false;
             return;
           }
         }
@@ -127,63 +129,57 @@ const VideoCall = ({
             if (!mounted) return;
           } catch (error) {
             console.error("Failed to initialize peer connection:", error);
-            if (!mounted) return;
+            setupInProgressRef.current = false;
             return;
           }
         }
 
-        // Step 3: Create offer if we're the initiator
-        if (localStream && isPeerConnectionReady && isInitiator && !isInitializing) {
-          console.log("Step 3: Creating offer (initiator)");
+        // Step 3: Complete setup and create offer if initiator
+        if (localStream && isPeerConnectionReady && !isSetupComplete) {
+          console.log("Step 3: Completing setup");
           setSetupStep('ready');
           setIsSetupComplete(true);
+          setupInProgressRef.current = false;
           
-          // Small delay to ensure everything is ready
-          setTimeout(() => {
-            if (mounted) {
-              createOfferIfInitiator();
-            }
-          }, 100);
-        } else if (localStream && isPeerConnectionReady && !isInitiator) {
-          console.log("Step 3: Ready to receive offer (non-initiator)");
-          setSetupStep('ready');
-          setIsSetupComplete(true);
+          if (isInitiator) {
+            // Small delay to ensure everything is ready
+            setTimeout(() => {
+              if (mounted) {
+                createOfferIfInitiator();
+              }
+            }, 100);
+          }
         }
 
       } catch (error) {
         console.error("Error in video call setup:", error);
+        setupInProgressRef.current = false;
       }
     };
 
     setupVideoCall();
 
-    // Cleanup function
     return () => {
       mounted = false;
-      if (!isSetupComplete) {
-        console.log("=== VideoCall Cleanup (setup incomplete) ===");
-        cleanupStream();
-        cleanupPeerConnection();
-        setRemoteStream(null);
-      }
     };
   }, [
-    // Only include essential dependencies that should trigger re-setup
+    localStream,
     hasMediaPermissions,
     isPeerConnectionReady,
     isSetupComplete,
-    !!localStream
+    isInitializing
   ]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
       console.log("=== VideoCall Component Unmount Cleanup ===");
       cleanupStream();
       cleanupPeerConnection();
       setRemoteStream(null);
+      setupInProgressRef.current = false;
     };
-  }, []);
+  }, [cleanupStream, cleanupPeerConnection]);
 
   // End call handler
   const handleEndCall = useCallback(() => {
@@ -221,7 +217,11 @@ const VideoCall = ({
           <p className="text-gray-600 mb-4">{permissionError}</p>
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => requestMediaPermissions()}
+              onClick={() => {
+                setIsSetupComplete(false);
+                setupInProgressRef.current = false;
+                requestMediaPermissions();
+              }}
               className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
             >
               Try Again
