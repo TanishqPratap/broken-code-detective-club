@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PhoneOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface StreamVideoCallProps {
   callId: string;
@@ -22,12 +23,13 @@ const StreamVideoCall: React.FC<StreamVideoCallProps> = ({
   isInitiator 
 }) => {
   const client = useStreamVideoClient();
+  const { user } = useAuth();
   const [call, setCall] = useState<Call | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!client) return;
+    if (!client || !user) return;
 
     const initCall = async () => {
       try {
@@ -40,7 +42,7 @@ const StreamVideoCall: React.FC<StreamVideoCallProps> = ({
           // Create and join the call as initiator
           await newCall.getOrCreate({
             data: {
-              members: [{ user_id: client.user?.id }],
+              members: [{ user_id: user.id }],
             },
           });
         } else {
@@ -74,7 +76,7 @@ const StreamVideoCall: React.FC<StreamVideoCallProps> = ({
         call.leave();
       }
     };
-  }, [client, callId, isInitiator, onCallEnd, toast]);
+  }, [client, callId, isInitiator, onCallEnd, toast, user]);
 
   const handleEndCall = async () => {
     if (call) {
