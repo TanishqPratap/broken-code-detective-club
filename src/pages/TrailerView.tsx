@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ArrowLeft, Play, Star, UserPlus, Eye, Heart, MessageCircle, Share, Send } from "lucide-react";
 import { toast } from "sonner";
+import SEOHead from "@/components/SEOHead";
 
 interface Comment {
   id: string;
@@ -278,8 +278,21 @@ const TrailerView = () => {
     );
   }
 
+  const trailerTitle = `${trailer.title} by ${creator.display_name || creator.username}`;
+  const trailerDescription = trailer.description || `Watch this amazing trailer from ${creator.display_name || creator.username}`;
+  const trailerImage = trailer.media_url;
+  const trailerUrl = `${window.location.origin}/creator/${creatorId}/trailer/${trailerId}`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <SEOHead
+        title={trailerTitle}
+        description={trailerDescription}
+        image={trailerImage}
+        url={trailerUrl}
+        type="video"
+      />
+      
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       <div className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">

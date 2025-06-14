@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +10,7 @@ import PaidDMModal from "@/components/PaidDMModal";
 import CreatorProfile from "@/components/CreatorProfile";
 import TrailerPreviewCard from "@/components/TrailerPreviewCard";
 import { useToast } from "@/hooks/use-toast";
+import SEOHead from "@/components/SEOHead";
 
 interface CreatorData {
   id: string;
@@ -267,8 +267,21 @@ const CreatorProfilePage = () => {
     );
   }
 
+  const creatorTitle = `${creator.display_name || creator.username} - Content Creator`;
+  const creatorDescription = creator.bio || `Check out ${creator.display_name || creator.username}'s exclusive content and trailers`;
+  const creatorImage = creator.avatar_url || "/placeholder.svg";
+  const creatorUrl = `${window.location.origin}/creator/${creator.id}`;
+
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title={creatorTitle}
+        description={creatorDescription}
+        image={creatorImage}
+        url={creatorUrl}
+        type="profile"
+      />
+      
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       <CreatorProfile

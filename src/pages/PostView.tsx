@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +8,7 @@ import PostCard from "@/components/PostCard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import SEOHead from "@/components/SEOHead";
 
 interface Post {
   id: string;
@@ -150,8 +150,21 @@ const PostView = () => {
     );
   }
 
+  const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
+  const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
+  const postImage = post.media_url || "/placeholder.svg";
+  const postUrl = `${window.location.origin}/posts/${post.id}`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <SEOHead
+        title={postTitle}
+        description={postDescription}
+        image={postImage}
+        url={postUrl}
+        type="article"
+      />
+      
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       <div className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
