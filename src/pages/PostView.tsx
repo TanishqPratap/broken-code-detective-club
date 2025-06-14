@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,7 +51,6 @@ const PostView = () => {
         .from('posts')
         .select(`
           *,
-          thumbnail_url,
           profiles!posts_user_id_fkey (
             display_name,
             username,
@@ -107,7 +107,7 @@ const PostView = () => {
       const typedPost: Post = {
         ...postData,
         content_type: postData.content_type as 'text' | 'image' | 'video',
-        thumbnail_url: postData.thumbnail_url || null,
+        thumbnail_url: (postData as any).thumbnail_url || null,
         profiles: postData.profiles as {
           display_name: string | null;
           username: string;
