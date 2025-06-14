@@ -64,12 +64,13 @@ const AvatarUpload = ({
 
       console.log('File uploaded successfully');
 
-      // Get public URL
+      // Get public URL with cache busting parameter
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      const publicUrl = data.publicUrl;
+      // Add timestamp to force browser to reload the image
+      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
       console.log('Public URL generated:', publicUrl);
 
       // Update profile with new avatar URL
