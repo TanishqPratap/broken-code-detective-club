@@ -81,6 +81,9 @@ const TrailerView = () => {
         creator: creatorData
       };
 
+      console.log('TrailerView - Full trailer data:', trailerWithCreator);
+      console.log('TrailerView - Thumbnail URL from DB:', trailerWithCreator.thumbnail_url);
+
       setTrailer(trailerWithCreator);
 
       // Fetch all trailers from the same creator
@@ -133,25 +136,22 @@ const TrailerView = () => {
   const trailerTitle = `${trailer.title} by ${trailer.creator.display_name || trailer.creator.username}`;
   const trailerDescription = trailer.description || `Watch this amazing trailer from ${trailer.creator.display_name || trailer.creator.username}`;
   
-  // Improved trailer image logic for social sharing
+  // Improved trailer image logic for social sharing - prioritize thumbnail_url
   let trailerImage = "/placeholder.svg";
   
-  if (trailer.content_type === 'video') {
-    // For videos, prioritize thumbnail_url, then fallback to placeholder
-    if (trailer.thumbnail_url) {
-      trailerImage = trailer.thumbnail_url;
-    }
-    // Don't use video URL for social media - keep placeholder
+  if (trailer.thumbnail_url) {
+    // Use generated thumbnail for videos or any content that has one
+    trailerImage = trailer.thumbnail_url;
+    console.log('TrailerView - Using thumbnail_url for social sharing:', trailer.thumbnail_url);
   } else if (trailer.content_type === 'image' && trailer.media_url) {
-    // For images, use the actual image
+    // For images without thumbnails, use the actual image
     trailerImage = trailer.media_url;
+    console.log('TrailerView - Using media_url for social sharing:', trailer.media_url);
   }
   
   const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
 
-  console.log('TrailerView - Trailer:', trailer);
-  console.log('TrailerView - Using image for social media:', trailerImage);
-  console.log('TrailerView - Thumbnail URL:', trailer.thumbnail_url);
+  console.log('TrailerView - Final image for SEOHead:', trailerImage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">

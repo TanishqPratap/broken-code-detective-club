@@ -116,6 +116,9 @@ const PostView = () => {
         user_liked: userLiked
       };
 
+      console.log('PostView - Full post data:', typedPost);
+      console.log('PostView - Thumbnail URL from DB:', typedPost.thumbnail_url);
+
       setPost(typedPost);
     } catch (error) {
       console.error('Error fetching post:', error);
@@ -155,25 +158,22 @@ const PostView = () => {
   const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
   const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
   
-  // Improved post image logic for social sharing
+  // Improved post image logic for social sharing - prioritize thumbnail_url
   let postImage = "/placeholder.svg";
   
-  if (post.content_type === 'video') {
-    // For videos, prioritize thumbnail_url, then fallback to placeholder
-    if (post.thumbnail_url) {
-      postImage = post.thumbnail_url;
-    }
-    // Don't use video URL for social media - keep placeholder
+  if (post.thumbnail_url) {
+    // Use generated thumbnail for videos or any content that has one
+    postImage = post.thumbnail_url;
+    console.log('PostView - Using thumbnail_url for social sharing:', post.thumbnail_url);
   } else if (post.content_type === 'image' && post.media_url) {
-    // For images, use the actual image
+    // For images without thumbnails, use the actual image
     postImage = post.media_url;
+    console.log('PostView - Using media_url for social sharing:', post.media_url);
   }
   
   const postUrl = `${window.location.origin}/posts/${post.id}`;
 
-  console.log('PostView - Post:', post);
-  console.log('PostView - Using image for social media:', postImage);
-  console.log('PostView - Thumbnail URL:', post.thumbnail_url);
+  console.log('PostView - Final image for SEOHead:', postImage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
