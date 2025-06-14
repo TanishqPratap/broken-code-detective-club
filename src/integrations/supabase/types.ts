@@ -668,6 +668,42 @@ export type Database = {
           },
         ]
       }
+      trailer_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          creator_id: string
+          description: string | null
+          id: string
+          media_url: string
+          order_position: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          id?: string
+          media_url: string
+          order_position: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          id?: string
+          media_url?: string
+          order_position?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
