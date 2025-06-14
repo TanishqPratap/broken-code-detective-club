@@ -241,6 +241,74 @@ export type Database = {
           },
         ]
       }
+      posts: {
+        Row: {
+          content_type: string
+          created_at: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          text_content: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          text_content?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          text_content?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      posts_interactions: {
+        Row: {
+          comment_text: string | null
+          created_at: string
+          id: string
+          interaction_type: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          comment_text?: string | null
+          created_at?: string
+          id?: string
+          interaction_type: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          comment_text?: string | null
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_interactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
