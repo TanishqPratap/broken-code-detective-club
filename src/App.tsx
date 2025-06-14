@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import Watch from "./pages/Watch";
 import Posts from "./pages/Posts";
 import NotFound from "./pages/NotFound";
 import StreamPaymentSuccess from "./pages/StreamPaymentSuccess";
+import PaidDM from "./pages/PaidDM";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +30,7 @@ const App = () => (
             <Route path="/discover" element={<Discover />} />
             <Route path="/posts" element={<Posts />} />
             <Route path="/watch/:streamId" element={<Watch />} />
+            <Route path="/dm" element={<PaidDM />} />
             <Route path="/stream-payment-success" element={<StreamPaymentSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
