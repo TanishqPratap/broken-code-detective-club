@@ -68,6 +68,58 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     setIsVideoCallInitiator(false);
   }, []); // Dependencies: state setters are stable
 
+  const handleVideoCallMessage = useCallback((content: string, senderId: string) => {
+    try {
+      if (content.startsWith('VIDEO_CALL_OFFER:')) {
+        const offerData = JSON.parse(content.replace('VIDEO_CALL_OFFER:', ''));
+        if (senderId !== currentUserId) {
+          console.log('Received video call offer:', offerData);
+          setVideoCallOffer(offerData);
+          setVideoCallAnswer(null); 
+          setVideoCallIceCandidate(null); 
+          
+          setIncomingCallFrom(senderId === sessionInfo?.creator_id ? "Creator" : "Subscriber");
+          setShowCallPickup(true);
+        }
+      } else if (content.startsWith('VIDEO_CALL_ANSWER:')) {
+        const answerData = JSON.parse(content.replace('VIDEO_CALL_ANSWER:', ''));
+        if (senderId !== currentUserId) {
+          console.log('Received video call answer:', answerData);
+          setVideoCallAnswer(answerData);
+        }
+      } else if (content.startsWith('VIDEO_CALL_ICE:')) {
+        const iceData = JSON.parse(content.replace('VIDEO_CALL_ICE:', ''));
+        if (senderId !== currentUserId) {
+          console.log('Received ICE candidate:', iceData);
+          setVideoCallIceCandidate(iceData);
+        }
+      } else if (content === 'VIDEO_CALL_END') {
+        if (senderId !== currentUserId) {
+          setShowVideoCall(false);
+          setShowCallPickup(false);
+          resetVideoCallState();
+          toast({
+            title: "Call Ended",
+            description: "The other participant ended the video call",
+          });
+        }
+      } else if (content === 'VIDEO_CALL_DECLINED') {
+        if (senderId !== currentUserId) {
+          setShowVideoCall(false);
+          setShowCallPickup(false);
+          resetVideoCallState();
+          toast({
+            title: "Call Declined",
+            description: "The other participant declined the video call",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing video call message:', error);
+    }
+  }, [currentUserId, sessionInfo, resetVideoCallState, toast]);
+
   useEffect(() => {
     let ignore = false;
     if (!sessionInfo) return;
@@ -143,7 +195,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       supabase.removeChannel(channel);
       console.log(`Unsubscribed from dm-${sessionId}`);
     };
-  }, [sessionInfo, sessionId, handleVideoCallMessage]); // Added handleVideoCallMessage
+  }, [sessionInfo, sessionId, handleVideoCallMessage]); // handleVideoCallMessage now declared above
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -244,58 +296,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       default: return null;
     }
   };
-
-  const handleVideoCallMessage = useCallback((content: string, senderId: string) => {
-    try {
-      if (content.startsWith('VIDEO_CALL_OFFER:')) {
-        const offerData = JSON.parse(content.replace('VIDEO_CALL_OFFER:', ''));
-        if (senderId !== currentUserId) {
-          console.log('Received video call offer:', offerData);
-          setVideoCallOffer(offerData);
-          setVideoCallAnswer(null); 
-          setVideoCallIceCandidate(null); 
-          
-          setIncomingCallFrom(senderId === sessionInfo?.creator_id ? "Creator" : "Subscriber");
-          setShowCallPickup(true);
-        }
-      } else if (content.startsWith('VIDEO_CALL_ANSWER:')) {
-        const answerData = JSON.parse(content.replace('VIDEO_CALL_ANSWER:', ''));
-        if (senderId !== currentUserId) {
-          console.log('Received video call answer:', answerData);
-          setVideoCallAnswer(answerData);
-        }
-      } else if (content.startsWith('VIDEO_CALL_ICE:')) {
-        const iceData = JSON.parse(content.replace('VIDEO_CALL_ICE:', ''));
-        if (senderId !== currentUserId) {
-          console.log('Received ICE candidate:', iceData);
-          setVideoCallIceCandidate(iceData);
-        }
-      } else if (content === 'VIDEO_CALL_END') {
-        if (senderId !== currentUserId) {
-          setShowVideoCall(false);
-          setShowCallPickup(false);
-          resetVideoCallState();
-          toast({
-            title: "Call Ended",
-            description: "The other participant ended the video call",
-          });
-        }
-      } else if (content === 'VIDEO_CALL_DECLINED') {
-        if (senderId !== currentUserId) {
-          setShowVideoCall(false);
-          setShowCallPickup(false);
-          resetVideoCallState();
-          toast({
-            title: "Call Declined",
-            description: "The other participant declined the video call",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error parsing video call message:', error);
-    }
-  }, [currentUserId, sessionInfo, resetVideoCallState, toast]);
 
   const startVideoCall = useCallback(async () => {
     if (!sessionInfo) return;
