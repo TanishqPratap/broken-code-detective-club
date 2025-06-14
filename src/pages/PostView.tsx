@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -106,6 +107,7 @@ const PostView = () => {
       const typedPost: Post = {
         ...postData,
         content_type: postData.content_type as 'text' | 'image' | 'video',
+        thumbnail_url: postData.thumbnail_url || null,
         profiles: postData.profiles as {
           display_name: string | null;
           username: string;
