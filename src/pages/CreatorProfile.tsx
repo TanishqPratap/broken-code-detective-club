@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import TrailerViewer from "@/components/TrailerViewer";
 import PaidDMModal from "@/components/PaidDMModal";
+import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,6 +39,7 @@ const CreatorProfile = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaidDMModal, setShowPaidDMModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   useEffect(() => {
     if (creatorId) {
@@ -103,39 +104,14 @@ const CreatorProfile = () => {
       return;
     }
 
-    if (!creator) return;
+    // Open payment modal instead of direct subscription
+    setShowSubscriptionModal(true);
+  };
 
-    setSubscribing(true);
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          subscriber_id: user.id,
-          creator_id: creator.id,
-          status: 'active',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Subscribed successfully!",
-        description: `You are now subscribed to ${creator.display_name}`,
-      });
-
-      // Refresh creator data
-      await fetchCreatorProfile();
-    } catch (error) {
-      console.error('Error subscribing:', error);
-      toast({
-        title: "Subscription failed",
-        description: "There was an error processing your subscription.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubscribing(false);
-    }
+  const handleSubscriptionSuccess = async () => {
+    setShowSubscriptionModal(false);
+    // Refresh creator data after successful subscription
+    await fetchCreatorProfile();
   };
 
   const handleUnsubscribe = async () => {
@@ -270,7 +246,7 @@ const CreatorProfile = () => {
                 ) : (
                   <Button onClick={handleSubscribe} disabled={subscribing} size="lg">
                     <UserPlus className="w-4 h-4 mr-2" />
-                    {subscribing ? "Subscribing..." : `Subscribe - $${creator.subscription_price}/month`}
+                    {subscribing ? "Processing..." : `Subscribe - $${creator.subscription_price}/month`}
                   </Button>
                 )}
                 
@@ -302,16 +278,29 @@ const CreatorProfile = () => {
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       
-      {creator && user && (
-        <PaidDMModal
-          open={showPaidDMModal}
-          onClose={() => setShowPaidDMModal(false)}
-          creatorId={creator.id}
-          creatorName={creator.display_name || creator.username}
-          chatRate={creator.chat_rate || 0}
-          subscriberId={user.id}
-          onSessionCreated={handlePaidDMSessionCreated}
-        />
+      {creator && (
+        <>
+          <SubscriptionPaymentModal
+            isOpen={showSubscriptionModal}
+            onClose={() => setShowSubscriptionModal(false)}
+            creatorId={creator.id}
+            creatorName={creator.display_name || creator.username}
+            subscriptionPrice={creator.subscription_price}
+            onSubscriptionSuccess={handleSubscriptionSuccess}
+          />
+          
+          {user && (
+            <PaidDMModal
+              open={showPaidDMModal}
+              onClose={() => setShowPaidDMModal(false)}
+              creatorId={creator.id}
+              creatorName={creator.display_name || creator.username}
+              chatRate={creator.chat_rate || 0}
+              subscriberId={user.id}
+              onSessionCreated={handlePaidDMSessionCreated}
+            />
+          )}
+        </>
       )}
     </div>
   );

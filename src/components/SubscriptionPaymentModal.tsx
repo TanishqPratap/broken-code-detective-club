@@ -1,20 +1,20 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Check, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-interface PaidDMModalProps {
-  open: boolean;
+interface SubscriptionPaymentModalProps {
+  isOpen: boolean;
   onClose: () => void;
   creatorId: string;
   creatorName: string;
-  chatRate: number;
-  subscriberId: string;
-  onSessionCreated: (sessionId: string) => void;
+  subscriptionPrice: number;
+  onSubscriptionSuccess: () => void;
 }
 
 declare global {
@@ -23,28 +23,28 @@ declare global {
   }
 }
 
-const PaidDMModal = ({
-  open,
-  onClose,
-  creatorId,
-  creatorName,
-  chatRate,
-  subscriberId,
-  onSessionCreated
-}: PaidDMModalProps) => {
+const SubscriptionPaymentModal = ({ 
+  isOpen, 
+  onClose, 
+  creatorId, 
+  creatorName, 
+  subscriptionPrice, 
+  onSubscriptionSuccess 
+}: SubscriptionPaymentModalProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<{
     amountUSD: number;
     amountINR: number;
     exchangeRate: number;
   } | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       loadRazorpayScript();
     }
-  }, [open]);
+  }, [isOpen]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -60,22 +60,30 @@ const PaidDMModal = ({
     });
   };
 
-  const handleStartSession = async () => {
+  const handleSubscribe = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to subscribe",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Create a tip payment order (reusing the tip payment function for DM)
-      const { data, error } = await supabase.functions.invoke('create-tip-payment', {
+      // Create a subscription payment order
+      const { data, error } = await supabase.functions.invoke('create-subscription-payment', {
         body: {
-          recipientId: creatorId,
-          amount: chatRate,
-          message: `Paid DM session with ${creatorName}`
+          creatorId,
+          amount: subscriptionPrice
         }
       });
 
       if (error) throw error;
 
-      console.log('DM payment order created:', data);
+      console.log('Subscription payment order created:', data);
 
       // Store payment info for display
       setPaymentInfo({
@@ -90,57 +98,43 @@ const PaidDMModal = ({
         amount: data.amount,
         currency: data.currency,
         order_id: data.order_id,
-        name: "Paid DM Session",
-        description: `1 hour chat session with ${creatorName}`,
+        name: "Creator Subscription",
+        description: `Monthly subscription to ${creatorName}`,
         prefill: {
-          email: subscriberId,
+          email: user.email,
         },
         theme: {
           color: "#3399cc"
         },
         handler: async function (response: any) {
           try {
-            console.log('DM Payment response received:', response);
+            console.log('Payment response received:', response);
             
             // Verify payment on backend
-            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tip-payment', {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-subscription-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                recipientId: creatorId
+                creatorId
               }
             });
 
             if (verifyError) throw verifyError;
 
-            console.log('DM Payment verified successfully:', verifyData);
-
-            // Create chat session after successful payment
-            const { data: sessionData, error: sessionError } = await supabase
-              .from("chat_sessions")
-              .insert({
-                creator_id: creatorId,
-                subscriber_id: subscriberId,
-                hourly_rate: chatRate,
-                payment_status: "paid",
-                stripe_payment_intent_id: response.razorpay_payment_id
-              })
-              .select()
-              .single();
-
-            if (sessionError) throw sessionError;
+            console.log('Subscription payment verified successfully:', verifyData);
 
             toast({
-              title: "Payment Successful!",
-              description: `You can now chat with ${creatorName}`,
+              title: "Subscription Successful!",
+              description: `You are now subscribed to ${creatorName}`,
             });
             
-            onSessionCreated(sessionData.id);
+            // Close modal and trigger success callback
             onClose();
+            onSubscriptionSuccess();
             
           } catch (error: any) {
-            console.error('DM Payment verification failed:', error);
+            console.error('Payment verification failed:', error);
             toast({
               title: "Payment Verification Failed",
               description: error.message || "Please contact support",
@@ -159,36 +153,40 @@ const PaidDMModal = ({
       razorpay.open();
       
     } catch (error: any) {
-      console.error('Error creating DM payment:', error);
+      console.error('Error creating subscription payment:', error);
       toast({
         title: "Payment Error",
         description: error.message || "Failed to process payment",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Start a Paid DM with {creatorName}</DialogTitle>
+          <DialogTitle>Subscribe to {creatorName}</DialogTitle>
+          <DialogDescription>
+            Get access to exclusive content and support your favorite creator
+          </DialogDescription>
         </DialogHeader>
 
         <Card className="mt-6">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">1 Hour Chat Session</CardTitle>
-            <CardDescription>Direct messaging with {creatorName}</CardDescription>
+            <CardTitle className="text-xl">Monthly Subscription</CardTitle>
+            <CardDescription>Full access to {creatorName}'s content</CardDescription>
             <div className="text-2xl font-bold flex items-center justify-center gap-1">
               <DollarSign className="w-6 h-6" />
-              {chatRate} USD
+              {subscriptionPrice} USD
               {paymentInfo && (
                 <div className="text-sm font-normal text-muted-foreground ml-2">
                   ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
                 </div>
               )}
-              <span className="text-sm font-normal text-muted-foreground">/hour</span>
+              <span className="text-sm font-normal text-muted-foreground">/month</span>
             </div>
             {paymentInfo && (
               <p className="text-xs text-muted-foreground">
@@ -201,29 +199,29 @@ const PaidDMModal = ({
             <ul className="space-y-2 mb-6">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span className="text-sm">1 hour of direct messaging</span>
+                <span className="text-sm">Access to all premium content</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span className="text-sm">Real-time chat interface</span>
+                <span className="text-sm">Exclusive posts and media</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span className="text-sm">Media sharing supported</span>
+                <span className="text-sm">Direct messaging privileges</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span className="text-sm">Instant session activation</span>
+                <span className="text-sm">Monthly subscription renewal</span>
               </li>
             </ul>
             
             <Button 
-              onClick={handleStartSession} 
+              className="w-full" 
+              onClick={handleSubscribe}
               disabled={loading}
-              className="w-full"
               size="lg"
             >
-              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${chatRate} with Razorpay`}
+              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${subscriptionPrice} with Razorpay`}
             </Button>
           </CardContent>
         </Card>
@@ -232,4 +230,4 @@ const PaidDMModal = ({
   );
 };
 
-export default PaidDMModal;
+export default SubscriptionPaymentModal;
