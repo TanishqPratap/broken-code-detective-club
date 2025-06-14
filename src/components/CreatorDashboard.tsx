@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Users, Eye, TrendingUp, Plus, Video } from "lucide-react";
+import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare } from "lucide-react";
 import LivestreamDashboard from "./LivestreamDashboard";
+import PaidDMPricing from "./PaidDMPricing";
 
 const CreatorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -29,11 +30,15 @@ const CreatorDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="livestream">
             <Video className="w-4 h-4 mr-2" />
             Livestream
+          </TabsTrigger>
+          <TabsTrigger value="paid-dm">
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Paid DM
           </TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
         </TabsList>
@@ -138,6 +143,10 @@ const CreatorDashboard = () => {
 
         <TabsContent value="livestream">
           <LivestreamDashboard />
+        </TabsContent>
+
+        <TabsContent value="paid-dm">
+          <PaidDMPricing />
         </TabsContent>
 
         <TabsContent value="content">
