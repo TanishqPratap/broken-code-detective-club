@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import PostCard from "./PostCard";
 import CreatePost from "./CreatePost";
+import TrailerPreviewCard from "./TrailerPreviewCard";
 
 interface Post {
   id: string;
@@ -22,14 +23,36 @@ interface Post {
   user_liked?: boolean;
 }
 
+interface TrailerContent {
+  id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  media_url: string;
+  order_position: number;
+  created_at: string;
+  creator: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    is_verified: boolean;
+    subscription_price: number | null;
+  };
+}
+
+type FeedItem = 
+  | { type: 'post'; data: Post }
+  | { type: 'trailer'; data: TrailerContent };
+
 const PostFeed = () => {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPosts = async () => {
+  const fetchFeedContent = async () => {
     try {
-      // First, get all posts
+      // Fetch posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -42,88 +65,130 @@ const PostFeed = () => {
           created_at
         `)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(10);
 
       if (postsError) throw postsError;
 
-      if (!postsData || postsData.length === 0) {
-        setPosts([]);
-        return;
+      // Fetch trailer content with creator profiles
+      const { data: trailersData, error: trailersError } = await supabase
+        .from('trailer_content')
+        .select(`
+          id,
+          title,
+          description,
+          content_type,
+          media_url,
+          order_position,
+          created_at,
+          creator_id,
+          profiles!trailer_content_creator_id_fkey (
+            id,
+            username,
+            display_name,
+            avatar_url,
+            is_verified,
+            subscription_price
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (trailersError) throw trailersError;
+
+      // Process posts
+      let processedPosts: FeedItem[] = [];
+      if (postsData && postsData.length > 0) {
+        const userIds = [...new Set(postsData.map(post => post.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(
+          profilesData?.map(profile => [profile.id, profile]) || []
+        );
+
+        const postsWithData = await Promise.all(
+          postsData.map(async (post) => {
+            const { count: likesCount } = await supabase
+              .from('posts_interactions')
+              .select('*', { count: 'exact', head: true })
+              .eq('post_id', post.id)
+              .eq('interaction_type', 'like');
+
+            let userLiked = false;
+            if (user) {
+              const { data: userLikeData } = await supabase
+                .from('posts_interactions')
+                .select('id')
+                .eq('post_id', post.id)
+                .eq('user_id', user.id)
+                .eq('interaction_type', 'like')
+                .single();
+              
+              userLiked = !!userLikeData;
+            }
+
+            const profile = profilesMap.get(post.user_id);
+
+            return {
+              ...post,
+              content_type: post.content_type as 'text' | 'image' | 'video',
+              profiles: profile || {
+                display_name: null,
+                username: 'Unknown User',
+                avatar_url: null
+              },
+              likes_count: likesCount || 0,
+              user_liked: userLiked
+            };
+          })
+        );
+
+        processedPosts = postsWithData.map(post => ({ type: 'post' as const, data: post }));
       }
 
-      // Get user profiles for each post
-      const userIds = [...new Set(postsData.map(post => post.user_id))];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, username, avatar_url')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      // Create a map of profiles for quick lookup
-      const profilesMap = new Map(
-        profilesData?.map(profile => [profile.id, profile]) || []
-      );
-
-      // Get likes count and user's like status for each post
-      const postsWithData = await Promise.all(
-        postsData.map(async (post) => {
-          // Get likes count
-          const { count: likesCount } = await supabase
-            .from('posts_interactions')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id)
-            .eq('interaction_type', 'like');
-
-          // Check if current user liked this post
-          let userLiked = false;
-          if (user) {
-            const { data: userLikeData } = await supabase
-              .from('posts_interactions')
-              .select('id')
-              .eq('post_id', post.id)
-              .eq('user_id', user.id)
-              .eq('interaction_type', 'like')
-              .single();
-            
-            userLiked = !!userLikeData;
+      // Process trailer content
+      const processedTrailers: FeedItem[] = (trailersData || []).map(trailer => ({
+        type: 'trailer' as const,
+        data: {
+          ...trailer,
+          creator: {
+            id: trailer.creator_id,
+            username: trailer.profiles?.username || 'Unknown',
+            display_name: trailer.profiles?.display_name || null,
+            avatar_url: trailer.profiles?.avatar_url || null,
+            is_verified: trailer.profiles?.is_verified || false,
+            subscription_price: trailer.profiles?.subscription_price || null,
           }
+        }
+      }));
 
-          // Get the profile for this post
-          const profile = profilesMap.get(post.user_id);
-
-          return {
-            ...post,
-            content_type: post.content_type as 'text' | 'image' | 'video',
-            profiles: profile || {
-              display_name: null,
-              username: 'Unknown User',
-              avatar_url: null
-            },
-            likes_count: likesCount || 0,
-            user_liked: userLiked
-          };
-        })
+      // Combine and sort by created_at
+      const allItems = [...processedPosts, ...processedTrailers].sort((a, b) => 
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
       );
 
-      setPosts(postsWithData);
+      setFeedItems(allItems);
     } catch (error) {
-      console.error('Error fetching posts:', error);
+      console.error('Error fetching feed content:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeedContent();
   }, [user]);
 
   const handlePostCreated = () => {
-    fetchPosts();
+    fetchFeedContent();
   };
 
   const handlePostDeleted = () => {
-    fetchPosts();
+    fetchFeedContent();
   };
 
   if (loading) {
@@ -132,7 +197,7 @@ const PostFeed = () => {
         {user && <CreatePost onPostCreated={handlePostCreated} />}
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2">Loading posts...</p>
+          <p className="mt-2">Loading feed...</p>
         </div>
       </div>
     );
@@ -142,18 +207,23 @@ const PostFeed = () => {
     <div className="space-y-6">
       {user && <CreatePost onPostCreated={handlePostCreated} />}
       
-      {posts.length === 0 ? (
+      {feedItems.length === 0 ? (
         <div className="text-center py-16">
-          <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
-          <p className="text-gray-600">Be the first to share something!</p>
+          <h3 className="text-xl font-semibold mb-2">No content yet</h3>
+          <p className="text-gray-600">Be the first to share something or check out some creators!</p>
         </div>
       ) : (
-        posts.map((post) => (
-          <PostCard 
-            key={post.id} 
-            post={post} 
-            onDelete={handlePostDeleted}
-          />
+        feedItems.map((item, index) => (
+          <div key={`${item.type}-${item.data.id}-${index}`}>
+            {item.type === 'post' ? (
+              <PostCard 
+                post={item.data as Post} 
+                onDelete={handlePostDeleted}
+              />
+            ) : (
+              <TrailerPreviewCard trailer={item.data as TrailerContent} />
+            )}
+          </div>
         ))
       )}
     </div>
