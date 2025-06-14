@@ -107,6 +107,9 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
                 : undefined
             };
             setMessages((prev) => [...prev, newMessage]);
+            
+            // Handle video call signaling messages
+            handleVideoCallMessage(m.content, m.sender_id);
           }
         }
       )
@@ -122,6 +125,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Upload media file
   const uploadMedia = async (file: File): Promise<{ url: string; type: 'image' | 'video' | 'audio' } | null> => {
     try {
       setUploadingMedia(true);
@@ -166,6 +170,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  // Handle file selection and upload
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !sessionInfo) return;
@@ -192,6 +197,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  // Send message
   const sendMessage = async () => {
     if (!input.trim() || !sessionInfo) return;
     setLoading(true);
@@ -209,6 +215,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     setLoading(false);
   };
 
+  // Handle tip sent
   const handleTipSent = async (amount: number, message?: string) => {
     console.log('Handling tip sent:', { amount, message, sessionInfo });
     
@@ -245,6 +252,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  // Render media message
   const renderMediaMessage = (message: MessageRow) => {
     if (!message.media_url || !message.media_type) return null;
 
@@ -287,11 +295,13 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  // Handle video call signaling messages
   const handleVideoCallMessage = (content: string, senderId: string) => {
     try {
       if (content.startsWith('VIDEO_CALL_OFFER:')) {
         const offerData = JSON.parse(content.replace('VIDEO_CALL_OFFER:', ''));
         if (senderId !== currentUserId) {
+          console.log('Received video call offer:', offerData);
           setVideoCallOffer(offerData);
           setShowVideoCall(true);
           setIsVideoCallInitiator(false);
@@ -299,11 +309,13 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
       } else if (content.startsWith('VIDEO_CALL_ANSWER:')) {
         const answerData = JSON.parse(content.replace('VIDEO_CALL_ANSWER:', ''));
         if (senderId !== currentUserId) {
+          console.log('Received video call answer:', answerData);
           setVideoCallAnswer(answerData);
         }
       } else if (content.startsWith('VIDEO_CALL_ICE:')) {
         const iceData = JSON.parse(content.replace('VIDEO_CALL_ICE:', ''));
         if (senderId !== currentUserId) {
+          console.log('Received ICE candidate:', iceData);
           setVideoCallIceCandidate(iceData);
         }
       } else if (content === 'VIDEO_CALL_END') {
@@ -320,9 +332,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  // Start video call
   const startVideoCall = async () => {
     if (!sessionInfo) return;
     
+    console.log('Starting video call as initiator');
     setShowVideoCall(true);
     setIsVideoCallInitiator(true);
     
@@ -339,9 +353,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   };
 
+  // Handle video call offer created
   const handleVideoCallOfferCreated = async (offer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
     
+    console.log('Sending video call offer:', offer);
     const recipient_id =
       currentUserId === sessionInfo.creator_id
         ? sessionInfo.subscriber_id
@@ -354,9 +370,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   };
 
+  // Handle video call answer created
   const handleVideoCallAnswerCreated = async (answer: RTCSessionDescriptionInit) => {
     if (!sessionInfo) return;
     
+    console.log('Sending video call answer:', answer);
     const recipient_id =
       currentUserId === sessionInfo.creator_id
         ? sessionInfo.subscriber_id
@@ -369,9 +387,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   };
 
+  // Handle video call ICE candidate generated
   const handleVideoCallIceCandidate = async (candidate: RTCIceCandidate) => {
     if (!sessionInfo) return;
     
+    console.log('Sending ICE candidate:', candidate);
     const recipient_id =
       currentUserId === sessionInfo.creator_id
         ? sessionInfo.subscriber_id
@@ -384,10 +404,15 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
   };
 
+  // End video call
   const endVideoCall = async () => {
     if (!sessionInfo) return;
     
+    console.log('Ending video call');
     setShowVideoCall(false);
+    setVideoCallOffer(null);
+    setVideoCallAnswer(null);
+    setVideoCallIceCandidate(null);
     
     const recipient_id =
       currentUserId === sessionInfo.creator_id
@@ -418,23 +443,33 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           Paid Direct Messages
         </div>
         <div className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`max-w-[70%] ${
-                m.sender_id === currentUserId
-                  ? "ml-auto bg-purple-100 text-right"
-                  : "mr-auto bg-gray-100 text-left"
-              } px-3 py-1 rounded`}
-            >
-              <div className="text-xs text-muted-foreground mb-1">
-                {m.sender_id === currentUserId ? "You" : "Them"}
-                <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+          {messages.map((m) => {
+            // Don't display video call signaling messages
+            if (m.content.startsWith('VIDEO_CALL_OFFER:') || 
+                m.content.startsWith('VIDEO_CALL_ANSWER:') || 
+                m.content.startsWith('VIDEO_CALL_ICE:') ||
+                m.content === 'VIDEO_CALL_END') {
+              return null;
+            }
+
+            return (
+              <div
+                key={m.id}
+                className={`max-w-[70%] ${
+                  m.sender_id === currentUserId
+                    ? "ml-auto bg-purple-100 text-right"
+                    : "mr-auto bg-gray-100 text-left"
+                } px-3 py-1 rounded`}
+              >
+                <div className="text-xs text-muted-foreground mb-1">
+                  {m.sender_id === currentUserId ? "You" : "Them"}
+                  <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+                </div>
+                <div>{m.content}</div>
+                {renderMediaMessage(m)}
               </div>
-              <div>{m.content}</div>
-              {renderMediaMessage(m)}
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </div>
         
