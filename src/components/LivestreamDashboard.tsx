@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Play, Square, Users, Eye } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Play, Square, Users, Eye, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,8 @@ const LivestreamDashboard = () => {
   const { toast } = useToast();
   const [streamTitle, setStreamTitle] = useState("");
   const [streamDescription, setStreamDescription] = useState("");
+  const [isPaidStream, setIsPaidStream] = useState(false);
+  const [streamPrice, setStreamPrice] = useState("9.99");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamData, setStreamData] = useState<any>(null);
   const [viewerCount, setViewerCount] = useState(0);
@@ -31,7 +33,9 @@ const LivestreamDashboard = () => {
           title: streamTitle,
           description: streamDescription,
           stream_key: streamKey,
-          status: 'offline'
+          status: 'offline',
+          is_paid: isPaidStream,
+          price: isPaidStream ? parseFloat(streamPrice) : null
         });
 
       if (error) throw error;
@@ -42,7 +46,9 @@ const LivestreamDashboard = () => {
         streamKey: streamKey,
         playbackId: playbackId,
         playbackUrl: `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
-        rtmpIngestUrl: `rtmp://rtmp.livepeer.studio/live/${streamKey}`
+        rtmpIngestUrl: `rtmp://rtmp.livepeer.studio/live/${streamKey}`,
+        isPaid: isPaidStream,
+        price: isPaidStream ? parseFloat(streamPrice) : null
       });
 
       console.log('Stream saved to database successfully');
@@ -61,6 +67,15 @@ const LivestreamDashboard = () => {
       toast({
         title: "Error",
         description: "Please enter a stream title",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isPaidStream && (!streamPrice || parseFloat(streamPrice) <= 0)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid price for paid stream",
         variant: "destructive",
       });
       return;
@@ -90,7 +105,7 @@ const LivestreamDashboard = () => {
       
       toast({
         title: "Stream Created",
-        description: "Your stream has been created successfully",
+        description: `Your ${isPaidStream ? 'paid' : 'free'} stream has been created successfully`,
       });
     } catch (error: any) {
       console.error('Error creating stream:', error);
@@ -188,9 +203,17 @@ const LivestreamDashboard = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Livestream Dashboard</h1>
-        <Badge variant={isStreaming ? "default" : "secondary"}>
-          {isStreaming ? "LIVE" : "OFFLINE"}
-        </Badge>
+        <div className="flex items-center gap-4">
+          {streamData?.isPaid && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              ${streamData.price}
+            </Badge>
+          )}
+          <Badge variant={isStreaming ? "default" : "secondary"}>
+            {isStreaming ? "LIVE" : "OFFLINE"}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
@@ -222,6 +245,41 @@ const LivestreamDashboard = () => {
                   disabled={isStreaming}
                 />
               </div>
+
+              {/* Paid Stream Toggle */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="paid-stream">Paid Stream</Label>
+                    <p className="text-sm text-gray-600">Charge viewers to access your stream</p>
+                  </div>
+                  <Switch
+                    id="paid-stream"
+                    checked={isPaidStream}
+                    onCheckedChange={setIsPaidStream}
+                    disabled={isStreaming || !!streamData}
+                  />
+                </div>
+
+                {isPaidStream && (
+                  <div>
+                    <Label htmlFor="price">Stream Price ($)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={streamPrice}
+                      onChange={(e) => setStreamPrice(e.target.value)}
+                      placeholder="9.99"
+                      disabled={isStreaming || !!streamData}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      One-time payment for 24-hour access to this stream
+                    </p>
+                  </div>
+                )}
+              </div>
               
               {!streamData ? (
                 <Button 
@@ -229,7 +287,7 @@ const LivestreamDashboard = () => {
                   disabled={isCreatingStream}
                   className="w-full"
                 >
-                  {isCreatingStream ? "Creating..." : "Create Stream"}
+                  {isCreatingStream ? "Creating..." : `Create ${isPaidStream ? 'Paid' : 'Free'} Stream`}
                 </Button>
               ) : (
                 <div className="space-y-4">
