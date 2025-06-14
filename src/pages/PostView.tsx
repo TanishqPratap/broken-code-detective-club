@@ -49,7 +49,7 @@ const PostView = () => {
         .from('posts')
         .select(`
           *,
-          profiles (
+          profiles!posts_user_id_fkey (
             display_name,
             username,
             avatar_url
@@ -94,10 +94,22 @@ const PostView = () => {
         }
       }
 
-      // Type the content_type properly
+      // Ensure we have valid profile data
+      if (!postData.profiles || typeof postData.profiles !== 'object') {
+        toast.error("Could not load post author information");
+        navigate('/posts');
+        return;
+      }
+
+      // Type the content_type properly and construct the final post object
       const typedPost: Post = {
         ...postData,
         content_type: postData.content_type as 'text' | 'image' | 'video',
+        profiles: postData.profiles as {
+          display_name: string | null;
+          username: string;
+          avatar_url: string | null;
+        },
         likes_count: likesCount,
         user_liked: userLiked
       };
