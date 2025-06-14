@@ -15,6 +15,12 @@ interface StreamSubscriptionModalProps {
   onSubscriptionSuccess: () => void;
 }
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSuccess }: StreamSubscriptionModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -24,8 +30,23 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
   useEffect(() => {
     if (isOpen) {
       fetchStreamData();
+      loadRazorpayScript();
     }
   }, [isOpen, streamId]);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const fetchStreamData = async () => {
     try {
@@ -69,7 +90,7 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
     setLoading(true);
 
     try {
-      // Create a payment intent for stream subscription
+      // Create a Razorpay order
       const { data, error } = await supabase.functions.invoke('create-stream-payment', {
         body: {
           streamId,
@@ -79,10 +100,59 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
 
       if (error) throw error;
 
-      // Redirect to Stripe checkout
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
+      // Initialize Razorpay payment
+      const options = {
+        key: data.key_id,
+        amount: data.amount,
+        currency: data.currency,
+        order_id: data.order_id,
+        name: "Stream Access",
+        description: `Access to ${streamData.title}`,
+        prefill: {
+          email: user.email,
+        },
+        theme: {
+          color: "#3399cc"
+        },
+        handler: async function (response: any) {
+          try {
+            // Verify payment on backend
+            const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                streamId
+              }
+            });
+
+            if (verifyError) throw verifyError;
+
+            toast({
+              title: "Payment Successful!",
+              description: "You now have access to the livestream",
+            });
+            
+            onSubscriptionSuccess();
+          } catch (error: any) {
+            console.error('Payment verification failed:', error);
+            toast({
+              title: "Payment Verification Failed",
+              description: error.message || "Please contact support",
+              variant: "destructive",
+            });
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+      
     } catch (error: any) {
       console.error('Error creating payment:', error);
       toast({
@@ -155,7 +225,7 @@ const StreamSubscriptionModal = ({ isOpen, onClose, streamId, onSubscriptionSucc
               disabled={loading}
               size="lg"
             >
-              {loading ? "Processing..." : `Subscribe for $${streamData.price}`}
+              {loading ? "Processing..." : `Pay ₹${streamData.price} with Razorpay`}
             </Button>
           </CardContent>
         </Card>

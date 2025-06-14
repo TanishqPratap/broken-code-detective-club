@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -33,48 +32,48 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
+    const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID");
+    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
 
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    if (!razorpayKeyId || !razorpayKeySecret) {
+      throw new Error("Razorpay credentials not configured");
     }
 
-    // Get stream details for the session
+    // Get stream details for the order
     const { data: streamData } = await supabaseClient
       .from('live_streams')
       .select('title')
       .eq('id', streamId)
       .single();
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { 
-              name: `Stream Access: ${streamData?.title || 'Live Stream'}`,
-              description: "Access to livestream content"
-            },
-            unit_amount: Math.round(amount * 100), // Convert to cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.get("origin")}/stream-payment-success?session_id={CHECKOUT_SESSION_ID}&stream_id=${streamId}`,
-      cancel_url: `${req.headers.get("origin")}/`,
-      metadata: {
+    // Create Razorpay order
+    const orderData = {
+      amount: Math.round(amount * 100), // Convert to paise (smallest currency unit)
+      currency: "INR",
+      receipt: `stream_${streamId}_${Date.now()}`,
+      notes: {
         streamId,
         userId: user.id,
+        streamTitle: streamData?.title || 'Live Stream'
+      }
+    };
+
+    const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
+    
+    const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(orderData),
     });
+
+    if (!razorpayResponse.ok) {
+      throw new Error("Failed to create Razorpay order");
+    }
+
+    const order = await razorpayResponse.json();
 
     // Create pending subscription record
     await supabaseClient
@@ -83,12 +82,17 @@ serve(async (req) => {
         stream_id: streamId,
         subscriber_id: user.id,
         amount: amount,
-        stripe_payment_intent_id: session.payment_intent,
+        stripe_payment_intent_id: order.id, // Using this field for Razorpay order ID
         status: 'pending',
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
       });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ 
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key_id: razorpayKeyId
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
