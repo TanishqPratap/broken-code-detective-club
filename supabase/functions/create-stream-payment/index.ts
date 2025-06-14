@@ -46,11 +46,16 @@ serve(async (req) => {
       .eq('id', streamId)
       .single();
 
+    // Create a shorter receipt (max 40 chars)
+    const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+    const streamIdShort = streamId.slice(0, 8); // First 8 chars of stream ID
+    const receipt = `str_${streamIdShort}_${timestamp}`;
+
     // Create Razorpay order
     const orderData = {
       amount: Math.round(amount * 100), // Convert to paise (smallest currency unit)
       currency: "INR",
-      receipt: `stream_${streamId}_${Date.now()}`,
+      receipt: receipt, // Now under 40 characters
       notes: {
         streamId,
         userId: user.id,
