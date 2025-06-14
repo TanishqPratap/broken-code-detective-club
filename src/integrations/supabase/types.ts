@@ -76,6 +76,7 @@ export type Database = {
           is_premium: boolean | null
           media_url: string | null
           price: number | null
+          thumbnail_url: string | null
           title: string
           updated_at: string
         }
@@ -88,6 +89,7 @@ export type Database = {
           is_premium?: boolean | null
           media_url?: string | null
           price?: number | null
+          thumbnail_url?: string | null
           title: string
           updated_at?: string
         }
@@ -100,6 +102,7 @@ export type Database = {
           is_premium?: boolean | null
           media_url?: string | null
           price?: number | null
+          thumbnail_url?: string | null
           title?: string
           updated_at?: string
         }
@@ -264,6 +267,7 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           text_content: string | null
+          thumbnail_url: string | null
           updated_at: string
           user_id: string
         }
@@ -274,6 +278,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           text_content?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -284,6 +289,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           text_content?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -677,6 +683,7 @@ export type Database = {
           id: string
           media_url: string
           order_position: number
+          thumbnail_url: string | null
           title: string
           updated_at: string
         }
@@ -688,6 +695,7 @@ export type Database = {
           id?: string
           media_url: string
           order_position: number
+          thumbnail_url?: string | null
           title: string
           updated_at?: string
         }
@@ -699,6 +707,7 @@ export type Database = {
           id?: string
           media_url?: string
           order_position?: number
+          thumbnail_url?: string | null
           title?: string
           updated_at?: string
         }

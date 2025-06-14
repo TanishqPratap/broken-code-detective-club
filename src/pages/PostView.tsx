@@ -107,7 +107,7 @@ const PostView = () => {
       const typedPost: Post = {
         ...postData,
         content_type: postData.content_type as 'text' | 'image' | 'video',
-        thumbnail_url: (postData as any).thumbnail_url || null,
+        thumbnail_url: postData.thumbnail_url || null,
         profiles: postData.profiles as {
           display_name: string | null;
           username: string;

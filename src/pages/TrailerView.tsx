@@ -77,7 +77,7 @@ const TrailerView = () => {
 
       const trailerWithCreator: Trailer = {
         ...trailerData,
-        thumbnail_url: (trailerData as any).thumbnail_url || null,
+        thumbnail_url: trailerData.thumbnail_url || null,
         creator: creatorData
       };
 
@@ -93,7 +93,7 @@ const TrailerView = () => {
       if (!allTrailersError && allTrailersData) {
         const trailersWithCreator = allTrailersData.map(t => ({
           ...t,
-          thumbnail_url: (t as any).thumbnail_url || null,
+          thumbnail_url: t.thumbnail_url || null,
           creator: creatorData
         }));
         setAllTrailers(trailersWithCreator);
