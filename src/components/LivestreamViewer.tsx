@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import StreamSubscriptionModal from "./StreamSubscriptionModal";
+import StreamChat from "./StreamChat";
+import StreamTipping from "./StreamTipping";
 import Hls from "hls.js";
 
 interface LivestreamViewerProps {
@@ -345,6 +347,10 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
               </CardContent>
             </Card>
 
+            <StreamTipping streamId={streamId} creatorId={streamData.creator_id} />
+
+            <StreamChat streamId={streamId} />
+
             <Card>
               <CardHeader>
                 <CardTitle>Stream Info</CardTitle>
@@ -366,14 +372,6 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Started:</span>
                     <span className="text-sm">{new Date(streamData.started_at).toLocaleTimeString()}</span>
-                  </div>
-                )}
-                {streamData.stream_key && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Stream Key:</span>
-                    <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
-                      {streamData.stream_key.slice(0, 8)}...
-                    </span>
                   </div>
                 )}
               </CardContent>
