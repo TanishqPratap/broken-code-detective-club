@@ -1,8 +1,11 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share, MoreHorizontal, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Heart, MessageCircle, Share, MoreHorizontal, Lock, Send } from "lucide-react";
+import { toast } from "sonner";
 
 interface Post {
   id: string;
@@ -32,6 +35,56 @@ interface ContentFeedProps {
 }
 
 const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) => {
+  const [expandedComments, setExpandedComments] = useState<string[]>([]);
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+
+  const toggleComments = (postId: string) => {
+    setExpandedComments(prev => 
+      prev.includes(postId) 
+        ? prev.filter(id => id !== postId)
+        : [...prev, postId]
+    );
+  };
+
+  const handleCommentSubmit = (postId: string) => {
+    const comment = commentTexts[postId]?.trim();
+    if (!comment) return;
+
+    // Call the parent's onComment function
+    onComment(postId);
+    
+    // Clear the comment input
+    setCommentTexts(prev => ({ ...prev, [postId]: "" }));
+    
+    toast.success("Comment posted!");
+  };
+
+  const handleShare = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const shareData = {
+      title: `Check out this post by ${post.creator.displayName}`,
+      text: post.content.text || `Amazing content from ${post.creator.displayName}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success("Post shared successfully!");
+      } else {
+        // Fallback to copying to clipboard
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success("Link copied to clipboard!");
+      }
+      onShare(postId);
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error("Failed to share post");
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {posts.map((post) => (
@@ -99,18 +152,84 @@ const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) =>
                   {post.likes}
                 </Button>
                 
-                <Button variant="ghost" size="sm" onClick={() => onComment(post.id)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => toggleComments(post.id)}
+                >
                   <MessageCircle className="w-4 h-4 mr-1" />
                   {post.comments}
                 </Button>
                 
-                <Button variant="ghost" size="sm" onClick={() => onShare(post.id)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleShare(post.id)}
+                >
                   <Share className="w-4 h-4" />
                 </Button>
               </div>
               
               <span className="text-sm text-muted-foreground">{post.timestamp}</span>
             </div>
+
+            {/* Comments Section */}
+            {expandedComments.includes(post.id) && (
+              <div className="mt-4 space-y-4 border-t pt-4">
+                {/* Add Comment Input */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Write a comment..."
+                    value={commentTexts[post.id] || ""}
+                    onChange={(e) => setCommentTexts(prev => ({ 
+                      ...prev, 
+                      [post.id]: e.target.value 
+                    }))}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleCommentSubmit(post.id);
+                      }
+                    }}
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleCommentSubmit(post.id)}
+                    disabled={!commentTexts[post.id]?.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Sample Comments */}
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback>JD</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">John Doe</span>
+                        <span className="text-xs text-muted-foreground">2h ago</span>
+                      </div>
+                      <p className="text-sm">Great content! Keep it up! 🔥</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback>AS</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">Alice Smith</span>
+                        <span className="text-xs text-muted-foreground">1h ago</span>
+                      </div>
+                      <p className="text-sm">Amazing work as always! 👏</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}
