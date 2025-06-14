@@ -40,18 +40,28 @@ const SEOHead = ({
     // Determine the best image to use for social sharing
     let shareImage = image;
     
-    // If we have a thumbnail URL (generated from video), use it
+    // Priority 1: Use thumbnail URL if available (best for social media)
     if (thumbnailUrl) {
       shareImage = thumbnailUrl;
-    } else if (image && (image.includes('.mp4') || image.includes('.webm') || image.includes('.mov'))) {
+    }
+    // Priority 2: For video content without thumbnails, check if image is actually a video file
+    else if (image && (image.includes('.mp4') || image.includes('.webm') || image.includes('.mov'))) {
       // For video files without thumbnails, use a placeholder
       shareImage = "/placeholder.svg";
     }
+    // Priority 3: Use the provided image (could be image content or fallback)
+    else {
+      shareImage = image;
+    }
     
-    // Ensure the image URL is absolute
+    // Ensure the image URL is absolute for social media
     if (shareImage && !shareImage.startsWith('http')) {
       shareImage = `${window.location.origin}${shareImage}`;
     }
+
+    console.log('SEO Head - Final share image:', shareImage);
+    console.log('SEO Head - Thumbnail URL:', thumbnailUrl);
+    console.log('SEO Head - Original image:', image);
 
     // Open Graph meta tags
     updateMetaTag('og:title', title);
@@ -68,6 +78,8 @@ const SEOHead = ({
     if (type === 'video' && videoUrl) {
       updateMetaTag('og:video', videoUrl);
       updateMetaTag('og:video:type', 'video/mp4');
+      updateMetaTag('og:video:width', '1280');
+      updateMetaTag('og:video:height', '720');
     }
 
     // Twitter Card meta tags

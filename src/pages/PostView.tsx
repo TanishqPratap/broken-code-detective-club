@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -156,15 +155,25 @@ const PostView = () => {
   const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
   const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
   
-  // Handle post image for social sharing - prioritize thumbnail_url for videos
+  // Improved post image logic for social sharing
   let postImage = "/placeholder.svg";
-  if (post.content_type === 'video' && post.thumbnail_url) {
-    postImage = post.thumbnail_url;
+  
+  if (post.content_type === 'video') {
+    // For videos, prioritize thumbnail_url, then fallback to placeholder
+    if (post.thumbnail_url) {
+      postImage = post.thumbnail_url;
+    }
+    // Don't use video URL for social media - keep placeholder
   } else if (post.content_type === 'image' && post.media_url) {
+    // For images, use the actual image
     postImage = post.media_url;
   }
   
   const postUrl = `${window.location.origin}/posts/${post.id}`;
+
+  console.log('PostView - Post:', post);
+  console.log('PostView - Using image for social media:', postImage);
+  console.log('PostView - Thumbnail URL:', post.thumbnail_url);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">

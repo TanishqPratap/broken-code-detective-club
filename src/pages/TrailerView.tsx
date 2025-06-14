@@ -133,15 +133,25 @@ const TrailerView = () => {
   const trailerTitle = `${trailer.title} by ${trailer.creator.display_name || trailer.creator.username}`;
   const trailerDescription = trailer.description || `Watch this amazing trailer from ${trailer.creator.display_name || trailer.creator.username}`;
   
-  // Use thumbnail for social sharing if available, otherwise use placeholder
+  // Improved trailer image logic for social sharing
   let trailerImage = "/placeholder.svg";
-  if (trailer.content_type === 'video' && trailer.thumbnail_url) {
-    trailerImage = trailer.thumbnail_url;
+  
+  if (trailer.content_type === 'video') {
+    // For videos, prioritize thumbnail_url, then fallback to placeholder
+    if (trailer.thumbnail_url) {
+      trailerImage = trailer.thumbnail_url;
+    }
+    // Don't use video URL for social media - keep placeholder
   } else if (trailer.content_type === 'image' && trailer.media_url) {
+    // For images, use the actual image
     trailerImage = trailer.media_url;
   }
   
   const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
+
+  console.log('TrailerView - Trailer:', trailer);
+  console.log('TrailerView - Using image for social media:', trailerImage);
+  console.log('TrailerView - Thumbnail URL:', trailer.thumbnail_url);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
