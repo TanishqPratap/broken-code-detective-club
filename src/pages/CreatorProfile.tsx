@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -202,10 +201,10 @@ const CreatorProfilePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-16">
+        <div className="container mx-auto px-4 py-8 sm:py-16">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading creator profile...</p>
+            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-sm sm:text-base">Loading creator profile...</p>
           </div>
         </div>
       </div>
@@ -216,10 +215,10 @@ const CreatorProfilePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-16">
+        <div className="container mx-auto px-4 py-8 sm:py-16">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Creator Not Found</h1>
-            <p className="text-gray-600">The requested creator profile could not be found.</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-4">Creator Not Found</h1>
+            <p className="text-sm sm:text-base text-gray-600">The requested creator profile could not be found.</p>
           </div>
         </div>
       </div>
@@ -249,9 +248,9 @@ const CreatorProfilePage = () => {
 
       {/* Trailers Section */}
       {trailers.length > 0 && (
-        <div className="container mx-auto px-4 py-8">
-          <h2 className="text-2xl font-bold mb-6">Free Previews</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Free Previews</h2>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {trailers.map((trailer) => (
               <TrailerPreviewCard key={trailer.id} trailer={trailer} />
             ))}

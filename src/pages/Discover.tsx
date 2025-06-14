@@ -232,10 +232,10 @@ const Discover = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-16">
+        <div className="container mx-auto px-4 py-8 sm:py-16">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading...</p>
+            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-sm sm:text-base">Loading...</p>
           </div>
         </div>
       </div>
@@ -246,29 +246,29 @@ const Discover = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Discover</h1>
-          <p className="text-gray-600">Find amazing creators and live streams</p>
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Discover</h1>
+          <p className="text-sm sm:text-base text-gray-600">Find amazing creators and live streams</p>
         </div>
 
         <Tabs defaultValue="creators" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="creators">Creators</TabsTrigger>
-            <TabsTrigger value="streams">Live Streams</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
+            <TabsTrigger value="creators" className="text-sm sm:text-base">Creators</TabsTrigger>
+            <TabsTrigger value="streams" className="text-sm sm:text-base">Live Streams</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="creators" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <TabsContent value="creators">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {creators.map((creator) => (
                 <Card 
                   key={creator.id} 
                   className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => navigate(`/creator/${creator.id}`)}
                 >
-                  <CardHeader className="text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <Avatar className="w-20 h-20">
+                  <CardHeader className="text-center pb-4">
+                    <div className="flex flex-col items-center gap-3 sm:gap-4">
+                      <Avatar className="w-16 h-16 sm:w-20 sm:h-20">
                         <AvatarImage src={creator.avatar_url} />
                         <AvatarFallback>
                           {creator.display_name?.[0] || creator.username?.[0] || "U"}
@@ -276,7 +276,7 @@ const Discover = () => {
                       </Avatar>
                       <div>
                         <div className="flex items-center gap-2 justify-center">
-                          <CardTitle className="text-lg">{creator.display_name || creator.username}</CardTitle>
+                          <CardTitle className="text-base sm:text-lg">{creator.display_name || creator.username}</CardTitle>
                           {creator.is_verified && (
                             <Badge variant="secondary" className="text-xs">
                               <Heart className="w-3 h-3 mr-1" />
@@ -284,23 +284,23 @@ const Discover = () => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600">@{creator.username}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">@{creator.username}</p>
                       </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent>
-                    <CardDescription className="mb-4 line-clamp-3 text-center">
+                  <CardContent className="pt-0">
+                    <CardDescription className="mb-3 sm:mb-4 line-clamp-3 text-center text-xs sm:text-sm">
                       {creator.bio || "No bio available"}
                     </CardDescription>
                     
-                    <div className="flex items-center justify-center gap-4 mb-4 text-sm text-gray-600">
+                    <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        <span>{creator.subscriber_count} subscribers</span>
+                        <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span>{creator.subscriber_count} subs</span>
                       </div>
                       <div className="text-primary font-semibold">
-                        ${creator.subscription_price}/month
+                        ${creator.subscription_price}/mo
                       </div>
                     </div>
 
@@ -311,11 +311,13 @@ const Discover = () => {
                             e.stopPropagation();
                             handleUnsubscribe(creator.id);
                           }}
-                          className="flex-1"
+                          className="flex-1 text-xs sm:text-sm"
                           variant="outline"
+                          size="sm"
                         >
-                          <UserCheck className="w-4 h-4 mr-2" />
-                          Subscribed
+                          <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Subscribed</span>
+                          <span className="sm:hidden">Sub'd</span>
                         </Button>
                       ) : (
                         <Button 
@@ -323,10 +325,12 @@ const Discover = () => {
                             e.stopPropagation();
                             handleSubscribe(creator);
                           }}
-                          className="flex-1"
+                          className="flex-1 text-xs sm:text-sm"
+                          size="sm"
                         >
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Subscribe
+                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Subscribe</span>
+                          <span className="sm:hidden">Sub</span>
                         </Button>
                       )}
                       {creator.chat_rate && (
@@ -336,10 +340,11 @@ const Discover = () => {
                             handlePaidDM(creator);
                           }}
                           variant="outline"
-                          size="icon"
+                          size="sm"
+                          className="p-2"
                           title={`Paid DM - $${creator.chat_rate}/hour`}
                         >
-                          <MessageSquare className="w-4 h-4" />
+                          <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       )}
                     </div>
@@ -349,26 +354,26 @@ const Discover = () => {
             </div>
 
             {creators.length === 0 && (
-              <div className="text-center py-16">
-                <h3 className="text-xl font-semibold mb-2">No creators found</h3>
-                <p className="text-gray-600">Be the first to become a creator!</p>
+              <div className="text-center py-12 sm:py-16">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">No creators found</h3>
+                <p className="text-sm sm:text-base text-gray-600">Be the first to become a creator!</p>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="streams" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <TabsContent value="streams">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {liveStreams.map((stream) => (
                 <Card key={stream.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-video bg-gray-900 relative">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Play className="w-12 h-12 text-white/60" />
+                      <Play className="w-8 h-8 sm:w-12 sm:h-12 text-white/60" />
                     </div>
-                    <div className="absolute top-4 left-4">
-                      <Badge variant={stream.status === 'live' ? "default" : "secondary"}>
+                    <div className="absolute top-2 sm:top-4 left-2 sm:left-4">
+                      <Badge variant={stream.status === 'live' ? "default" : "secondary"} className="text-xs">
                         {stream.status === 'live' ? (
                           <>
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2" />
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-1 sm:mr-2" />
                             LIVE
                           </>
                         ) : (
@@ -380,8 +385,8 @@ const Discover = () => {
                       </Badge>
                     </div>
                     {stream.status === 'live' && (
-                      <div className="absolute top-4 right-4">
-                        <Badge variant="outline" className="bg-black/50 text-white border-white/30">
+                      <div className="absolute top-2 sm:top-4 right-2 sm:right-4">
+                        <Badge variant="outline" className="bg-black/50 text-white border-white/30 text-xs">
                           <Users className="w-3 h-3 mr-1" />
                           {stream.viewer_count}
                         </Badge>
@@ -389,29 +394,30 @@ const Discover = () => {
                     )}
                   </div>
                   
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
                         <AvatarImage src={stream.profiles?.avatar_url} />
                         <AvatarFallback>
                           {stream.profiles?.display_name?.[0] || stream.profiles?.username?.[0] || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{stream.title}</CardTitle>
-                        <p className="text-sm text-gray-600">@{stream.profiles?.username}</p>
+                        <CardTitle className="text-sm sm:text-lg truncate">{stream.title}</CardTitle>
+                        <p className="text-xs sm:text-sm text-gray-600">@{stream.profiles?.username}</p>
                       </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent>
-                    <CardDescription className="mb-4 line-clamp-2">
+                  <CardContent className="pt-0">
+                    <CardDescription className="mb-3 sm:mb-4 line-clamp-2 text-xs sm:text-sm">
                       {stream.description || "No description available"}
                     </CardDescription>
                     <Button 
                       onClick={() => handleWatchStream(stream.id)}
-                      className="w-full"
+                      className="w-full text-xs sm:text-sm"
                       variant={stream.status === 'live' ? "default" : "outline"}
+                      size="sm"
                     >
                       {stream.status === 'live' ? 'Watch Live' : 'View Stream'}
                     </Button>
@@ -421,9 +427,9 @@ const Discover = () => {
             </div>
 
             {liveStreams.length === 0 && (
-              <div className="text-center py-16">
-                <h3 className="text-xl font-semibold mb-2">No streams available</h3>
-                <p className="text-gray-600">Check back later for live content!</p>
+              <div className="text-center py-12 sm:py-16">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">No streams available</h3>
+                <p className="text-sm sm:text-base text-gray-600">Check back later for live content!</p>
               </div>
             )}
           </TabsContent>

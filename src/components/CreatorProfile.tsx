@@ -55,7 +55,7 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
   return (
     <div className="min-h-screen bg-background">
       {/* Cover Photo */}
-      <div className="h-64 bg-gradient-to-r from-primary/30 to-primary/50 relative">
+      <div className="h-40 sm:h-48 md:h-64 bg-gradient-to-r from-primary/30 to-primary/50 relative">
         {creator.coverImage && (
           <img 
             src={creator.coverImage} 
@@ -67,79 +67,82 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
 
       <div className="container mx-auto px-4">
         {/* Profile Header */}
-        <div className="relative -mt-16 mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
-            <Avatar className="w-32 h-32 border-4 border-background">
+        <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-end sm:gap-6">
+            <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-background mx-auto sm:mx-0">
               <AvatarImage src={creator.avatar} />
-              <AvatarFallback className="text-2xl">{creator.displayName[0]}</AvatarFallback>
+              <AvatarFallback className="text-xl sm:text-2xl">{creator.displayName[0]}</AvatarFallback>
             </Avatar>
             
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold">{creator.displayName}</h1>
-              <p className="text-muted-foreground mb-2">@{creator.username}</p>
-              <p className="mb-4">{creator.bio}</p>
+            <div className="flex-1 text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl font-bold">{creator.displayName}</h1>
+              <p className="text-muted-foreground mb-2 text-sm sm:text-base">@{creator.username}</p>
+              <p className="mb-3 sm:mb-4 text-sm sm:text-base px-4 sm:px-0">{creator.bio}</p>
               
-              <div className="flex gap-6 text-sm text-muted-foreground mb-4">
+              <div className="flex justify-center sm:justify-start gap-4 sm:gap-6 text-sm text-muted-foreground mb-4">
                 <span><strong>{creator.postCount}</strong> posts</span>
                 <span><strong>{creator.subscriberCount}</strong> subscribers</span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Button variant="outline" size="sm">
-                <Share className="w-4 h-4 mr-2" />
+            <div className="flex flex-col gap-2 sm:gap-3 px-4 sm:px-0">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                <Share className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 Share
               </Button>
               {creator.isSubscribed ? (
-                <Button>
-                  <Heart className="w-4 h-4 mr-2" />
+                <Button className="w-full sm:w-auto text-xs sm:text-sm" size="sm">
+                  <Heart className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Subscribed
                 </Button>
               ) : (
-                <Button onClick={onSubscribe}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Subscribe for ${creator.subscriptionPrice}/month
+                <Button onClick={onSubscribe} className="w-full sm:w-auto text-xs sm:text-sm" size="sm">
+                  <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Subscribe for ${creator.subscriptionPrice}/month</span>
+                  <span className="sm:hidden">${creator.subscriptionPrice}/mo</span>
                 </Button>
               )}
-              <Button variant="outline" onClick={onStartPaidDM}>
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Paid DM
-              </Button>
+              {onStartPaidDM && (
+                <Button variant="outline" onClick={onStartPaidDM} className="w-full sm:w-auto text-xs sm:text-sm" size="sm">
+                  <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  Paid DM
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Content Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pb-6 sm:pb-8">
           {posts.map((post) => (
             <Card key={post.id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow">
-              <div className="relative h-64 bg-muted">
+              <div className="relative h-48 sm:h-64 bg-muted">
                 {post.isLocked && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-                    <Lock className="w-8 h-8 text-white" />
+                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                   </div>
                 )}
                 {post.type === "video" && !post.isLocked && (
                   <div className="absolute top-2 right-2 bg-black/50 rounded-full p-2">
-                    <Play className="w-4 h-4 text-white" />
+                    <Play className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                 )}
                 <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/40"></div>
               </div>
               
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                  <div className="flex items-center gap-4">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex justify-between items-center text-xs sm:text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 sm:gap-4">
                     <div className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" />
+                      <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>{post.likes}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>{post.comments}</span>
                     </div>
                   </div>
-                  <span>{post.timestamp}</span>
+                  <span className="text-xs">{post.timestamp}</span>
                 </div>
               </CardContent>
             </Card>
