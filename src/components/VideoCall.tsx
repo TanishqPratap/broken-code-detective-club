@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Video, VideoOff, Mic, MicOff, Phone, PhoneOff, Camera, CameraOff } from "lucide-react";
@@ -48,10 +47,22 @@ const VideoCall = ({
     };
   }, []);
 
-  // Handle remote offer - process immediately if we have a peer connection
+  // NEW: add effect to reset offerProcessed when remoteOffer changes (for new incoming call)
   useEffect(() => {
-    if (remoteOffer && peerConnectionRef.current && !isInitiator && !offerProcessed) {
-      console.log('Processing remote offer:', remoteOffer);
+    if (!isInitiator && remoteOffer) {
+      setOfferProcessed(false);
+    }
+  }, [remoteOffer, isInitiator]);
+
+  // MODIFIED: useEffect for handling remote offer
+  useEffect(() => {
+    if (
+      remoteOffer && 
+      peerConnectionRef.current && 
+      !isInitiator && 
+      !offerProcessed
+    ) {
+      console.log('[VideoCall] Processing remote offer:', remoteOffer);
       handleRemoteOffer(remoteOffer);
       setOfferProcessed(true);
     }
@@ -264,22 +275,33 @@ const VideoCall = ({
 
   const handleRemoteOffer = async (offer: RTCSessionDescriptionInit) => {
     try {
-      console.log('Handling remote offer');
+      console.log('[VideoCall] Handling remote offer');
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) {
-        console.log('No peer connection available, offer will be processed after initialization');
+        console.log('[VideoCall] No peer connection available, offer will be processed after initialization');
         return;
       }
 
       await peerConnection.setRemoteDescription(offer);
-      console.log('Remote description set, creating answer...');
+      console.log('[VideoCall] Remote description set, creating answer...');
       
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       onAnswerCreated?.(answer);
-      console.log('Answer created and sent');
+      console.log('[VideoCall] Answer created and sent');
+
+      // Apply any ICE candidates that came before remoteDescription was set
+      for (const candidate of pendingIceCandidates.current) {
+        try {
+          await peerConnection.addIceCandidate(candidate);
+          console.log('[VideoCall] Added pending ICE candidate after answer');
+        } catch (error) {
+          console.error('[VideoCall] Error adding pending ICE candidate:', error);
+        }
+      }
+      pendingIceCandidates.current = [];
     } catch (error) {
-      console.error('Error handling remote offer:', error);
+      console.error('[VideoCall] Error handling remote offer:', error);
       toast({
         title: "Connection Error",
         description: "Failed to process incoming call",
@@ -303,23 +325,23 @@ const VideoCall = ({
 
   const handleRemoteIceCandidate = async (candidate: RTCIceCandidate) => {
     try {
-      console.log('Handling remote ICE candidate');
+      console.log('[VideoCall] Handling remote ICE candidate');
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) {
-        console.log('Peer connection not ready, adding to pending candidates');
+        console.log('[VideoCall] Peer connection not ready, adding to pending candidates');
         pendingIceCandidates.current.push(candidate);
         return;
       }
 
-      if (peerConnection.remoteDescription) {
+      if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
         await peerConnection.addIceCandidate(candidate);
-        console.log('ICE candidate added successfully');
+        console.log('[VideoCall] ICE candidate added successfully');
       } else {
-        console.log('Remote description not set, adding to pending candidates');
+        console.log('[VideoCall] Remote description not set, adding ICE candidate to pending list');
         pendingIceCandidates.current.push(candidate);
       }
     } catch (error) {
-      console.error('Error handling remote ICE candidate:', error);
+      console.error('[VideoCall] Error handling remote ICE candidate:', error);
     }
   };
 
