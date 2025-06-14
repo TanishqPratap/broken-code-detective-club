@@ -2,10 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Paperclip, Image, Video, Mic, DollarSign } from "lucide-react";
+import { MessageCircle, Paperclip, Image, Video, Mic, DollarSign, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TipModal from "./TipModal";
 import VideoCall from "./VideoCall";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface PaidDMChatProps {
   sessionId: string;
@@ -28,6 +39,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [isVideoCallInitiator, setIsVideoCallInitiator] = useState(false);
@@ -213,6 +225,45 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     });
     setInput("");
     setLoading(false);
+  };
+
+  // Clear chat function
+  const clearChat = async () => {
+    if (!sessionInfo) return;
+    
+    setClearingChat(true);
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .or(
+          `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
+        );
+
+      if (error) {
+        console.error('Error clearing chat:', error);
+        toast({
+          title: "Error",
+          description: "Failed to clear chat. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        setMessages([]);
+        toast({
+          title: "Chat Cleared",
+          description: "All messages have been deleted successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear chat. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setClearingChat(false);
+    }
   };
 
   // Handle tip sent
@@ -438,38 +489,83 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   return (
     <>
       <div className="flex flex-col h-[400px] border rounded-lg shadow p-4 bg-white">
-        <div className="font-bold flex items-center gap-2 mb-2">
-          <MessageCircle className="w-5 h-5" />
-          Paid Direct Messages
-        </div>
-        <div className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {messages.map((m) => {
-            // Don't display video call signaling messages
-            if (m.content.startsWith('VIDEO_CALL_OFFER:') || 
-                m.content.startsWith('VIDEO_CALL_ANSWER:') || 
-                m.content.startsWith('VIDEO_CALL_ICE:') ||
-                m.content === 'VIDEO_CALL_END') {
-              return null;
-            }
-
-            return (
-              <div
-                key={m.id}
-                className={`max-w-[70%] ${
-                  m.sender_id === currentUserId
-                    ? "ml-auto bg-purple-100 text-right"
-                    : "mr-auto bg-gray-100 text-left"
-                } px-3 py-1 rounded`}
+        <div className="font-bold flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5" />
+            Paid Direct Messages
+          </div>
+          
+          {/* Clear Chat Button */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={clearingChat || messages.length === 0}
+                className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50"
               >
-                <div className="text-xs text-muted-foreground mb-1">
-                  {m.sender_id === currentUserId ? "You" : "Them"}
-                  <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
-                </div>
-                <div>{m.content}</div>
-                {renderMediaMessage(m)}
+                <Trash2 className="w-3 h-3" />
+                Clear Chat
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete all messages in this conversation? This action cannot be undone and will clear the chat for both participants.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={clearChat}
+                  disabled={clearingChat}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {clearingChat ? "Clearing..." : "Clear Chat"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 mb-3">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-center">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No messages yet. Start the conversation!</p>
               </div>
-            );
-          })}
+            </div>
+          ) : (
+            messages.map((m) => {
+              // Don't display video call signaling messages
+              if (m.content.startsWith('VIDEO_CALL_OFFER:') || 
+                  m.content.startsWith('VIDEO_CALL_ANSWER:') || 
+                  m.content.startsWith('VIDEO_CALL_ICE:') ||
+                  m.content === 'VIDEO_CALL_END') {
+                return null;
+              }
+
+              return (
+                <div
+                  key={m.id}
+                  className={`max-w-[70%] ${
+                    m.sender_id === currentUserId
+                      ? "ml-auto bg-purple-100 text-right"
+                      : "mr-auto bg-gray-100 text-left"
+                  } px-3 py-1 rounded`}
+                >
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {m.sender_id === currentUserId ? "You" : "Them"}
+                    <span className="ml-2 text-[10px]">{new Date(m.created_at).toLocaleTimeString()}</span>
+                  </div>
+                  <div>{m.content}</div>
+                  {renderMediaMessage(m)}
+                </div>
+              );
+            })
+          )}
           <div ref={bottomRef} />
         </div>
         
