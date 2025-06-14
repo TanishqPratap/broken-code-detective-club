@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,10 +51,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
         .from('stream_comments')
         .select(`
           *,
-          profiles (
-            username,
-            display_name
-          )
+          profiles!inner(username, display_name)
         `)
         .eq('stream_id', streamId)
         .order('created_at', { ascending: true });
@@ -83,10 +80,7 @@ const StreamChat = ({ streamId }: StreamChatProps) => {
             .from('stream_comments')
             .select(`
               *,
-              profiles (
-                username,
-                display_name
-              )
+              profiles!inner(username, display_name)
             `)
             .eq('id', payload.new.id)
             .single();

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,10 +49,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
         .from('stream_tips')
         .select(`
           *,
-          profiles (
-            username,
-            display_name
-          )
+          profiles!inner(username, display_name)
         `)
         .eq('stream_id', streamId)
         .order('created_at', { ascending: false })
@@ -93,10 +90,7 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
             .from('stream_tips')
             .select(`
               *,
-              profiles (
-                username,
-                display_name
-              )
+              profiles!inner(username, display_name)
             `)
             .eq('id', payload.new.id)
             .single();
