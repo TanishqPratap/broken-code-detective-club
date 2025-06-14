@@ -8,6 +8,7 @@ interface SEOHeadProps {
   url?: string;
   type?: 'website' | 'article' | 'video' | 'profile';
   videoUrl?: string;
+  thumbnailUrl?: string;
 }
 
 const SEOHead = ({ 
@@ -16,7 +17,8 @@ const SEOHead = ({
   image = "/placeholder.svg",
   url = window.location.href,
   type = "website",
-  videoUrl
+  videoUrl,
+  thumbnailUrl
 }: SEOHeadProps) => {
   useEffect(() => {
     // Update document title
@@ -35,12 +37,14 @@ const SEOHead = ({
       meta.content = content;
     };
 
-    // Ensure we have a proper image URL for social sharing
+    // Determine the best image to use for social sharing
     let shareImage = image;
     
-    // If the image is a video file, use a placeholder or try to extract a thumbnail
-    if (image && (image.includes('.mp4') || image.includes('.webm') || image.includes('.mov'))) {
-      // For video files, we'll use a placeholder since we can't generate thumbnails client-side
+    // If we have a thumbnail URL (generated from video), use it
+    if (thumbnailUrl) {
+      shareImage = thumbnailUrl;
+    } else if (image && (image.includes('.mp4') || image.includes('.webm') || image.includes('.mov'))) {
+      // For video files without thumbnails, use a placeholder
       shareImage = "/placeholder.svg";
     }
     
@@ -80,7 +84,7 @@ const SEOHead = ({
     return () => {
       document.title = "Content Creator Platform";
     };
-  }, [title, description, image, url, type, videoUrl]);
+  }, [title, description, image, url, type, videoUrl, thumbnailUrl]);
 
   return null; // This component doesn't render anything visible
 };

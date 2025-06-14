@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +15,7 @@ interface TrailerContent {
   description: string | null;
   content_type: string;
   media_url: string;
+  thumbnail_url?: string | null;
   order_position: number;
   created_at: string;
 }
@@ -52,6 +52,31 @@ const TrailerUpload = () => {
     }
   };
 
+  const generateVideoThumbnail = async (videoUrl: string, fileName: string): Promise<string | null> => {
+    try {
+      console.log('Generating thumbnail for video:', videoUrl);
+      
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          videoUrl: videoUrl,
+          bucketName: 'trailer-content',
+          fileName: fileName
+        }
+      });
+
+      if (error) {
+        console.error('Thumbnail generation error:', error);
+        return null;
+      }
+
+      console.log('Thumbnail generated:', data.thumbnailUrl);
+      return data.thumbnailUrl;
+    } catch (error) {
+      console.error('Error calling thumbnail function:', error);
+      return null;
+    }
+  };
+
   const uploadTrailer = async (position: number, file: File, title: string, description: string) => {
     if (!user) return;
 
@@ -72,6 +97,20 @@ const TrailerUpload = () => {
         .from('trailer-content')
         .getPublicUrl(fileName);
 
+      const isVideo = file.type.startsWith('video/');
+      let thumbnailUrl = null;
+
+      // Generate thumbnail for video files
+      if (isVideo) {
+        console.log('Generating thumbnail for uploaded trailer video');
+        thumbnailUrl = await generateVideoThumbnail(data.publicUrl, fileName);
+        if (thumbnailUrl) {
+          console.log('Thumbnail URL generated:', thumbnailUrl);
+        } else {
+          console.warn('Failed to generate thumbnail, will use placeholder');
+        }
+      }
+
       // Save to database
       const { error: dbError } = await supabase
         .from('trailer_content')
@@ -79,8 +118,9 @@ const TrailerUpload = () => {
           creator_id: user.id,
           title: title.trim(),
           description: description.trim() || null,
-          content_type: file.type.startsWith('video/') ? 'video' : 'image',
+          content_type: isVideo ? 'video' : 'image',
           media_url: data.publicUrl,
+          thumbnail_url: thumbnailUrl,
           order_position: position
         });
 
@@ -195,6 +235,11 @@ const TrailerUpload = () => {
                 )}
                 Free Preview
               </div>
+              {existingTrailer.thumbnail_url && existingTrailer.content_type === 'video' && (
+                <div className="absolute top-2 right-2 bg-green-600 bg-opacity-80 text-white px-2 py-1 rounded text-xs">
+                  Thumbnail Ready
+                </div>
+              )}
             </div>
             
             <div className="text-xs text-gray-500">
@@ -244,6 +289,9 @@ const TrailerUpload = () => {
             {file && (
               <p className="text-sm text-gray-600 mt-1">
                 Selected: {file.name}
+                {file.type.startsWith('video/') && (
+                  <span className="text-green-600 ml-1">(Thumbnail will be auto-generated)</span>
+                )}
               </p>
             )}
           </div>
@@ -256,7 +304,7 @@ const TrailerUpload = () => {
             {uploading === position ? (
               <>
                 <Upload className="w-4 h-4 mr-2 animate-spin" />
-                Uploading...
+                {file?.type.startsWith('video/') ? 'Uploading & Generating Thumbnail...' : 'Uploading...'}
               </>
             ) : (
               <>
@@ -291,6 +339,7 @@ const TrailerUpload = () => {
           <CardDescription>
             Upload up to 4 free trailer pieces that subscribers can watch before deciding to subscribe.
             These previews help potential subscribers understand your content quality.
+            Video thumbnails are automatically generated for social media sharing.
           </CardDescription>
         </CardHeader>
       </Card>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +59,31 @@ const ContentUploadModal = ({ open, onClose, onContentUploaded }: ContentUploadM
     return data.publicUrl;
   };
 
+  const generateVideoThumbnail = async (videoUrl: string, fileName: string): Promise<string | null> => {
+    try {
+      console.log('Generating thumbnail for video:', videoUrl);
+      
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          videoUrl: videoUrl,
+          bucketName: 'post-media',
+          fileName: fileName
+        }
+      });
+
+      if (error) {
+        console.error('Thumbnail generation error:', error);
+        return null;
+      }
+
+      console.log('Thumbnail generated:', data.thumbnailUrl);
+      return data.thumbnailUrl;
+    } catch (error) {
+      console.error('Error calling thumbnail function:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -86,6 +110,7 @@ const ContentUploadModal = ({ open, onClose, onContentUploaded }: ContentUploadM
 
     try {
       let mediaUrl = null;
+      let thumbnailUrl = null;
 
       if (mediaFile) {
         mediaUrl = await uploadMedia(mediaFile);
@@ -93,6 +118,17 @@ const ContentUploadModal = ({ open, onClose, onContentUploaded }: ContentUploadM
           toast.error("Failed to upload media");
           setUploading(false);
           return;
+        }
+
+        // Generate thumbnail for video files
+        if (contentType === 'video' && mediaFile.type.startsWith('video/')) {
+          console.log('Generating thumbnail for uploaded video');
+          thumbnailUrl = await generateVideoThumbnail(mediaUrl, `${user.id}/${Date.now()}.${mediaFile.name.split('.').pop()}`);
+          if (thumbnailUrl) {
+            console.log('Thumbnail URL generated:', thumbnailUrl);
+          } else {
+            console.warn('Failed to generate thumbnail, will use placeholder');
+          }
         }
       }
 
@@ -104,6 +140,7 @@ const ContentUploadModal = ({ open, onClose, onContentUploaded }: ContentUploadM
           description: description.trim() || null,
           content_type: contentType,
           media_url: mediaUrl,
+          thumbnail_url: thumbnailUrl,
           is_premium: isPremium,
           price: isPremium ? parseFloat(price) : null
         });
@@ -245,7 +282,7 @@ const ContentUploadModal = ({ open, onClose, onContentUploaded }: ContentUploadM
               {uploading ? (
                 <>
                   <Upload className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
+                  {contentType === 'video' ? 'Uploading & Generating Thumbnail...' : 'Uploading...'}
                 </>
               ) : (
                 'Upload Content'

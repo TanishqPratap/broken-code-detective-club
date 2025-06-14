@@ -17,6 +17,7 @@ interface Post {
   text_content: string | null;
   media_url: string | null;
   media_type: string | null;
+  thumbnail_url: string | null;
   created_at: string;
   profiles: {
     display_name: string | null;
@@ -153,15 +154,12 @@ const PostView = () => {
   const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
   const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
   
-  // Handle post image for social sharing
+  // Handle post image for social sharing - prioritize thumbnail_url for videos
   let postImage = "/placeholder.svg";
-  if (post.media_url) {
-    if (post.content_type === 'image') {
-      postImage = post.media_url;
-    } else if (post.content_type === 'video') {
-      // For videos, use placeholder as thumbnail
-      postImage = "/placeholder.svg";
-    }
+  if (post.content_type === 'video' && post.thumbnail_url) {
+    postImage = post.thumbnail_url;
+  } else if (post.content_type === 'image' && post.media_url) {
+    postImage = post.media_url;
   }
   
   const postUrl = `${window.location.origin}/posts/${post.id}`;
@@ -175,6 +173,7 @@ const PostView = () => {
         url={postUrl}
         type="article"
         videoUrl={post.content_type === 'video' ? post.media_url : undefined}
+        thumbnailUrl={post.thumbnail_url}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
