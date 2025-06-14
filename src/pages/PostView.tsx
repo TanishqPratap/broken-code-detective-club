@@ -158,33 +158,24 @@ const PostView = () => {
   const postTitle = `Post by ${post.profiles.display_name || post.profiles.username}`;
   const postDescription = post.text_content || `Check out this ${post.content_type} post from ${post.profiles.display_name || post.profiles.username}`;
   
-  // Improved post image logic for social sharing - prioritize thumbnail_url
-  let postImage = "/placeholder.svg";
-  
-  if (post.thumbnail_url) {
-    // Use generated thumbnail for videos or any content that has one
-    postImage = post.thumbnail_url;
-    console.log('PostView - Using thumbnail_url for social sharing:', post.thumbnail_url);
-  } else if (post.content_type === 'image' && post.media_url) {
-    // For images without thumbnails, use the actual image
-    postImage = post.media_url;
-    console.log('PostView - Using media_url for social sharing:', post.media_url);
-  }
-  
+  // CRITICAL: Ensure we always pass the thumbnail_url directly to SEOHead
   const postUrl = `${window.location.origin}/posts/${post.id}`;
 
-  console.log('PostView - Final image for SEOHead:', postImage);
+  console.log('PostView - Passing to SEOHead:');
+  console.log('  - thumbnailUrl:', post.thumbnail_url);
+  console.log('  - image:', post.media_url);
+  console.log('  - videoUrl:', post.content_type === 'video' ? post.media_url : undefined);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <SEOHead
         title={postTitle}
         description={postDescription}
-        image={postImage}
+        image={post.media_url || undefined}
         url={postUrl}
         type="article"
-        videoUrl={post.content_type === 'video' ? post.media_url : undefined}
-        thumbnailUrl={post.thumbnail_url}
+        videoUrl={post.content_type === 'video' ? post.media_url || undefined : undefined}
+        thumbnailUrl={post.thumbnail_url || undefined}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />

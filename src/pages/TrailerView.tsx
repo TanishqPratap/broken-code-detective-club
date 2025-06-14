@@ -135,34 +135,23 @@ const TrailerView = () => {
 
   const trailerTitle = `${trailer.title} by ${trailer.creator.display_name || trailer.creator.username}`;
   const trailerDescription = trailer.description || `Watch this amazing trailer from ${trailer.creator.display_name || trailer.creator.username}`;
-  
-  // Improved trailer image logic for social sharing - prioritize thumbnail_url
-  let trailerImage = "/placeholder.svg";
-  
-  if (trailer.thumbnail_url) {
-    // Use generated thumbnail for videos or any content that has one
-    trailerImage = trailer.thumbnail_url;
-    console.log('TrailerView - Using thumbnail_url for social sharing:', trailer.thumbnail_url);
-  } else if (trailer.content_type === 'image' && trailer.media_url) {
-    // For images without thumbnails, use the actual image
-    trailerImage = trailer.media_url;
-    console.log('TrailerView - Using media_url for social sharing:', trailer.media_url);
-  }
-  
   const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
 
-  console.log('TrailerView - Final image for SEOHead:', trailerImage);
+  console.log('TrailerView - Passing to SEOHead:');
+  console.log('  - thumbnailUrl:', trailer.thumbnail_url);
+  console.log('  - image:', trailer.media_url);
+  console.log('  - videoUrl:', trailer.content_type === 'video' ? trailer.media_url : undefined);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <SEOHead
         title={trailerTitle}
         description={trailerDescription}
-        image={trailerImage}
+        image={trailer.media_url}
         url={trailerUrl}
         type="video"
         videoUrl={trailer.content_type === 'video' ? trailer.media_url : undefined}
-        thumbnailUrl={trailer.thumbnail_url}
+        thumbnailUrl={trailer.thumbnail_url || undefined}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
