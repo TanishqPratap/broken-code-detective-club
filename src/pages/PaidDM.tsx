@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,8 +5,10 @@ import PaidDMChat from "@/components/PaidDMChat";
 import PaidDMModal from "@/components/PaidDMModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Navbar from "@/components/Navbar";
+import AuthModal from "@/components/auth/AuthModal";
 
 interface CreatorProfile {
   id: string;
@@ -41,6 +42,7 @@ const PaidDM = () => {
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // For launching new chats, store the selected creator
   const [selectedCreator, setSelectedCreator] = useState<CreatorProfile | null>(null);
@@ -100,136 +102,147 @@ const PaidDM = () => {
 
   if (!user) {
     return (
-      <div className="container mx-auto py-12">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>Sign In Required</CardTitle>
-            <CardDescription>
-              Please sign in to view your Paid DMs.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+        <Navbar onAuthClick={() => setShowAuthModal(true)} />
+        <div className="container mx-auto py-12">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Sign In Required</CardTitle>
+              <CardDescription>
+                Please sign in to view your Paid DMs.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto max-w-2xl py-8 px-4">
-      <div className="flex items-center gap-2 mb-6">
-        <MessageSquare className="w-6 h-6 text-purple-500" />
-        <h1 className="text-2xl font-bold">Paid Direct Messages</h1>
-        <Button onClick={() => { setSelectedCreator(null); setModalOpen(true); }} className="ml-auto">
-          Start New Paid DM
-        </Button>
-      </div>
+  // If viewing a specific chat, show full-screen chat
+  if (activeSessionId) {
+    return (
+      <PaidDMChat 
+        sessionId={activeSessionId} 
+        currentUserId={user.id} 
+        onBack={() => setActiveSessionId(null)}
+      />
+    );
+  }
 
-      {/* FEATURED CREATORS */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-2">Featured Creators</h2>
-        {loadingCreators ? (
-          <div className="text-muted-foreground">Loading creators...</div>
-        ) : creators && creators.length > 0 ? (
-          <div className="flex flex-nowrap gap-4 overflow-x-auto pb-2">
-            {creators.map((creator) => (
-              <Card
-                key={creator.id}
-                className="min-w-[220px] px-4 py-3 flex flex-col items-center shadow hover:shadow-lg transition-shadow"
-              >
-                <Avatar className="w-16 h-16 mb-2">
-                  <AvatarImage src={creator.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {creator.display_name ? creator.display_name[0] : "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="font-bold">{creator.display_name || creator.username}</div>
-                <div className="text-sm text-muted-foreground">@{creator.username}</div>
-                <div className="text-xs mt-1 mb-2 text-muted-foreground">
-                  ${creator.chat_rate ? Number(creator.chat_rate).toFixed(2) : "--"} / hour
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedCreator(creator);
-                    setModalOpen(true);
-                  }}
-                  disabled={user.id === creator.id}
-                  className="w-full"
-                >
-                  {user.id === creator.id ? "You" : "Start DM"}
-                </Button>
-              </Card>
-            ))}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      
+      <div className="container mx-auto max-w-2xl py-6 px-4">
+        {/* Instagram-like Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-6 h-6 text-purple-500" />
+            <h1 className="text-2xl font-bold">Messages</h1>
           </div>
-        ) : (
-          <div className="text-muted-foreground">No creators found</div>
+          <Button 
+            onClick={() => { setSelectedCreator(null); setModalOpen(true); }} 
+            className="flex items-center gap-2"
+            size="sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Chat
+          </Button>
+        </div>
+
+        {/* Chat List */}
+        <div className="space-y-1">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading conversations...</div>
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No conversations yet</h3>
+              <p className="text-gray-500 mb-4">Start a paid conversation with your favorite creator</p>
+              <Button onClick={() => { setSelectedCreator(null); setModalOpen(true); }}>
+                Start New Chat
+              </Button>
+            </div>
+          ) : (
+            sessions.map((session) => {
+              const isCreator = user.id === session.creator_id;
+              const otherProfile = isCreator ? session.subscriber_profile : session.creator_profile;
+              const otherDisplayName = otherProfile?.display_name || otherProfile?.username || "Unknown User";
+              
+              return (
+                <div
+                  key={session.id}
+                  onClick={() => setActiveSessionId(session.id)}
+                  className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer rounded-lg transition-colors"
+                >
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={otherProfile?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {otherDisplayName[0]?.toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {otherDisplayName}
+                      </h3>
+                      <span className="text-xs text-gray-500">
+                        {new Date(session.updated_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      ${Number(session.hourly_rate).toFixed(2)} per hour
+                    </p>
+                  </div>
+                  <div className="w-3 h-3 bg-purple-500 rounded-full opacity-0"></div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Featured Creators Section */}
+        {!loading && sessions.length === 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold mb-4">Featured Creators</h2>
+            {loadingCreators ? (
+              <div className="text-center py-4 text-gray-500">Loading creators...</div>
+            ) : creators && creators.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {creators.slice(0, 6).map((creator) => (
+                  <Card
+                    key={creator.id}
+                    className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => {
+                      setSelectedCreator(creator);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Avatar className="w-16 h-16 mx-auto mb-3">
+                      <AvatarImage src={creator.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {creator.display_name ? creator.display_name[0] : "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold text-sm mb-1">
+                      {creator.display_name || creator.username}
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-2">@{creator.username}</p>
+                    <p className="text-xs text-green-600 font-medium">
+                      ${creator.chat_rate ? Number(creator.chat_rate).toFixed(2) : "--"}/hr
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">No creators available</div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* SESSION LIST OR CHAT */}
-      {activeSessionId ? (
-        <div>
-          <Button variant="ghost" size="sm" className="mb-2" onClick={() => setActiveSessionId(null)}>
-            &larr; Back to all chats
-          </Button>
-          <PaidDMChat sessionId={activeSessionId} currentUserId={user.id} />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {loading ? (
-            <div>Loading your Paid DM sessions...</div>
-          ) : sessions.length === 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Paid DMs yet</CardTitle>
-                <CardDescription>
-                  You haven't started any Paid DM sessions. Start a new one with your favorite creator!
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {sessions.map((session) => {
-                const isCreator = user.id === session.creator_id;
-                const otherProfile = isCreator ? session.subscriber_profile : session.creator_profile;
-                const otherDisplayName = otherProfile?.display_name || otherProfile?.username || "Unknown User";
-                
-                return (
-                  <Card key={session.id}>
-                    <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={otherProfile?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {otherDisplayName[0]?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <span className="font-medium">
-                            {isCreator ? "Chat with " : "Chat with "}
-                            <span className="text-purple-600">{otherDisplayName}</span>
-                          </span>
-                          <div className="text-xs text-muted-foreground">
-                            ${Number(session.hourly_rate).toFixed(2)} per hour
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="ml-auto"
-                        onClick={() => setActiveSessionId(session.id)}
-                      >
-                        Open Chat
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* DM Create Modal - starts with selected creator OR self if null */}
+      {/* DM Create Modal */}
       {modalOpen && (
         <PaidDMModal
           open={modalOpen}
@@ -252,6 +265,8 @@ const PaidDM = () => {
           }}
         />
       )}
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 };

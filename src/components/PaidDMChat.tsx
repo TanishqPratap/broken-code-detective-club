@@ -1,13 +1,13 @@
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, DollarSign, Trash2 } from "lucide-react";
+import { MessageCircle, DollarSign, Trash2, ArrowLeft, MoreVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TipModal from "./TipModal";
 import MediaUploader from "./PaidDM/MediaUploader";
 import MessageList, { MessageRow } from "./PaidDM/MessageList";
 import ChatInput from "./PaidDM/ChatInput";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,13 +19,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PaidDMChatProps {
   sessionId: string;
   currentUserId: string;
+  onBack: () => void;
 }
 
-const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
+const PaidDMChat = ({ sessionId, currentUserId, onBack }: PaidDMChatProps) => {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -33,18 +40,44 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
   const [showTipModal, setShowTipModal] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
-  const [sessionInfo, setSessionInfo] = useState<{ creator_id: string; subscriber_id: string; } | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<{ 
+    creator_id: string; 
+    subscriber_id: string;
+    hourly_rate: number;
+    otherUser?: {
+      display_name: string | null;
+      username: string;
+      avatar_url: string | null;
+    };
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("chat_sessions")
-        .select("creator_id,subscriber_id")
+        .select(`
+          creator_id,
+          subscriber_id,
+          hourly_rate,
+          creator_profile:profiles!chat_sessions_creator_id_fkey(display_name, username, avatar_url),
+          subscriber_profile:profiles!chat_sessions_subscriber_id_fkey(display_name, username, avatar_url)
+        `)
         .eq("id", sessionId)
         .maybeSingle();
-      setSessionInfo(data ?? null);
+      
+      if (data) {
+        const isCreator = currentUserId === data.creator_id;
+        const otherProfile = isCreator ? data.subscriber_profile : data.creator_profile;
+        
+        setSessionInfo({
+          creator_id: data.creator_id,
+          subscriber_id: data.subscriber_id,
+          hourly_rate: data.hourly_rate,
+          otherUser: otherProfile || undefined
+        });
+      }
     })();
-  }, [sessionId]);
+  }, [sessionId, currentUserId]);
 
   useEffect(() => {
     let ignore = false;
@@ -110,7 +143,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // --- MEDIA UPLOAD logic extracted out ---
   const uploadMedia = async (file: File) => {
     if (!sessionInfo) return;
     try {
@@ -142,7 +174,6 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
-  // --- SENDING MESSAGE (text) ---
   const sendMessage = async (text: string) => {
     if (!text || !sessionInfo) return;
     setLoading(true);
@@ -194,59 +225,103 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
 
   if (!sessionInfo) return <div className="p-4">Loading chat...</div>;
 
+  const otherUserName = sessionInfo.otherUser?.display_name || sessionInfo.otherUser?.username || "Unknown User";
+
   return (
     <>
-      <div className="flex flex-col h-[400px] border rounded-lg shadow p-4 bg-white">
-        <div className="font-bold flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            Paid Direct Messages
+      <div className="flex flex-col h-screen bg-white">
+        {/* Instagram-like Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="p-1 hover:bg-gray-100 rounded-full"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={sessionInfo.otherUser?.avatar_url || undefined} />
+              <AvatarFallback>
+                {otherUserName[0]?.toUpperCase() || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="font-semibold text-sm">{otherUserName}</h2>
+              <p className="text-xs text-gray-500">${Number(sessionInfo.hourly_rate).toFixed(2)}/hr</p>
+            </div>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={clearingChat || messages.length === 0}
-                className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-3 h-3" />
-                Clear Chat
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="p-1 hover:bg-gray-100 rounded-full">
+                <MoreVertical className="w-5 h-5" />
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete all messages in this conversation? This action cannot be undone and will clear the chat for both participants.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={clearChat}
-                  disabled={clearingChat}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  {clearingChat ? "Clearing..." : "Clear Chat"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowTipModal(true)}>
+                <DollarSign className="w-4 h-4 mr-2" />
+                Send Tip
+              </DropdownMenuItem>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem 
+                    onSelect={(e) => e.preventDefault()}
+                    disabled={clearingChat || messages.length === 0}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear Chat
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete all messages in this conversation? This action cannot be undone and will clear the chat for both participants.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={clearChat}
+                      disabled={clearingChat}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {clearingChat ? "Clearing..." : "Clear Chat"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-2 mb-3">
+
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
           <MessageList messages={messages} currentUserId={currentUserId} />
           <div ref={bottomRef} />
         </div>
-        <div className="space-y-2">
-          <div className="flex gap-2 justify-center">
+
+        {/* Instagram-like Input Area */}
+        <div className="p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center gap-2 mb-2">
             <MediaUploader uploadingMedia={uploadingMedia} onUpload={uploadMedia} />
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowTipModal(true)} className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50" >
-              <DollarSign className="w-3 h-3" /> Tip
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowTipModal(true)} 
+              className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
+            >
+              <DollarSign className="w-3 h-3" /> 
+              Tip
             </Button>
           </div>
           <ChatInput loading={loading || uploadingMedia} onSend={sendMessage} />
         </div>
+
         {showTipModal && sessionInfo && (
           <TipModal
             isOpen={showTipModal}
