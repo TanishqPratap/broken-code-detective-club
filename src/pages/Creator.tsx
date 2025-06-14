@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -27,22 +28,30 @@ const Creator = () => {
   const [creatorDMProps, setCreatorDMProps] = useState<{
     creatorId: string;
     creatorName: string;
-    chatRate: number;
+    creatorChatRate: number;
+    subscriberId: string;
   } | null>(null);
 
-  // Simulate "self" as creator
+  // Simulate viewing another creator (in real use, pass another user's profile data)
+  // For this demo, if user is logged in, treat them as both the viewer and the "creator"
   const CREATOR_PROFILE = {
     id: user?.id ?? "",
     name: user?.user_metadata?.display_name || user?.email || "Unknown",
-    chatRate: user?.chat_rate || 20 // fallback rate
+    chatRate:
+      typeof user?.chat_rate === "number"
+        ? Number(user.chat_rate)
+        : user?.user_metadata?.chat_rate
+        ? Number(user.user_metadata.chat_rate)
+        : 20,
   };
 
-  // handleOpenPaidDM: To start a paid DM session (could pass these as props from a child card/list)
   const handleOpenPaidDM = () => {
+    if (!user) return;
     setCreatorDMProps({
       creatorId: CREATOR_PROFILE.id,
       creatorName: CREATOR_PROFILE.name,
-      chatRate: CREATOR_PROFILE.chatRate
+      creatorChatRate: CREATOR_PROFILE.chatRate,
+      subscriberId: user.id
     });
     setShowPaidDM(true);
   };
@@ -75,6 +84,7 @@ const Creator = () => {
           <main className="flex-1 min-w-0">
             <div className="mb-8 flex items-center gap-4">
               <h1 className="text-3xl font-bold mb-2">Creator Dashboard</h1>
+              {/* In a real app, a user shouldn't start a DM with themselves */}
               {user && (
                 <Button variant="secondary" onClick={handleOpenPaidDM}>
                   <MessageCircle className="w-4 h-4 mr-2" />
@@ -82,9 +92,11 @@ const Creator = () => {
                 </Button>
               )}
             </div>
-            {/* If paid DM session started, show PaidDMChat */}
             {activeChatSession ? (
-              <PaidDMChat sessionId={activeChatSession} currentUserId={user.id} />
+              <PaidDMChat
+                sessionId={activeChatSession}
+                currentUserId={user.id}
+              />
             ) : (
               <>
                 {activeSection === "overview" && <CreatorDashboard />}
@@ -131,7 +143,8 @@ const Creator = () => {
           onClose={() => setShowPaidDM(false)}
           creatorId={creatorDMProps.creatorId}
           creatorName={creatorDMProps.creatorName}
-          chatRate={creatorDMProps.chatRate}
+          chatRate={creatorDMProps.creatorChatRate}
+          subscriberId={creatorDMProps.subscriberId}
           onSessionCreated={sessionId => setActiveChatSession(sessionId)}
         />
       )}

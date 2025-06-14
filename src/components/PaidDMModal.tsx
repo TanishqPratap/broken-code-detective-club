@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,24 +11,31 @@ interface PaidDMModalProps {
   creatorId: string;
   creatorName: string;
   chatRate: number;
+  subscriberId: string;
   onSessionCreated: (sessionId: string) => void;
 }
 
-const PaidDMModal = ({ open, onClose, creatorId, creatorName, chatRate, onSessionCreated }: PaidDMModalProps) => {
+const PaidDMModal = ({
+  open,
+  onClose,
+  creatorId,
+  creatorName,
+  chatRate,
+  subscriberId,
+  onSessionCreated
+}: PaidDMModalProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleStartSession = async () => {
     setLoading(true);
-    // Simple demo: skip payment, just "start" session
-    // For real flow, integrate payment with a modal here
+    // Demo: skip payment handling, mark as "paid"
     const { data, error } = await supabase
       .from("chat_sessions")
       .insert({
         creator_id: creatorId,
+        subscriber_id: subscriberId,
         hourly_rate: chatRate,
-        // subscriber_id will be filled automatically by RLS (auth.uid())
-        // total_amount, stripe_payment_intent_id would be filled on successful payment
         payment_status: "paid"
       })
       .select()
@@ -37,10 +43,17 @@ const PaidDMModal = ({ open, onClose, creatorId, creatorName, chatRate, onSessio
 
     setLoading(false);
     if (error || !data) {
-      toast({ title: "Error", description: error?.message ?? "Failed to create chat session", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error?.message ?? "Failed to create chat session",
+        variant: "destructive"
+      });
       return;
     }
-    toast({ title: "Paid DM started!", description: `You can now chat with ${creatorName}` });
+    toast({
+      title: "Paid DM started!",
+      description: `You can now chat with ${creatorName}`
+    });
     onSessionCreated(data.id);
     onClose();
   };
@@ -61,8 +74,8 @@ const PaidDMModal = ({ open, onClose, creatorId, creatorName, chatRate, onSessio
         </div>
         <DialogFooter>
           <Button onClick={onClose} variant="ghost" disabled={loading}>Cancel</Button>
-          <Button onClick={handleStartSession} loading={loading}>
-            Start Paid DM
+          <Button onClick={handleStartSession} disabled={loading}>
+            {loading ? "Starting..." : "Start Paid DM"}
           </Button>
         </DialogFooter>
       </DialogContent>

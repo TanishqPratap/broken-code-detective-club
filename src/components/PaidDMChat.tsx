@@ -34,12 +34,11 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     })();
   }, [sessionId]);
 
-  // Load messages
+  // Load messages between these two users
   useEffect(() => {
     let ignore = false;
     if (!sessionInfo) return;
     async function fetchMessages() {
-      // Simple: filter messages where (sender and recipient in this chat session)
       const { data } = await supabase
         .from("messages")
         .select("*")
@@ -47,23 +46,46 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           `and(sender_id.eq.${sessionInfo.creator_id},recipient_id.eq.${sessionInfo.subscriber_id}),and(sender_id.eq.${sessionInfo.subscriber_id},recipient_id.eq.${sessionInfo.creator_id})`
         )
         .order("created_at");
-      if (!ignore && data) setMessages(data);
+      // If returned data is unknown type, filter for well-typed MessageRow
+      if (!ignore && Array.isArray(data)) {
+        setMessages(
+          data.filter(
+            (m): m is MessageRow =>
+              typeof m.id === "string" &&
+              typeof m.sender_id === "string" &&
+              typeof m.recipient_id === "string" &&
+              typeof m.content === "string" &&
+              typeof m.created_at === "string"
+          )
+        );
+      }
     }
     fetchMessages();
 
     // Subscribe to new messages (realtime)
     const channel = supabase
       .channel("dm")
-      .on("postgres_changes", 
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          const m: MessageRow = payload.new;
-          // Only add if relevant to this session
+          const m = payload.new;
           if (
-            (m.sender_id === sessionInfo?.creator_id && m.recipient_id === sessionInfo?.subscriber_id)
-            || (m.sender_id === sessionInfo?.subscriber_id && m.recipient_id === sessionInfo?.creator_id)
+            (m.sender_id === sessionInfo?.creator_id &&
+              m.recipient_id === sessionInfo?.subscriber_id) ||
+            (m.sender_id === sessionInfo?.subscriber_id &&
+              m.recipient_id === sessionInfo?.creator_id)
           ) {
-            setMessages((prev) => [...prev, m]);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: m.id,
+                sender_id: m.sender_id,
+                recipient_id: m.recipient_id,
+                content: m.content,
+                created_at: m.created_at,
+              },
+            ]);
           }
         }
       )
