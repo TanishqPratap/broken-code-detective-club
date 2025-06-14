@@ -17,9 +17,27 @@ interface CreatorProfile {
   chat_rate: number | null;
 }
 
+interface ChatSessionWithProfile {
+  id: string;
+  creator_id: string;
+  subscriber_id: string;
+  hourly_rate: number;
+  updated_at: string;
+  creator_profile?: {
+    display_name: string | null;
+    username: string;
+    avatar_url: string | null;
+  };
+  subscriber_profile?: {
+    display_name: string | null;
+    username: string;
+    avatar_url: string | null;
+  };
+}
+
 const PaidDM = () => {
   const { user } = useAuth();
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<ChatSessionWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -31,19 +49,27 @@ const PaidDM = () => {
   const [creators, setCreators] = useState<CreatorProfile[]>([]);
   const [loadingCreators, setLoadingCreators] = useState(true);
 
-  // Load relevant DM sessions (where user is creator or subscriber)
+  // Load relevant DM sessions (where user is creator or subscriber) with profile data
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    supabase
-      .from("chat_sessions")
-      .select("*")
-      .or(`creator_id.eq.${user.id},subscriber_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false })
-      .then(({ data }) => {
-        setSessions(data || []);
-        setLoading(false);
-      });
+    
+    const fetchSessions = async () => {
+      const { data } = await supabase
+        .from("chat_sessions")
+        .select(`
+          *,
+          creator_profile:profiles!chat_sessions_creator_id_fkey(display_name, username, avatar_url),
+          subscriber_profile:profiles!chat_sessions_subscriber_id_fkey(display_name, username, avatar_url)
+        `)
+        .or(`creator_id.eq.${user.id},subscriber_id.eq.${user.id}`)
+        .order("updated_at", { ascending: false });
+      
+      setSessions(data || []);
+      setLoading(false);
+    };
+
+    fetchSessions();
   }, [user, activeSessionId, modalOpen]);
 
   // Load featured creators
@@ -162,32 +188,42 @@ const PaidDM = () => {
             </Card>
           ) : (
             <div className="space-y-2">
-              {sessions.map((session) => (
-                <Card key={session.id}>
-                  <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-4">
-                    <span className="font-medium">
-                      {user.id === session.creator_id
-                        ? "With subscriber"
-                        : "With creator"}{" "}
-                      <span className="text-purple-600">
-                        {user.id === session.creator_id
-                          ? session.subscriber_id
-                          : session.creator_id}
-                      </span>
-                      <span className="ml-4 text-xs text-muted-foreground">
-                        ${Number(session.hourly_rate).toFixed(2)} per hour
-                      </span>
-                    </span>
-                    <Button
-                      size="sm"
-                      className="ml-auto"
-                      onClick={() => setActiveSessionId(session.id)}
-                    >
-                      Open Chat
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {sessions.map((session) => {
+                const isCreator = user.id === session.creator_id;
+                const otherProfile = isCreator ? session.subscriber_profile : session.creator_profile;
+                const otherDisplayName = otherProfile?.display_name || otherProfile?.username || "Unknown User";
+                
+                return (
+                  <Card key={session.id}>
+                    <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={otherProfile?.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {otherDisplayName[0]?.toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <span className="font-medium">
+                            {isCreator ? "Chat with " : "Chat with "}
+                            <span className="text-purple-600">{otherDisplayName}</span>
+                          </span>
+                          <div className="text-xs text-muted-foreground">
+                            ${Number(session.hourly_rate).toFixed(2)} per hour
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => setActiveSessionId(session.id)}
+                      >
+                        Open Chat
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -221,4 +257,3 @@ const PaidDM = () => {
 };
 
 export default PaidDM;
-
