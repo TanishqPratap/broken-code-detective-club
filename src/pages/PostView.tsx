@@ -5,10 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "@/components/PostCard";
+import ThumbnailService from "@/components/ThumbnailService";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import SEOHead from "@/components/SEOHead";
 
 interface Post {
   id: string;
@@ -168,29 +168,19 @@ const PostView = () => {
   const postDescription = post.text_content 
     ? post.text_content.slice(0, 160) + (post.text_content.length > 160 ? '...' : '')
     : `Check out this amazing ${post.content_type} from ${post.profiles.display_name || post.profiles.username} on Content Creator Platform`;
-  
-  const postUrl = `${window.location.origin}/posts/${post.id}`;
-  
-  // Determine the best image for social sharing
-  let socialImage = post.thumbnail_url || post.media_url;
-  
-  console.log('PostView - SEO Image Selection:', {
-    thumbnail_url: post.thumbnail_url,
-    media_url: post.media_url,
-    selected: socialImage,
-    content_type: post.content_type
-  });
+
+  // Update document title immediately
+  document.title = postTitle;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <SEOHead
+      <ThumbnailService
+        postId={post.id}
+        thumbnailUrl={post.thumbnail_url}
+        mediaUrl={post.media_url}
         title={postTitle}
         description={postDescription}
-        image={socialImage || undefined}
-        url={postUrl}
-        type={post.content_type === 'video' ? 'video' : 'article'}
-        videoUrl={post.content_type === 'video' ? post.media_url || undefined : undefined}
-        thumbnailUrl={post.thumbnail_url || undefined}
+        contentType={post.content_type}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />

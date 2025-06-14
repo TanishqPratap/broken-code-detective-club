@@ -9,8 +9,8 @@ import { Play, Heart, ArrowLeft, Video, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
+import ThumbnailService from "@/components/ThumbnailService";
 import { toast } from "sonner";
-import SEOHead from "@/components/SEOHead";
 
 interface Creator {
   id: string;
@@ -143,28 +143,19 @@ const TrailerView = () => {
   const trailerDescription = trailer.description 
     ? trailer.description.slice(0, 160) + (trailer.description.length > 160 ? '...' : '')
     : `Watch this exclusive ${trailer.content_type} trailer from ${trailer.creator.display_name || trailer.creator.username}. Join now for more amazing content!`;
-  const trailerUrl = `${window.location.origin}/trailer/${trailer.id}`;
-  
-  // Prioritize thumbnail for social sharing
-  const socialImage = trailer.thumbnail_url || trailer.media_url;
-  
-  console.log('TrailerView - SEO Image Selection:', {
-    thumbnail_url: trailer.thumbnail_url,
-    media_url: trailer.media_url,
-    selected: socialImage,
-    content_type: trailer.content_type
-  });
+
+  // Update document title immediately
+  document.title = trailerTitle;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <SEOHead
+      <ThumbnailService
+        trailerId={trailer.id}
+        thumbnailUrl={trailer.thumbnail_url}
+        mediaUrl={trailer.media_url}
         title={trailerTitle}
         description={trailerDescription}
-        image={socialImage}
-        url={trailerUrl}
-        type="video"
-        videoUrl={trailer.content_type === 'video' ? trailer.media_url : undefined}
-        thumbnailUrl={trailer.thumbnail_url || undefined}
+        contentType={trailer.content_type}
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
