@@ -45,7 +45,7 @@ const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
     const video = videoRef.current;
     if (!video || !streamData.stream_key) return;
 
-    // Try multiple HLS URL formats
+    // Try multiple HLS URL formats for Livepeer
     const hlsUrls = [
       `https://livepeercdn.studio/hls/${streamData.stream_key}/index.m3u8`,
       `https://lp-playback.studio/hls/${streamData.stream_key}/index.m3u8`,
