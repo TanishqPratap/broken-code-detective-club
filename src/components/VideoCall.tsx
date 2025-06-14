@@ -28,6 +28,7 @@ const VideoCall = ({
 }: VideoCallProps) => {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [setupStep, setSetupStep] = useState<'requesting-media' | 'initializing-connection' | 'ready'>('requesting-media');
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -83,8 +84,10 @@ const VideoCall = ({
     }
   }, [remoteStream]);
 
-  // Main setup effect
+  // Main setup effect - simplified dependency array
   useEffect(() => {
+    if (isSetupComplete) return;
+
     let mounted = true;
 
     const setupVideoCall = async () => {
@@ -105,12 +108,11 @@ const VideoCall = ({
           setSetupStep('requesting-media');
           
           try {
-            await requestMediaPermissions(isFrontCamera ? "user" : "environment");
+            await requestMediaPermissions();
             if (!mounted) return;
           } catch (error) {
             console.error("Failed to get media permissions:", error);
             if (!mounted) return;
-            // Continue without closing - let user try again or use without video
             return;
           }
         }
@@ -134,6 +136,7 @@ const VideoCall = ({
         if (localStream && isPeerConnectionReady && isInitiator && !isInitializing) {
           console.log("Step 3: Creating offer (initiator)");
           setSetupStep('ready');
+          setIsSetupComplete(true);
           
           // Small delay to ensure everything is ready
           setTimeout(() => {
@@ -144,6 +147,7 @@ const VideoCall = ({
         } else if (localStream && isPeerConnectionReady && !isInitiator) {
           console.log("Step 3: Ready to receive offer (non-initiator)");
           setSetupStep('ready');
+          setIsSetupComplete(true);
         }
 
       } catch (error) {
@@ -156,25 +160,30 @@ const VideoCall = ({
     // Cleanup function
     return () => {
       mounted = false;
-      console.log("=== VideoCall Cleanup ===");
+      if (!isSetupComplete) {
+        console.log("=== VideoCall Cleanup (setup incomplete) ===");
+        cleanupStream();
+        cleanupPeerConnection();
+        setRemoteStream(null);
+      }
+    };
+  }, [
+    // Only include essential dependencies that should trigger re-setup
+    hasMediaPermissions,
+    isPeerConnectionReady,
+    isSetupComplete,
+    !!localStream
+  ]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log("=== VideoCall Component Unmount Cleanup ===");
       cleanupStream();
       cleanupPeerConnection();
       setRemoteStream(null);
     };
-  }, [
-    localStream,
-    hasMediaPermissions,
-    isInitializing,
-    isPeerConnectionReady,
-    isInitiator,
-    isFrontCamera,
-    requestMediaPermissions,
-    initializePeerConnection,
-    createOfferIfInitiator,
-    cleanupStream,
-    cleanupPeerConnection,
-    setupStep
-  ]);
+  }, []);
 
   // End call handler
   const handleEndCall = useCallback(() => {
