@@ -11,10 +11,10 @@ import StreamSubscriptionModal from "./StreamSubscriptionModal";
 
 interface LivestreamViewerProps {
   streamId: string;
-  creatorId: string;
+  creatorId?: string;
 }
 
-const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
+const LivestreamViewer = ({ streamId }: LivestreamViewerProps) => {
   const { user } = useAuth();
   const [streamData, setStreamData] = useState<any>(null);
   const [creatorProfile, setCreatorProfile] = useState<any>(null);
@@ -26,45 +26,40 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
 
   useEffect(() => {
     fetchStreamData();
-    fetchCreatorProfile();
-    if (user) {
-      checkStreamAccess();
-    }
-  }, [streamId, creatorId, user]);
+  }, [streamId, user]);
 
   const fetchStreamData = async () => {
     try {
       const { data, error } = await supabase
         .from('live_streams')
-        .select('*')
+        .select(`
+          *,
+          profiles:creator_id (
+            id,
+            display_name,
+            username,
+            bio,
+            avatar_url
+          )
+        `)
         .eq('id', streamId)
         .single();
 
       if (error) throw error;
       setStreamData(data);
+      setCreatorProfile(data.profiles);
+      
+      if (user) {
+        await checkStreamAccess(data.creator_id);
+      }
     } catch (error) {
       console.error('Error fetching stream:', error);
-    }
-  };
-
-  const fetchCreatorProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', creatorId)
-        .single();
-
-      if (error) throw error;
-      setCreatorProfile(data);
-    } catch (error) {
-      console.error('Error fetching creator profile:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const checkStreamAccess = async () => {
+  const checkStreamAccess = async (creatorId: string) => {
     if (!user) return;
 
     try {
@@ -79,7 +74,12 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
         .limit(1);
 
       if (error) throw error;
-      setHasAccess(data && data.length > 0);
+      
+      // User has access if they're the creator or have an active subscription
+      const isCreator = creatorId === user.id;
+      const hasSubscription = data && data.length > 0;
+      
+      setHasAccess(isCreator || hasSubscription);
     } catch (error) {
       console.error('Error checking stream access:', error);
     }
@@ -100,13 +100,18 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
   const handleSubscriptionSuccess = () => {
     setShowSubscriptionModal(false);
     setHasAccess(true);
-    checkStreamAccess();
+    if (streamData?.creator_id) {
+      checkStreamAccess(streamData.creator_id);
+    }
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading stream...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading stream...</p>
+        </div>
       </div>
     );
   }
@@ -114,7 +119,10 @@ const LivestreamViewer = ({ streamId, creatorId }: LivestreamViewerProps) => {
   if (!streamData || !creatorProfile) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Stream not found</div>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Stream not found</h1>
+          <p className="text-gray-600">The requested stream could not be found.</p>
+        </div>
       </div>
     );
   }

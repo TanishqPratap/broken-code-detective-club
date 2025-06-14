@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, Users, TrendingUp, Shield } from "lucide-react";
+import { Star, Users, TrendingUp, Shield, Compass, Video } from "lucide-react";
 import CreatorProfile from "@/components/CreatorProfile";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import ContentFeed from "@/components/ContentFeed";
@@ -10,10 +10,12 @@ import CreatorDashboard from "@/components/CreatorDashboard";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   const subscriptionTiers = [
     {
@@ -108,6 +110,14 @@ const Index = () => {
     console.log("Post action for:", postId);
   };
 
+  const handleGetStarted = () => {
+    if (user) {
+      navigate("/creator");
+    } else {
+      setShowAuthModal(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -131,13 +141,51 @@ const Index = () => {
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
           The ultimate platform for content creators to build their community and generate income through subscriptions, tips, and exclusive content.
         </p>
-        <div className="flex gap-4 justify-center">
-          <Button size="lg" onClick={() => setShowAuthModal(true)}>
-            {user ? "Dashboard" : "Get Started"}
+        <div className="flex gap-4 justify-center flex-wrap">
+          <Button size="lg" onClick={handleGetStarted}>
+            {user ? "Creator Dashboard" : "Get Started"}
           </Button>
-          <Button variant="outline" size="lg">
-            Learn More
+          <Button variant="outline" size="lg" onClick={() => navigate("/discover")}>
+            <Compass className="w-4 h-4 mr-2" />
+            Discover Creators
           </Button>
+          {user && (
+            <Button variant="outline" size="lg" onClick={() => navigate("/creator")}>
+              <Video className="w-4 h-4 mr-2" />
+              Go Live
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {/* Quick Navigation */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/discover")}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Compass className="w-8 h-8 text-primary" />
+                <div>
+                  <CardTitle>Discover Creators</CardTitle>
+                  <CardDescription>Find amazing content and live streams</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {user && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/creator")}>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Video className="w-8 h-8 text-primary" />
+                  <div>
+                    <CardTitle>Creator Hub</CardTitle>
+                    <CardDescription>Manage your content and go live</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          )}
         </div>
       </section>
 

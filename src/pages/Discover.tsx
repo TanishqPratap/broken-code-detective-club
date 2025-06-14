@@ -1,0 +1,172 @@
+
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
+import AuthModal from "@/components/auth/AuthModal";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Users, Play, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface LiveStream {
+  id: string;
+  title: string;
+  description: string;
+  status: 'live' | 'offline';
+  viewer_count: number;
+  creator_id: string;
+  profiles: {
+    display_name: string;
+    username: string;
+    avatar_url: string;
+  };
+}
+
+const Discover = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLiveStreams();
+  }, []);
+
+  const fetchLiveStreams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('live_streams')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          viewer_count,
+          creator_id,
+          profiles:creator_id (
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(12);
+
+      if (error) throw error;
+      setLiveStreams(data || []);
+    } catch (error) {
+      console.error('Error fetching streams:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWatchStream = (streamId: string) => {
+    navigate(`/watch/${streamId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+        <Navbar onAuthClick={() => setShowAuthModal(true)} />
+        <div className="container mx-auto px-4 py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading streams...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Discover Creators</h1>
+          <p className="text-gray-600">Find amazing content creators and live streams</p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {liveStreams.map((stream) => (
+            <Card key={stream.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="aspect-video bg-gray-900 relative">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Play className="w-12 h-12 text-white/60" />
+                </div>
+                <div className="absolute top-4 left-4">
+                  <Badge variant={stream.status === 'live' ? "default" : "secondary"}>
+                    {stream.status === 'live' ? (
+                      <>
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2" />
+                        LIVE
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-3 h-3 mr-1" />
+                        OFFLINE
+                      </>
+                    )}
+                  </Badge>
+                </div>
+                {stream.status === 'live' && (
+                  <div className="absolute top-4 right-4">
+                    <Badge variant="outline" className="bg-black/50 text-white border-white/30">
+                      <Users className="w-3 h-3 mr-1" />
+                      {stream.viewer_count}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={stream.profiles?.avatar_url} />
+                    <AvatarFallback>
+                      {stream.profiles?.display_name?.[0] || stream.profiles?.username?.[0] || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg truncate">{stream.title}</CardTitle>
+                    <p className="text-sm text-gray-600">@{stream.profiles?.username}</p>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                <CardDescription className="mb-4 line-clamp-2">
+                  {stream.description || "No description available"}
+                </CardDescription>
+                <Button 
+                  onClick={() => handleWatchStream(stream.id)}
+                  className="w-full"
+                  variant={stream.status === 'live' ? "default" : "outline"}
+                >
+                  {stream.status === 'live' ? 'Watch Live' : 'View Stream'}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {liveStreams.length === 0 && (
+          <div className="text-center py-16">
+            <h3 className="text-xl font-semibold mb-2">No streams available</h3>
+            <p className="text-gray-600">Check back later for live content!</p>
+          </div>
+        )}
+      </div>
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+    </div>
+  );
+};
+
+export default Discover;
