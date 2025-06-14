@@ -33,10 +33,12 @@ const VideoCall = ({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [hasMediaPermissions, setHasMediaPermissions] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [offerProcessed, setOfferProcessed] = useState(false);
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceCandidates = useRef<RTCIceCandidate[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,11 +48,14 @@ const VideoCall = ({
     };
   }, []);
 
+  // Handle remote offer - process immediately if we have a peer connection
   useEffect(() => {
-    if (remoteOffer && peerConnectionRef.current && !isInitiator) {
+    if (remoteOffer && peerConnectionRef.current && !isInitiator && !offerProcessed) {
+      console.log('Processing remote offer:', remoteOffer);
       handleRemoteOffer(remoteOffer);
+      setOfferProcessed(true);
     }
-  }, [remoteOffer, isInitiator]);
+  }, [remoteOffer, isInitiator, offerProcessed]);
 
   useEffect(() => {
     if (remoteAnswer && peerConnectionRef.current && isInitiator) {
@@ -84,7 +89,6 @@ const VideoCall = ({
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('Media stream obtained:', stream);
       
-      // Check if we got video and audio tracks
       const videoTracks = stream.getVideoTracks();
       const audioTracks = stream.getAudioTracks();
       
@@ -97,7 +101,6 @@ const VideoCall = ({
     } catch (error) {
       console.error('Error accessing media devices:', error);
       
-      // Try audio only if video fails
       try {
         console.log('Trying audio only...');
         const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
@@ -228,7 +231,23 @@ const VideoCall = ({
         await peerConnection.setLocalDescription(offer);
         onOfferCreated?.(offer);
         console.log('Offer created and sent');
+      } else if (remoteOffer && !offerProcessed) {
+        // If we're not the initiator and we have a remote offer, process it
+        console.log('Processing existing remote offer on initialization');
+        await handleRemoteOffer(remoteOffer);
+        setOfferProcessed(true);
       }
+
+      // Process any pending ICE candidates
+      for (const candidate of pendingIceCandidates.current) {
+        try {
+          await peerConnection.addIceCandidate(candidate);
+          console.log('Added pending ICE candidate');
+        } catch (error) {
+          console.error('Error adding pending ICE candidate:', error);
+        }
+      }
+      pendingIceCandidates.current = [];
 
     } catch (error) {
       console.error('Error initializing video call:', error);
@@ -247,9 +266,14 @@ const VideoCall = ({
     try {
       console.log('Handling remote offer');
       const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) return;
+      if (!peerConnection) {
+        console.log('No peer connection available, offer will be processed after initialization');
+        return;
+      }
 
       await peerConnection.setRemoteDescription(offer);
+      console.log('Remote description set, creating answer...');
+      
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       onAnswerCreated?.(answer);
@@ -281,10 +305,19 @@ const VideoCall = ({
     try {
       console.log('Handling remote ICE candidate');
       const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) return;
+      if (!peerConnection) {
+        console.log('Peer connection not ready, adding to pending candidates');
+        pendingIceCandidates.current.push(candidate);
+        return;
+      }
 
-      await peerConnection.addIceCandidate(candidate);
-      console.log('ICE candidate added successfully');
+      if (peerConnection.remoteDescription) {
+        await peerConnection.addIceCandidate(candidate);
+        console.log('ICE candidate added successfully');
+      } else {
+        console.log('Remote description not set, adding to pending candidates');
+        pendingIceCandidates.current.push(candidate);
+      }
     } catch (error) {
       console.error('Error handling remote ICE candidate:', error);
     }
@@ -438,10 +471,10 @@ const VideoCall = ({
                 <div className="text-center">
                   <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <div className="text-lg mb-2">
-                    {isInitiator ? 'Calling...' : 'Incoming call'}
+                    {isInitiator ? 'Calling...' : 'Connecting...'}
                   </div>
                   <div className="text-sm opacity-70">
-                    Waiting for connection...
+                    {isInitiator ? 'Waiting for answer...' : 'Establishing connection...'}
                   </div>
                 </div>
               </div>

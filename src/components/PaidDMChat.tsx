@@ -360,7 +360,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
           setVideoCallAnswer(null); // Reset previous answer
           setVideoCallIceCandidate(null); // Reset previous ICE candidate
           
-          // Show pickup modal instead of directly opening video call
+          // Show pickup modal for incoming call
           setIncomingCallFrom(senderId === sessionInfo?.creator_id ? "Creator" : "Subscriber");
           setShowCallPickup(true);
         }
@@ -380,9 +380,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         if (senderId !== currentUserId) {
           setShowVideoCall(false);
           setShowCallPickup(false);
-          setVideoCallOffer(null);
-          setVideoCallAnswer(null);
-          setVideoCallIceCandidate(null);
+          resetVideoCallState();
           toast({
             title: "Call Ended",
             description: "The other participant ended the video call",
@@ -392,9 +390,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
         if (senderId !== currentUserId) {
           setShowVideoCall(false);
           setShowCallPickup(false);
-          setVideoCallOffer(null);
-          setVideoCallAnswer(null);
-          setVideoCallIceCandidate(null);
+          resetVideoCallState();
           toast({
             title: "Call Declined",
             description: "The other participant declined the video call",
@@ -407,6 +403,13 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     }
   };
 
+  const resetVideoCallState = () => {
+    setVideoCallOffer(null);
+    setVideoCallAnswer(null);
+    setVideoCallIceCandidate(null);
+    setIsVideoCallInitiator(false);
+  };
+
   // Start video call
   const startVideoCall = async () => {
     if (!sessionInfo) return;
@@ -414,9 +417,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     console.log('Starting video call as initiator');
     
     // Reset video call states
-    setVideoCallOffer(null);
-    setVideoCallAnswer(null);
-    setVideoCallIceCandidate(null);
+    resetVideoCallState();
     
     setShowVideoCall(true);
     setIsVideoCallInitiator(true);
@@ -448,9 +449,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     
     console.log('Declining incoming video call');
     setShowCallPickup(false);
-    setVideoCallOffer(null);
-    setVideoCallAnswer(null);
-    setVideoCallIceCandidate(null);
+    resetVideoCallState();
     
     const recipient_id =
       currentUserId === sessionInfo.creator_id
@@ -530,10 +529,7 @@ const PaidDMChat = ({ sessionId, currentUserId }: PaidDMChatProps) => {
     console.log('Ending video call');
     setShowVideoCall(false);
     setShowCallPickup(false);
-    setVideoCallOffer(null);
-    setVideoCallAnswer(null);
-    setVideoCallIceCandidate(null);
-    setIsVideoCallInitiator(false);
+    resetVideoCallState();
     
     const recipient_id =
       currentUserId === sessionInfo.creator_id
