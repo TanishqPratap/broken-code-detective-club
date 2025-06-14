@@ -286,6 +286,60 @@ export type Database = {
         }
         Relationships: []
       }
+      stream_subscriptions: {
+        Row: {
+          amount: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          status: string | null
+          stream_id: string | null
+          stripe_payment_intent_id: string | null
+          subscriber_id: string | null
+          tier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          status?: string | null
+          stream_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subscriber_id?: string | null
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          status?: string | null
+          stream_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subscriber_id?: string | null
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_subscriptions_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stream_subscriptions_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_viewers: {
         Row: {
           id: string
@@ -324,6 +378,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_tiers: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: string[] | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
