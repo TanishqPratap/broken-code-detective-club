@@ -7,6 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Heart, MessageCircle, Share, MoreHorizontal, Lock, Send } from "lucide-react";
 import { toast } from "sonner";
 
+interface Comment {
+  id: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatar?: string;
+  text: string;
+  timestamp: string;
+}
+
 interface Post {
   id: string;
   creator: {
@@ -37,6 +47,7 @@ interface ContentFeedProps {
 const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) => {
   const [expandedComments, setExpandedComments] = useState<string[]>([]);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
 
   const toggleComments = (postId: string) => {
     setExpandedComments(prev => 
@@ -49,6 +60,23 @@ const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) =>
   const handleCommentSubmit = (postId: string) => {
     const comment = commentTexts[postId]?.trim();
     if (!comment) return;
+
+    // Create new comment
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      userId: "current-user",
+      username: "you",
+      displayName: "You",
+      avatar: "",
+      text: comment,
+      timestamp: "now"
+    };
+
+    // Add comment to post comments
+    setPostComments(prev => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), newComment]
+    }));
 
     // Call the parent's onComment function
     onComment(postId);
@@ -158,7 +186,7 @@ const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) =>
                   onClick={() => toggleComments(post.id)}
                 >
                   <MessageCircle className="w-4 h-4 mr-1" />
-                  {post.comments}
+                  {post.comments + (postComments[post.id]?.length || 0)}
                 </Button>
                 
                 <Button 
@@ -200,33 +228,23 @@ const ContentFeed = ({ posts, onLike, onComment, onShare }: ContentFeedProps) =>
                   </Button>
                 </div>
 
-                {/* Sample Comments */}
+                {/* Display Comments */}
                 <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback>JD</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">John Doe</span>
-                        <span className="text-xs text-muted-foreground">2h ago</span>
+                  {postComments[post.id]?.map((comment) => (
+                    <div key={comment.id} className="flex gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={comment.avatar} />
+                        <AvatarFallback>{comment.displayName[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{comment.displayName}</span>
+                          <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
+                        </div>
+                        <p className="text-sm">{comment.text}</p>
                       </div>
-                      <p className="text-sm">Great content! Keep it up! 🔥</p>
                     </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback>AS</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">Alice Smith</span>
-                        <span className="text-xs text-muted-foreground">1h ago</span>
-                      </div>
-                      <p className="text-sm">Amazing work as always! 👏</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             )}
