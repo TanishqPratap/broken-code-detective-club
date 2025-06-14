@@ -57,7 +57,14 @@ const Discover = () => {
         .limit(12);
 
       if (error) throw error;
-      setLiveStreams(data || []);
+      
+      // Type the data properly to match our LiveStream interface
+      const typedStreams: LiveStream[] = (data || []).map(stream => ({
+        ...stream,
+        status: (stream.status === 'live' ? 'live' : 'offline') as 'live' | 'offline'
+      }));
+      
+      setLiveStreams(typedStreams);
     } catch (error) {
       console.error('Error fetching streams:', error);
     } finally {
