@@ -44,6 +44,8 @@ const LivestreamDashboard = () => {
         playbackUrl: `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
         rtmpIngestUrl: `rtmp://rtmp.livepeer.studio/live/${streamKey}`
       });
+
+      console.log('Stream saved to database successfully');
     } catch (error: any) {
       console.error('Error saving stream:', error);
       toast({
@@ -67,6 +69,7 @@ const LivestreamDashboard = () => {
     setIsCreatingStream(true);
     
     try {
+      console.log('Creating stream with Livepeer...');
       const { data, error } = await supabase.functions.invoke('livepeer-stream', {
         body: {
           action: 'create',
@@ -77,8 +80,12 @@ const LivestreamDashboard = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
+      console.log('Livepeer stream created:', data);
       await saveStreamToDatabase(data.id, data.streamKey, data.playbackId);
       
       toast({
@@ -89,7 +96,7 @@ const LivestreamDashboard = () => {
       console.error('Error creating stream:', error);
       toast({
         title: "Error",
-        description: "Failed to create stream",
+        description: `Failed to create stream: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -98,9 +105,13 @@ const LivestreamDashboard = () => {
   };
 
   const handleStartStream = async () => {
-    if (!streamData || !user) return;
+    if (!streamData || !user) {
+      console.error('Missing stream data or user');
+      return;
+    }
 
     try {
+      console.log('Starting stream...');
       const { error } = await supabase
         .from('live_streams')
         .update({
@@ -128,9 +139,13 @@ const LivestreamDashboard = () => {
   };
 
   const handleEndStream = async () => {
-    if (!streamData || !user) return;
+    if (!streamData || !user) {
+      console.error('Missing stream data or user');
+      return;
+    }
 
     try {
+      console.log('Ending stream...');
       const { error } = await supabase
         .from('live_streams')
         .update({
@@ -156,6 +171,18 @@ const LivestreamDashboard = () => {
       });
     }
   };
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4">Livestream Dashboard</h1>
+          <p className="text-gray-600">Please sign in to access the livestream dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -280,6 +307,12 @@ const LivestreamDashboard = () => {
                     muted
                     className="w-full h-full rounded-lg"
                     controls
+                    onError={(e) => {
+                      console.error('Video playback error:', e);
+                    }}
+                    onLoadStart={() => {
+                      console.log('Video loading started');
+                    }}
                   />
                 ) : (
                   <div className="text-white text-center">
