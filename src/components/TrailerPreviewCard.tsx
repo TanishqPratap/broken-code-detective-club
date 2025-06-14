@@ -70,9 +70,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
     try {
       // Fetch likes count
       const { count: likesCountData, error: likesError } = await supabase
-        .from('posts_interactions')
+        .from('trailer_interactions')
         .select('*', { count: 'exact', head: true })
-        .eq('post_id', trailer.id)
+        .eq('trailer_id', trailer.id)
         .eq('interaction_type', 'like');
 
       if (likesError) throw likesError;
@@ -81,9 +81,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
       // Check if current user liked this trailer
       if (user) {
         const { data: userLike, error: userLikeError } = await supabase
-          .from('posts_interactions')
+          .from('trailer_interactions')
           .select('id')
-          .eq('post_id', trailer.id)
+          .eq('trailer_id', trailer.id)
           .eq('user_id', user.id)
           .eq('interaction_type', 'like')
           .maybeSingle();
@@ -94,9 +94,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
 
       // Fetch comments count
       const { count: commentsCountData, error: commentsError } = await supabase
-        .from('posts_interactions')
+        .from('trailer_interactions')
         .select('*', { count: 'exact', head: true })
-        .eq('post_id', trailer.id)
+        .eq('trailer_id', trailer.id)
         .eq('interaction_type', 'comment');
 
       if (commentsError) throw commentsError;
@@ -111,9 +111,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
       setLoading(true);
       
       const { data: commentsData, error: commentsError } = await supabase
-        .from('posts_interactions')
+        .from('trailer_interactions')
         .select('id, user_id, comment_text, created_at')
-        .eq('post_id', trailer.id)
+        .eq('trailer_id', trailer.id)
         .eq('interaction_type', 'comment')
         .order('created_at', { ascending: true });
 
@@ -163,9 +163,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
     try {
       if (isLiked) {
         const { error } = await supabase
-          .from('posts_interactions')
+          .from('trailer_interactions')
           .delete()
-          .eq('post_id', trailer.id)
+          .eq('trailer_id', trailer.id)
           .eq('user_id', user.id)
           .eq('interaction_type', 'like');
 
@@ -174,9 +174,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
         setLikesCount(prev => prev - 1);
       } else {
         const { error } = await supabase
-          .from('posts_interactions')
+          .from('trailer_interactions')
           .insert({
-            post_id: trailer.id,
+            trailer_id: trailer.id,
             user_id: user.id,
             interaction_type: 'like'
           });
@@ -201,9 +201,9 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
 
     try {
       const { error } = await supabase
-        .from('posts_interactions')
+        .from('trailer_interactions')
         .insert({
-          post_id: trailer.id,
+          trailer_id: trailer.id,
           user_id: user.id,
           interaction_type: 'comment',
           comment_text: commentText.trim()
