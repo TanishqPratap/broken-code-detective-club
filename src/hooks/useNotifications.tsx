@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -304,41 +303,38 @@ export const useNotifications = () => {
       markAsRead(notification.id);
     }
 
-    // Navigate to related content based on notification type
+    // Use canonical route definitions that match src/App.tsx
     switch (notification.type) {
       case 'like':
       case 'comment':
       case 'comment_reply':
+        // /posts/:postId
         if (notification.related_id) {
-          // Navigate to the specific post using the correct route
           window.open(`/posts/${notification.related_id}`, '_blank');
         }
         break;
       case 'follow':
-        // Navigate to the follower's profile
-        window.open(`/creator/${notification.user.id}`, '_blank');
+      case 'story_like':
+        // /creator/:creatorId
+        // notification.user.id should be the creator's id
+        if (notification.user?.id) {
+          window.open(`/creator/${notification.user.id}`, '_blank');
+        }
         break;
       case 'subscription':
-        // Navigate to user's own profile
-        window.open(`/profile`, '_blank');
-        break;
       case 'tip':
-        // Navigate to user's profile to see tip details
+        // /profile (no other info needed)
         window.open(`/profile`, '_blank');
         break;
       case 'live_stream':
+        // /watch/:streamId
         if (notification.related_id) {
-          // Navigate to the live stream
           window.open(`/watch/${notification.related_id}`, '_blank');
         }
         break;
       case 'message':
-        // Navigate to DM page
+        // /dm
         window.open(`/dm`, '_blank');
-        break;
-      case 'story_like':
-        // Navigate to the creator's profile to view stories
-        window.open(`/creator/${notification.user.id}`, '_blank');
         break;
       default:
         console.log('Unknown notification type:', notification.type);
