@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart, MessageCircle, UserPlus, Video, Star, Gift, X, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Video, Star, Gift, X, MoreHorizontal, DollarSign, Users } from "lucide-react";
 import { NotificationData } from "@/hooks/useNotifications";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -23,10 +23,14 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: Not
         return <MessageCircle className={`${iconClass} text-blue-500`} />;
       case 'follow':
         return <UserPlus className={`${iconClass} text-green-500`} />;
-      case 'live':
+      case 'live_stream':
         return <Video className={`${iconClass} text-purple-500`} />;
       case 'tip':
-        return <Gift className={`${iconClass} text-yellow-500`} />;
+        return <DollarSign className={`${iconClass} text-yellow-500`} />;
+      case 'subscription':
+        return <Users className={`${iconClass} text-indigo-500`} />;
+      case 'message':
+        return <MessageCircle className={`${iconClass} text-blue-500`} />;
       default:
         return <Star className={`${iconClass} text-gray-500`} />;
     }
@@ -83,12 +87,17 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: Not
                     <span className="ml-1 text-blue-500">✓</span>
                   )}
                   <span className="text-gray-600 ml-1">
-                    {notification.action_text}
+                    {notification.message}
                   </span>
                 </p>
                 {notification.content && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {notification.content}
+                    "{notification.content}"
+                  </p>
+                )}
+                {notification.metadata?.amount && (
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    ${notification.metadata.amount}
                   </p>
                 )}
               </div>

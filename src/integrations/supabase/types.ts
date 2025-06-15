@@ -312,6 +312,51 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          related_content_id: string | null
+          related_content_type: string | null
+          related_user_id: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          related_content_id?: string | null
+          related_content_type?: string | null
+          related_user_id?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          related_content_id?: string | null
+          related_content_type?: string | null
+          related_user_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content_type: string
@@ -905,6 +950,19 @@ export type Database = {
       clear_chat: {
         Args: { user1_id: string; user2_id: string }
         Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          p_user_id: string
+          p_type: string
+          p_title: string
+          p_message: string
+          p_related_user_id?: string
+          p_related_content_id?: string
+          p_related_content_type?: string
+          p_metadata?: Json
+        }
+        Returns: string
       }
     }
     Enums: {

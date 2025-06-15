@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 export interface NotificationData {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention' | 'live' | 'tip' | 'story_like';
+  type: 'subscription' | 'comment' | 'like' | 'follow' | 'live_stream' | 'tip' | 'message' | 'story_like';
+  title: string;
+  message: string;
   user: {
     id: string;
     username: string;
@@ -20,7 +22,8 @@ export interface NotificationData {
   is_read: boolean;
   action_text: string;
   created_at: string;
-  related_id?: string; // ID of related post, stream, etc.
+  related_id?: string;
+  metadata?: any;
 }
 
 export const useNotifications = () => {
@@ -32,90 +35,61 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
-      // Simulate fetching notifications from various sources
-      const mockNotifications: NotificationData[] = [
-        {
-          id: '1',
-          type: 'like',
-          user: {
-            id: '1',
-            username: 'network_issu_',
-            display_name: 'Network Issue',
-            avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-            is_verified: false
-          },
-          action_text: 'liked your post.',
-          timestamp: '20h',
-          is_read: false,
-          created_at: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
-          post_preview: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=60&h=60&fit=crop',
-          related_id: 'post_1'
-        },
-        {
-          id: '2',
-          type: 'comment',
-          user: {
-            id: '2',
-            username: 'tutti_futti__',
-            display_name: 'Tutti Futti',
-            avatar_url: 'https://images.unsplash.com/photo-1494790108755-2616b9c027bc?w=100&h=100&fit=crop&crop=face'
-          },
-          action_text: 'commented on your post: "Amazing work! 🔥"',
-          timestamp: '1d',
-          is_read: true,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          content: 'Process Oriented',
-          post_preview: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=60&h=60&fit=crop',
-          related_id: 'post_2'
-        },
-        {
-          id: '3',
-          type: 'follow',
-          user: {
-            id: '3',
-            username: 'harsu______',
-            display_name: 'Harsu',
-            avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face'
-          },
-          action_text: 'started following you.',
-          timestamp: '3d',
-          is_read: true,
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          related_id: 'follow_1'
-        },
-        {
-          id: '4',
-          type: 'tip',
-          user: {
-            id: '4',
-            username: 'iam_adityaa_pandey',
-            display_name: 'Aditya Pandey',
-            avatar_url: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop&crop=face'
-          },
-          action_text: 'sent you a tip of $5! "Keep up the great content"',
-          timestamp: '4d',
-          is_read: true,
-          created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-          related_id: 'tip_1'
-        },
-        {
-          id: '5',
-          type: 'live',
-          user: {
-            id: '5',
-            username: 'rahmansadan',
-            display_name: 'Rahman Sadan',
-            avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
-          },
-          action_text: 'went live: "Building Cool Tech Products"',
-          timestamp: '5d',
-          is_read: true,
-          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          related_id: 'stream_1'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('notifications')
+        .select(`
+          id,
+          type,
+          title,
+          message,
+          is_read,
+          created_at,
+          related_content_id,
+          related_content_type,
+          metadata,
+          related_user:related_user_id(
+            id,
+            username,
+            display_name,
+            avatar_url,
+            is_verified
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-      setNotifications(mockNotifications);
+      if (error) throw error;
+
+      const transformedNotifications: NotificationData[] = data.map((notification: any) => {
+        const relatedUser = notification.related_user;
+        const timeAgo = getTimeAgo(notification.created_at);
+        
+        return {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          user: {
+            id: relatedUser?.id || '',
+            username: relatedUser?.username || 'Unknown',
+            display_name: relatedUser?.display_name,
+            avatar_url: relatedUser?.avatar_url,
+            is_verified: relatedUser?.is_verified || false
+          },
+          content: notification.metadata?.comment_text || notification.metadata?.message,
+          post_preview: notification.related_content_type === 'post' ? 
+            'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=60&h=60&fit=crop' : undefined,
+          timestamp: timeAgo,
+          is_read: notification.is_read,
+          action_text: notification.message,
+          created_at: notification.created_at,
+          related_id: notification.related_content_id,
+          metadata: notification.metadata
+        };
+      });
+
+      setNotifications(transformedNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast.error('Failed to load notifications');
@@ -124,8 +98,33 @@ export const useNotifications = () => {
     }
   };
 
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const notificationTime = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - notificationTime.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d`;
+    
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    return `${diffInWeeks}w`;
+  };
+
   const markAsRead = async (notificationId: string) => {
     try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
       setNotifications(prev => 
         prev.map(notif => 
           notif.id === notificationId 
@@ -133,9 +132,6 @@ export const useNotifications = () => {
             : notif
         )
       );
-      
-      // In a real app, you would update this in the database
-      console.log('Marking notification as read:', notificationId);
       
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -145,12 +141,18 @@ export const useNotifications = () => {
 
   const markAllAsRead = async () => {
     try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user?.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
       setNotifications(prev => 
         prev.map(notif => ({ ...notif, is_read: true }))
       );
       
-      // In a real app, you would update all notifications in the database
-      console.log('Marking all notifications as read');
       toast.success("All notifications marked as read");
       
     } catch (error) {
@@ -161,12 +163,17 @@ export const useNotifications = () => {
 
   const deleteNotification = async (notificationId: string) => {
     try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
       setNotifications(prev => 
         prev.filter(notif => notif.id !== notificationId)
       );
       
-      // In a real app, you would delete this from the database
-      console.log('Deleting notification:', notificationId);
       toast.success("Notification deleted");
       
     } catch (error) {
@@ -192,13 +199,19 @@ export const useNotifications = () => {
       case 'follow':
         window.location.href = `/creator/${notification.user.id}`;
         break;
+      case 'subscription':
+        window.location.href = `/profile`;
+        break;
       case 'tip':
         window.location.href = `/profile`;
         break;
-      case 'live':
+      case 'live_stream':
         if (notification.related_id) {
           window.location.href = `/watch/${notification.related_id}`;
         }
+        break;
+      case 'message':
+        window.location.href = `/dm`;
         break;
       default:
         break;
@@ -213,34 +226,47 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user) return;
 
-    // In a real app, you would set up a real-time subscription here
-    const setupRealtimeSubscription = () => {
-      console.log('Setting up real-time notifications for user:', user.id);
-      
-      // Example: Listen for new notifications
-      // const channel = supabase
-      //   .channel('notifications')
-      //   .on('postgres_changes', 
-      //     { 
-      //       event: 'INSERT', 
-      //       schema: 'public', 
-      //       table: 'notifications',
-      //       filter: `user_id=eq.${user.id}`
-      //     }, 
-      //     (payload) => {
-      //       // Add new notification to state
-      //       console.log('New notification:', payload);
-      //       // You would transform the payload and add it to notifications state
-      //     }
-      //   )
-      //   .subscribe();
+    const channel = supabase
+      .channel('notifications')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        (payload) => {
+          console.log('New notification received:', payload);
+          // Refetch notifications to get the complete data with relations
+          fetchNotifications();
+          toast.success('New notification received!');
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Notification updated:', payload);
+          // Update the specific notification in state
+          const updatedNotification = payload.new;
+          setNotifications(prev => 
+            prev.map(notif => 
+              notif.id === updatedNotification.id 
+                ? { ...notif, is_read: updatedNotification.is_read }
+                : notif
+            )
+          );
+        }
+      )
+      .subscribe();
 
-      // return () => {
-      //   supabase.removeChannel(channel);
-      // };
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    return setupRealtimeSubscription();
   }, [user]);
 
   return {

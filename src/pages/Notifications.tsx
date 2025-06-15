@@ -195,7 +195,7 @@ const Notifications = () => {
               <p className="text-gray-500">
                 {activeTab === 'unread' 
                   ? 'You\'re all caught up!' 
-                  : 'When people interact with your content, you\'ll see it here.'
+                  : 'When people interact with your content, subscribe, follow you, or go live, you\'ll see notifications here.'
                 }
               </p>
             </div>

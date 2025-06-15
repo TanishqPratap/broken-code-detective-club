@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,14 +19,51 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Mock function to get unread notification count
-  // In a real app, this would be connected to your notification system
+  // Fetch real unread notification count
   useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (user) {
+        try {
+          const { count, error } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false);
+
+          if (error) throw error;
+          setUnreadCount(count || 0);
+        } catch (error) {
+          console.error('Error fetching unread count:', error);
+          setUnreadCount(0);
+        }
+      } else {
+        setUnreadCount(0);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Set up real-time subscription for unread count updates
     if (user) {
-      // Simulate fetching unread count
-      setUnreadCount(3); // Mock unread count
-    } else {
-      setUnreadCount(0);
+      const channel = supabase
+        .channel('unread-notifications')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          () => {
+            // Refetch count when notifications change
+            fetchUnreadCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
