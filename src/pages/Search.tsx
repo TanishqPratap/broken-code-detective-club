@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search as SearchIcon, Users, FileText, Star, DollarSign, AlertCircle } from "lucide-react";
+import { Search as SearchIcon, Users, FileText, Star, DollarSign, AlertCircle, Lock, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -72,6 +71,7 @@ const Search = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('creators');
+  const [subscriptions, setSubscriptions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const query = searchParams.get('q');
@@ -80,6 +80,29 @@ const Search = () => {
       performSearch(query);
     }
   }, [searchParams]);
+
+  const fetchUserSubscriptions = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('creator_id')
+        .eq('subscriber_id', user.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      const creatorIds = new Set(data?.map(sub => sub.creator_id) || []);
+      setSubscriptions(creatorIds);
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserSubscriptions();
+  }, [user]);
 
   const performSearch = async (query: string) => {
     if (!query.trim()) return;
@@ -209,16 +232,65 @@ const Search = () => {
     navigate(`/creator/${creatorId}`);
   };
 
-  const handlePostClick = (postId: string) => {
-    navigate(`/posts/${postId}`);
+  const handlePostClick = (post: Post) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Check if user is subscribed to the post creator
+    if (subscriptions.has(post.user_id)) {
+      navigate(`/posts/${post.id}`);
+    } else {
+      // Show subscription prompt
+      toast({
+        title: "Subscription Required",
+        description: "Subscribe to this creator to view their content",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(`/creator/${post.user_id}`)}
+          >
+            Subscribe
+          </Button>
+        ),
+      });
+    }
   };
 
-  const handleContentClick = (contentId: string) => {
-    // For now, just show a toast since we don't have a content detail page
-    toast({
-      title: "Content preview",
-      description: "Content detail page coming soon!",
-    });
+  const handleContentClick = (content: Content) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Check if user is subscribed to the content creator
+    if (subscriptions.has(content.creator_id)) {
+      toast({
+        title: "Content preview",
+        description: "Content detail page coming soon!",
+      });
+    } else {
+      // Show subscription prompt
+      toast({
+        title: "Subscription Required",
+        description: "Subscribe to this creator to view their content",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(`/creator/${content.creator_id}`)}
+          >
+            Subscribe
+          </Button>
+        ),
+      });
+    }
+  };
+
+  const isSubscribedToCreator = (creatorId: string) => {
+    return user && subscriptions.has(creatorId);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -347,63 +419,90 @@ const Search = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {posts.map((post) => (
-                  <Card 
-                    key={post.id} 
-                    className="cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => handlePostClick(post.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={post.profiles?.avatar_url || ''} />
-                          <AvatarFallback>
-                            {post.profiles?.display_name?.[0] || post.profiles?.username?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">
-                              {post.profiles?.display_name || post.profiles?.username || "Unknown User"}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {post.content_type}
-                            </Badge>
-                            <span className="text-xs text-gray-500">
-                              {formatTimeAgo(post.created_at)}
-                            </span>
-                          </div>
-                          {post.title && (
-                            <h4 className="font-semibold text-sm mb-1">{post.title}</h4>
-                          )}
-                          {post.description && (
-                            <p className="text-sm text-gray-600 mb-2">{post.description}</p>
-                          )}
-                          {post.text_content && !post.title && (
-                            <p className="text-sm text-gray-700 mb-2 line-clamp-3">{post.text_content}</p>
-                          )}
-                          {post.media_url && (
-                            <div className="mt-2">
-                              {post.content_type === 'image' ? (
-                                <img 
-                                  src={post.media_url} 
-                                  alt="Post media"
-                                  className="max-w-full h-32 object-cover rounded"
-                                />
-                              ) : post.content_type === 'video' ? (
-                                <video 
-                                  src={post.media_url}
-                                  className="max-w-full h-32 object-cover rounded"
-                                  controls={false}
-                                />
-                              ) : null}
+                {posts.map((post) => {
+                  const isSubscribed = isSubscribedToCreator(post.user_id);
+                  const shouldShowContent = isSubscribed || !user;
+
+                  return (
+                    <Card 
+                      key={post.id} 
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => handlePostClick(post)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={post.profiles?.avatar_url || ''} />
+                            <AvatarFallback>
+                              {post.profiles?.display_name?.[0] || post.profiles?.username?.[0] || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">
+                                {post.profiles?.display_name || post.profiles?.username || "Unknown User"}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {post.content_type}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                {formatTimeAgo(post.created_at)}
+                              </span>
                             </div>
-                          )}
+                            
+                            {shouldShowContent ? (
+                              <>
+                                {post.title && (
+                                  <h4 className="font-semibold text-sm mb-1">{post.title}</h4>
+                                )}
+                                {post.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{post.description}</p>
+                                )}
+                                {post.text_content && !post.title && (
+                                  <p className="text-sm text-gray-700 mb-2 line-clamp-3">{post.text_content}</p>
+                                )}
+                                {post.media_url && (
+                                  <div className="mt-2">
+                                    {post.content_type === 'image' ? (
+                                      <img 
+                                        src={post.media_url} 
+                                        alt="Post media"
+                                        className="max-w-full h-32 object-cover rounded"
+                                      />
+                                    ) : post.content_type === 'video' ? (
+                                      <video 
+                                        src={post.media_url}
+                                        className="max-w-full h-32 object-cover rounded"
+                                        controls={false}
+                                      />
+                                    ) : null}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">
+                                <div className="text-center">
+                                  <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                  <p className="text-sm text-gray-600 mb-2">Subscribe to view this content</p>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/creator/${post.user_id}`);
+                                    }}
+                                  >
+                                    <UserPlus className="w-4 h-4 mr-1" />
+                                    Subscribe
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -418,73 +517,101 @@ const Search = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {contents.map((content) => (
-                  <Card 
-                    key={content.id} 
-                    className="cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => handleContentClick(content.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={content.profiles?.avatar_url || ''} />
-                          <AvatarFallback>
-                            {content.profiles?.display_name?.[0] || content.profiles?.username?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">
-                              {content.profiles?.display_name || content.profiles?.username || "Unknown Creator"}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {content.content_type}
-                            </Badge>
-                            {content.is_premium && (
-                              <Badge variant="secondary" className="text-xs">
-                                Premium
+                {contents.map((content) => {
+                  const isSubscribed = isSubscribedToCreator(content.creator_id);
+                  const shouldShowContent = isSubscribed || !user;
+
+                  return (
+                    <Card 
+                      key={content.id} 
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => handleContentClick(content)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={content.profiles?.avatar_url || ''} />
+                            <AvatarFallback>
+                              {content.profiles?.display_name?.[0] || content.profiles?.username?.[0] || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">
+                                {content.profiles?.display_name || content.profiles?.username || "Unknown Creator"}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {content.content_type}
                               </Badge>
-                            )}
-                            <span className="text-xs text-gray-500">
-                              {formatTimeAgo(content.created_at)}
-                            </span>
-                          </div>
-                          <h4 className="font-semibold text-sm mb-1">{content.title}</h4>
-                          {content.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{content.description}</p>
-                          )}
-                          <div className="flex items-center gap-2 mt-2">
-                            {content.is_premium && content.price && (
-                              <div className="flex items-center gap-1">
-                                <DollarSign className="w-3 h-3 text-green-600" />
-                                <span className="text-sm font-medium text-green-600">
-                                  ${content.price}
-                                </span>
+                              {content.is_premium && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Premium
+                                </Badge>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {formatTimeAgo(content.created_at)}
+                              </span>
+                            </div>
+                            
+                            <h4 className="font-semibold text-sm mb-1">{content.title}</h4>
+                            
+                            {shouldShowContent ? (
+                              <>
+                                {content.description && (
+                                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">{content.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2">
+                                  {content.is_premium && content.price && (
+                                    <div className="flex items-center gap-1">
+                                      <DollarSign className="w-3 h-3 text-green-600" />
+                                      <span className="text-sm font-medium text-green-600">
+                                        ${content.price}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                {content.media_url && (
+                                  <div className="mt-2">
+                                    {content.content_type === 'image' ? (
+                                      <img 
+                                        src={content.media_url} 
+                                        alt="Content media"
+                                        className="max-w-full h-32 object-cover rounded"
+                                      />
+                                    ) : content.content_type === 'video' ? (
+                                      <video 
+                                        src={content.media_url}
+                                        className="max-w-full h-32 object-cover rounded"
+                                        controls={false}
+                                      />
+                                    ) : null}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg mt-2">
+                                <div className="text-center">
+                                  <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                  <p className="text-sm text-gray-600 mb-2">Subscribe to view this content</p>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/creator/${content.creator_id}`);
+                                    }}
+                                  >
+                                    <UserPlus className="w-4 h-4 mr-1" />
+                                    Subscribe
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
-                          {content.media_url && (
-                            <div className="mt-2">
-                              {content.content_type === 'image' ? (
-                                <img 
-                                  src={content.media_url} 
-                                  alt="Content media"
-                                  className="max-w-full h-32 object-cover rounded"
-                                />
-                              ) : content.content_type === 'video' ? (
-                                <video 
-                                  src={content.media_url}
-                                  className="max-w-full h-32 object-cover rounded"
-                                  controls={false}
-                                />
-                              ) : null}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
