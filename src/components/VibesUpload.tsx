@@ -40,6 +40,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
         setVideoFile(file);
         const url = URL.createObjectURL(file);
         setVideoPreview(url);
+        toast.success('Video selected successfully!');
       } else {
         toast.error('Please select a video file');
       }
@@ -69,6 +70,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       ...prev,
       stickers: [...(prev.stickers || []), newSticker]
     }));
+    toast.success('Sticker added!');
   };
 
   const handleTextAdd = (text: string, style: any) => {
@@ -84,6 +86,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       ...prev,
       textOverlays: [...(prev.textOverlays || []), newText]
     }));
+    toast.success('Text overlay added!');
   };
 
   const handleGifSelect = (gif: string) => {
@@ -98,6 +101,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       ...prev,
       gifs: [...(prev.gifs || []), newGif]
     }));
+    toast.success('GIF added!');
   };
 
   const handleMusicSelect = (music: string) => {
@@ -115,16 +119,24 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
 
   const uploadVideo = async (file: File): Promise<string> => {
     console.log('Starting video upload:', file.name, file.size);
+    
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+    
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user!.id}/${Date.now()}.${fileExt}`;
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
     
     const { data, error } = await supabase.storage
       .from('post-media')
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (error) {
       console.error('Upload error:', error);
-      throw error;
+      throw new Error(`Upload failed: ${error.message}`);
     }
 
     console.log('Upload successful:', data);
@@ -156,6 +168,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
     try {
       setUploading(true);
       console.log('Starting vibe upload process...');
+      toast.info('Uploading your vibe...');
 
       // Upload video file
       const mediaUrl = await uploadVideo(videoFile);
@@ -163,22 +176,27 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
 
       // Get video duration
       let duration = 0;
-      if (videoRef.current) {
+      if (videoRef.current && !isNaN(videoRef.current.duration)) {
         duration = Math.floor(videoRef.current.duration) || 0;
       }
 
-      // Prepare metadata
+      // Prepare hashtags
+      const processedHashtags = hashtags.split('#')
+        .filter(tag => tag.trim())
+        .map(tag => tag.trim());
+
+      // Prepare metadata with better structure
       const vibeMetadata = {
-        ...metadata,
-        hashtags: hashtags.split('#').filter(tag => tag.trim()).map(tag => tag.trim()),
+        hashtags: processedHashtags,
         effects: {
           music: selectedMusic,
-          textOverlays,
-          stickers
-        }
+          textOverlays: textOverlays,
+          stickers: stickers
+        },
+        ...metadata
       };
 
-      console.log('Creating vibe post with data:', {
+      const postData = {
         user_id: user.id,
         content_type: 'reel',
         description: description.trim(),
@@ -186,30 +204,36 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
         media_type: videoFile.type,
         duration,
         metadata: vibeMetadata
-      });
+      };
+
+      console.log('Creating vibe post with data:', postData);
 
       // Create the vibe post
-      const { data: postData, error: postError } = await supabase
+      const { data: result, error: postError } = await supabase
         .from('posts')
-        .insert({
-          user_id: user.id,
-          content_type: 'reel',
-          description: description.trim(),
-          media_url: mediaUrl,
-          media_type: videoFile.type,
-          duration,
-          metadata: vibeMetadata
-        })
+        .insert(postData)
         .select()
         .single();
 
       if (postError) {
         console.error('Post creation error:', postError);
-        throw postError;
+        
+        // Handle specific errors
+        if (postError.code === '23505') {
+          throw new Error('Duplicate post detected. Please try again.');
+        } else if (postError.code === '42501') {
+          throw new Error('Permission denied. Please check your authentication.');
+        } else if (postError.message?.includes('violates row-level security')) {
+          throw new Error('Authentication error. Please sign out and sign in again.');
+        } else if (postError.message?.includes('column') && postError.message?.includes('does not exist')) {
+          throw new Error('Database error. Some features may not be available yet.');
+        } else {
+          throw new Error(`Failed to create post: ${postError.message}`);
+        }
       }
 
-      console.log('Vibe post created successfully:', postData);
-      toast.success('Vibe uploaded successfully!');
+      console.log('Vibe post created successfully:', result);
+      toast.success('Vibe uploaded successfully! 🎉');
       
       // Reset form
       setDescription('');
@@ -221,19 +245,15 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       setStickers([]);
       setMetadata({});
       setIsPlaying(false);
+      setShowEnhancements(false);
       
+      // Call callbacks
       onUploadComplete?.();
       onClose?.();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading vibe:', error);
-      if (error.message?.includes('violates row-level security')) {
-        toast.error('Authentication error. Please sign out and sign in again.');
-      } else if (error.message?.includes('column') && error.message?.includes('does not exist')) {
-        toast.error('Database error. Some features may not be available yet.');
-      } else {
-        toast.error(`Failed to upload vibe: ${error.message || 'Unknown error'}`);
-      }
+      toast.error(error.message || 'Failed to upload vibe. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -269,6 +289,10 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
                         videoRef.current.currentTime = 0;
                       }
                     }}
+                    onError={(e) => {
+                      console.error('Video error:', e);
+                      toast.error('Error loading video preview');
+                    }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Button
@@ -285,7 +309,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
                   {textOverlays.map(text => (
                     <div
                       key={text.id}
-                      className="absolute"
+                      className="absolute pointer-events-none"
                       style={{
                         left: `${text.position.x}%`,
                         top: `${text.position.y}%`,
@@ -302,7 +326,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
                   {stickers.map(sticker => (
                     <div
                       key={sticker.id}
-                      className="absolute"
+                      className="absolute pointer-events-none"
                       style={{
                         left: `${sticker.position.x}%`,
                         top: `${sticker.position.y}%`,
@@ -369,7 +393,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
           </div>
 
           {/* Enhancement Tools */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
