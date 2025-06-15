@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -277,7 +278,7 @@ const CreatorProfilePage = () => {
   const creatorUrl = `${window.location.origin}/creator/${creator.id}`;
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen bg-white flex">
       <SEOHead
         title={creatorTitle}
         description={creatorDescription}
@@ -287,8 +288,8 @@ const CreatorProfilePage = () => {
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <main className="flex-1 ml-64">
-        <div className="w-full">
+      <main className="flex-1 ml-64 bg-white">
+        <div className="w-full bg-white">
           <CreatorProfile
             creator={{
               id: creator.id,
@@ -308,8 +309,8 @@ const CreatorProfilePage = () => {
 
           {/* Trailers Section */}
           {trailers.length > 0 && (
-            <div className="bg-white">
-              <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-6 sm:py-8">
+            <div className="w-full bg-white">
+              <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-6 sm:py-8 bg-white">
                 <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Free Previews</h2>
                 <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {trailers.map((trailer) => (
