@@ -17,6 +17,7 @@ import Live from "./pages/Live";
 import Posts from "./pages/Posts";
 import PostView from "./pages/PostView";
 import TrailerView from "./pages/TrailerView";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import StreamPaymentSuccess from "./pages/StreamPaymentSuccess";
 import PaidDM from "./pages/PaidDM";
@@ -44,13 +45,12 @@ const App = () => (
               <Route path="/posts/:postId" element={<PostView />} />
               <Route path="/watch/:streamId" element={<Watch />} />
               <Route path="/dm" element={<PaidDM />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/stream-payment-success" element={<StreamPaymentSuccess />} />
               {/* Redirect legacy routes */}
               <Route path="/messages" element={<Navigate to="/dm" replace />} />
               <Route path="/creators/:creatorId" element={<Navigate to="/creator/:creatorId" replace />} />
               <Route path="/user/:userId" element={<Navigate to="/creator/:userId" replace />} />
-              {/* Add missing routes that might be needed */}
-              <Route path="/notifications" element={<Navigate to="/" replace />} />
               {/* Catch all 404s */}
               <Route path="*" element={<NotFound />} />
             </Routes>
