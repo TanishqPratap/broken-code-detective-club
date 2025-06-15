@@ -316,33 +316,39 @@ export type Database = {
         Row: {
           content_type: string
           created_at: string
+          description: string | null
           id: string
           media_type: string | null
           media_url: string | null
           text_content: string | null
           thumbnail_url: string | null
+          title: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           content_type: string
           created_at?: string
+          description?: string | null
           id?: string
           media_type?: string | null
           media_url?: string | null
           text_content?: string | null
           thumbnail_url?: string | null
+          title?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           content_type?: string
           created_at?: string
+          description?: string | null
           id?: string
           media_type?: string | null
           media_url?: string | null
           text_content?: string | null
           thumbnail_url?: string | null
+          title?: string | null
           updated_at?: string
           user_id?: string
         }

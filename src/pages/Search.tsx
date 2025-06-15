@@ -29,6 +29,8 @@ interface Post {
   id: string;
   user_id: string;
   content_type: string;
+  title: string | null;
+  description: string | null;
   text_content: string | null;
   media_url: string | null;
   created_at: string;
@@ -90,13 +92,15 @@ const Search = () => {
 
       setCreators(creatorsWithCounts);
 
-      // Search posts - expanded to include all types of posts
+      // Search posts by title, description, text_content, and content_type
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
           id,
           user_id,
           content_type,
+          title,
+          description,
           text_content,
           media_url,
           created_at,
@@ -106,7 +110,7 @@ const Search = () => {
             avatar_url
           )
         `)
-        .or(`text_content.ilike.%${query}%,content_type.ilike.%${query}%`)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,text_content.ilike.%${query}%,content_type.ilike.%${query}%`)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -155,7 +159,7 @@ const Search = () => {
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Search creators, posts, content types..."
+                placeholder="Search creators, post titles, descriptions, content..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -243,7 +247,7 @@ const Search = () => {
               <div className="text-center py-8">
                 <p className="text-gray-600">No posts found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Try searching for different keywords, content types (image, video, text), or creator names.
+                  Try searching for different keywords in titles, descriptions, or content types.
                 </p>
               </div>
             ) : (
@@ -270,7 +274,13 @@ const Search = () => {
                               {formatTimeAgo(post.created_at)}
                             </span>
                           </div>
-                          {post.text_content && (
+                          {post.title && (
+                            <h4 className="font-semibold text-sm mb-1">{post.title}</h4>
+                          )}
+                          {post.description && (
+                            <p className="text-sm text-gray-600 mb-2">{post.description}</p>
+                          )}
+                          {post.text_content && !post.title && (
                             <p className="text-sm text-gray-700 mb-2">{post.text_content}</p>
                           )}
                           {post.media_url && (
@@ -290,7 +300,7 @@ const Search = () => {
                               ) : null}
                             </div>
                           )}
-                          {!post.text_content && !post.media_url && (
+                          {!post.title && !post.description && !post.text_content && !post.media_url && (
                             <p className="text-sm text-gray-500 italic">
                               {post.content_type} content
                             </p>
@@ -309,7 +319,7 @@ const Search = () => {
           <div className="text-center py-16">
             <SearchIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Search for creators and posts</h3>
-            <p className="text-gray-600">Enter a search term to find creators by username, display name, or posts by content</p>
+            <p className="text-gray-600">Enter a search term to find creators by username, display name, or posts by title, description, and content</p>
           </div>
         )}
       </div>
