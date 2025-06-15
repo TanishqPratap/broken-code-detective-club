@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
@@ -14,9 +13,11 @@ import PaidDMModal from "@/components/PaidDMModal";
 import PaidDMChat from "@/components/PaidDMChat";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const Creator = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [showPaidDM, setShowPaidDM] = useState(false);
@@ -27,6 +28,15 @@ const Creator = () => {
     creatorChatRate: number;
     subscriberId: string;
   } | null>(null);
+
+  // Check if we should navigate to livestream tab from navigation state
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveSection(location.state.activeTab);
+      // Clear the state after using it
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Simulate viewing another creator (in real use, pass another user's profile data)
   // For this demo, if user is logged in, treat them as both the viewer and the "creator"

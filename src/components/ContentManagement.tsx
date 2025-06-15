@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,7 +95,8 @@ const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementPr
     if (onGoLiveClick) {
       onGoLiveClick();
     } else {
-      navigate("/creator");
+      // Navigate directly to the livestream dashboard to start streaming
+      navigate("/creator", { state: { activeTab: "livestream" } });
     }
   };
 
