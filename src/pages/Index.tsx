@@ -9,7 +9,6 @@ import Footer from "@/components/Footer";
 import StoriesCarousel from "@/components/StoriesCarousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import MerchandiseList from "@/components/MerchandiseList";
 const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const {
@@ -182,16 +181,6 @@ const Index = () => {
               </CardHeader>
             </Card>
           </div>
-        </div>
-      </section>
-
-      {/* Featured Merchandise Section */}
-      <section className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100">
-            Featured Merchandise
-          </h2>
-          <MerchandiseList />
         </div>
       </section>
 
