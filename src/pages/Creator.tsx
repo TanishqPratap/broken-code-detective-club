@@ -58,6 +58,14 @@ const Creator = () => {
     setShowPaidDM(true);
   };
 
+  const handleNavigateToLivestream = () => {
+    setActiveSection("livestream");
+  };
+
+  const handleNavigateToContent = () => {
+    setActiveSection("content");
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
@@ -102,7 +110,12 @@ const Creator = () => {
               />
             )}
             
-            {!activeSessionId && activeSection === "overview" && <CreatorDashboard />}
+            {!activeSessionId && activeSection === "overview" && (
+              <CreatorDashboard 
+                onNavigateToLivestream={handleNavigateToLivestream}
+                onNavigateToContent={handleNavigateToContent}
+              />
+            )}
             {!activeSessionId && activeSection === "livestream" && <LivestreamDashboard />}
             {!activeSessionId && activeSection === "content" && <ContentManagement />}
             {!activeSessionId && activeSection === "settings" && <CreatorSettings />}

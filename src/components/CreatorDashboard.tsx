@@ -9,7 +9,12 @@ import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
 import { useAuth } from "@/hooks/useAuth";
 
-const CreatorDashboard = () => {
+interface CreatorDashboardProps {
+  onNavigateToLivestream?: () => void;
+  onNavigateToContent?: () => void;
+}
+
+const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: CreatorDashboardProps) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [showVibesUpload, setShowVibesUpload] = useState(false);
@@ -24,12 +29,20 @@ const CreatorDashboard = () => {
   };
 
   const handleGoLive = () => {
-    setActiveTab("livestream");
+    if (onNavigateToLivestream) {
+      onNavigateToLivestream();
+    } else {
+      setActiveTab("livestream");
+    }
   };
 
   const handleNewContent = () => {
-    setActiveTab("content");
-    setShowContentUpload(true);
+    if (onNavigateToContent) {
+      onNavigateToContent();
+    } else {
+      setActiveTab("content");
+      setShowContentUpload(true);
+    }
   };
 
   if (showVibesUpload) {
