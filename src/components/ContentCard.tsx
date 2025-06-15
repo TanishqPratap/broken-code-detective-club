@@ -91,7 +91,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
                 <img
                   src={content.thumbnail_url || content.media_url}
                   alt={content.title}
-                  className="w-full h-64 object-cover"
+                  className="w-full h-auto object-contain"
                 />
               ) : content.content_type === 'video' ? (
                 <div className="relative">
@@ -99,7 +99,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
                     src={content.media_url}
                     poster={content.thumbnail_url || undefined}
                     controls
-                    className="w-full h-64 object-cover"
+                    className="w-full h-auto object-contain"
                   />
                 </div>
               ) : null}
