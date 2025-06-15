@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,16 +12,9 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface ScheduledPost {
-  id: string;
-  title: string;
-  content: string;
-  media_url?: string;
-  scheduled_for: string;
-  status: 'scheduled' | 'published' | 'failed';
-  created_at: string;
-}
+type ScheduledPost = Tables<"scheduled_posts">;
 
 const ContentScheduler = () => {
   const { user } = useAuth();
