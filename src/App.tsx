@@ -1,64 +1,103 @@
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
-import Posts from "@/pages/Posts";
-import Vibes from "@/pages/Vibes";
+import Creator from "@/pages/Creator";
 import Profile from "@/pages/Profile";
 import Search from "@/pages/Search";
+import Posts from "@/pages/Posts";
+import PostView from "@/pages/PostView";
+import ContentView from "@/pages/ContentView";
+import TrailerView from "@/pages/TrailerView";
+import CreatorProfile from "@/pages/CreatorProfile";
 import Discover from "@/pages/Discover";
 import Live from "@/pages/Live";
-import Creator from "@/pages/Creator";
-import CreatorProfile from "@/pages/CreatorProfile";
-import PaidDM from "@/pages/PaidDM";
+import Watch from "@/pages/Watch";
+import Vibes from "@/pages/Vibes";
 import Notifications from "@/pages/Notifications";
 import NotificationSettings from "@/pages/NotificationSettings";
-import PostView from "@/pages/PostView";
-import TrailerView from "@/pages/TrailerView";
-import Watch from "@/pages/Watch";
+import PaidDM from "@/pages/PaidDM";
 import StreamPaymentSuccess from "@/pages/StreamPaymentSuccess";
 import NotFound from "@/pages/NotFound";
-import ContentView from "@/pages/ContentView";
+import MobileLayout from "@/components/MobileLayout";
+import Layout from "@/components/Layout";
+import LivepeerProvider from "@/components/LivepeerProvider";
+import { useIsMobile } from "@/hooks/use-mobile";
+import "./App.css";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  const isMobile = useIsMobile();
+
+  return (
+    <Router>
+      <Routes>
+        {isMobile ? (
+          <Route path="/" element={<MobileLayout />}>
+            <Route index element={<Index />} />
+            <Route path="creator" element={<Creator />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="profile/:username" element={<CreatorProfile />} />
+            <Route path="search" element={<Search />} />
+            <Route path="posts" element={<Posts />} />
+            <Route path="post/:id" element={<PostView />} />
+            <Route path="content/:id" element={<ContentView />} />
+            <Route path="trailer/:id" element={<TrailerView />} />
+            <Route path="discover" element={<Discover />} />
+            <Route path="live" element={<Live />} />
+            <Route path="watch/:playbackId" element={<Watch />} />
+            <Route path="vibes" element={<Vibes />} />
+            <Route path="vibes/:id" element={<PostView />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+            <Route path="dm" element={<PaidDM />} />
+            <Route path="dm/:sessionId" element={<PaidDM />} />
+            <Route path="payment-success" element={<StreamPaymentSuccess />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        ) : (
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Index />} />
+            <Route path="creator" element={<Creator />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="profile/:username" element={<CreatorProfile />} />
+            <Route path="search" element={<Search />} />
+            <Route path="posts" element={<Posts />} />
+            <Route path="post/:id" element={<PostView />} />
+            <Route path="content/:id" element={<ContentView />} />
+            <Route path="trailer/:id" element={<TrailerView />} />
+            <Route path="discover" element={<Discover />} />
+            <Route path="live" element={<Live />} />
+            <Route path="watch/:playbackId" element={<Watch />} />
+            <Route path="vibes" element={<Vibes />} />
+            <Route path="vibes/:id" element={<PostView />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+            <Route path="dm" element={<PaidDM />} />
+            <Route path="dm/:sessionId" element={<PaidDM />} />
+            <Route path="payment-success" element={<StreamPaymentSuccess />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        )}
+      </Routes>
+    </Router>
+  );
+}
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
+        <TooltipProvider>
+          <LivepeerProvider>
+            <AppContent />
             <Toaster />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Index />} />
-                  <Route path="posts" element={<Posts />} />
-                  <Route path="posts/:postId" element={<PostView />} />
-                  <Route path="vibes" element={<Vibes />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="search" element={<Search />} />
-                  <Route path="discover" element={<Discover />} />
-                  <Route path="live" element={<Live />} />
-                  <Route path="creator" element={<Creator />} />
-                  <Route path="creator/:creatorId" element={<CreatorProfile />} />
-                  <Route path="dm" element={<PaidDM />} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="notification-settings" element={<NotificationSettings />} />
-                  <Route path="trailer/:trailerId" element={<TrailerView />} />
-                  <Route path="watch/:streamId" element={<Watch />} />
-                  <Route path="stream-payment-success" element={<StreamPaymentSuccess />} />
-                  <Route path="content/:contentId" element={<ContentView />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
+          </LivepeerProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
