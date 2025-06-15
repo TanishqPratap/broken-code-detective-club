@@ -52,8 +52,7 @@ const PostFeed = () => {
 
   const fetchFeedContent = async () => {
     try {
-      // Fetch posts
-      const { data: postsData, error: postsError } = await supabase
+      let postsQuery = supabase
         .from('posts')
         .select(`
           id,
@@ -64,13 +63,50 @@ const PostFeed = () => {
           media_type,
           created_at
         `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
+
+      // If user is logged in, fetch posts from subscribed creators + own posts
+      if (user) {
+        console.log('Fetching posts for authenticated user:', user.id);
+        
+        // Get list of creators the user is subscribed to
+        const { data: subscriptions, error: subError } = await supabase
+          .from('subscriptions')
+          .select('creator_id')
+          .eq('subscriber_id', user.id)
+          .eq('status', 'active');
+
+        if (subError) {
+          console.error('Error fetching subscriptions:', subError);
+        }
+
+        const subscribedCreatorIds = subscriptions?.map(sub => sub.creator_id) || [];
+        console.log('Subscribed to creators:', subscribedCreatorIds);
+
+        // Include user's own posts in the feed
+        const relevantUserIds = [...subscribedCreatorIds, user.id];
+        
+        if (relevantUserIds.length > 0) {
+          postsQuery = postsQuery.in('user_id', relevantUserIds);
+          console.log('Fetching posts from user IDs:', relevantUserIds);
+        } else {
+          // If no subscriptions and no own posts, just get user's own posts
+          postsQuery = postsQuery.eq('user_id', user.id);
+          console.log('No subscriptions found, showing only own posts');
+        }
+      } else {
+        // For non-authenticated users, limit to recent posts (sample feed)
+        postsQuery = postsQuery.limit(5);
+      }
+
+      const { data: postsData, error: postsError } = await postsQuery.limit(20);
 
       if (postsError) throw postsError;
 
-      // Fetch trailer content
-      const { data: trailersData, error: trailersError } = await supabase
+      console.log('Fetched posts data:', postsData);
+
+      // Fetch trailer content (same logic as before)
+      let trailersQuery = supabase
         .from('trailer_content')
         .select(`
           id,
@@ -82,8 +118,29 @@ const PostFeed = () => {
           created_at,
           creator_id
         `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .order('created_at', { ascending: false });
+
+      // For authenticated users, also filter trailers by subscriptions
+      if (user) {
+        const { data: subscriptions } = await supabase
+          .from('subscriptions')
+          .select('creator_id')
+          .eq('subscriber_id', user.id)
+          .eq('status', 'active');
+
+        const subscribedCreatorIds = subscriptions?.map(sub => sub.creator_id) || [];
+        
+        if (subscribedCreatorIds.length > 0) {
+          trailersQuery = trailersQuery.in('creator_id', subscribedCreatorIds);
+        } else {
+          // If no subscriptions, show limited trailer content
+          trailersQuery = trailersQuery.limit(2);
+        }
+      } else {
+        trailersQuery = trailersQuery.limit(3);
+      }
+
+      const { data: trailersData, error: trailersError } = await trailersQuery.limit(10);
 
       if (trailersError) throw trailersError;
 
@@ -182,6 +239,7 @@ const PostFeed = () => {
         new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
       );
 
+      console.log('Final feed items:', allItems);
       setFeedItems(allItems);
     } catch (error) {
       console.error('Error fetching feed content:', error);
@@ -221,7 +279,11 @@ const PostFeed = () => {
       {feedItems.length === 0 ? (
         <div className="text-center py-16">
           <h3 className="text-xl font-semibold mb-2">No content yet</h3>
-          <p className="text-gray-600">Be the first to share something or check out some creators!</p>
+          {user ? (
+            <p className="text-gray-600">Subscribe to creators to see their posts here, or create your first post!</p>
+          ) : (
+            <p className="text-gray-600">Sign in to see personalized content from creators you follow!</p>
+          )}
         </div>
       ) : (
         feedItems.map((item, index) => (
