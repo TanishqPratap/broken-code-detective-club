@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Clock, Calendar as CalendarIcon, Trash2, Edit, Plus } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,12 +47,17 @@ const ContentScheduler = () => {
 
     try {
       const { data, error } = await supabase
-        .from('scheduled_posts' as any)
+        .from('scheduled_posts')
         .select('*')
         .eq('creator_id', user.id)
         .order('scheduled_for', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched scheduled posts:', data);
       setScheduledPosts(data || []);
     } catch (error) {
       console.error('Error fetching scheduled posts:', error);
@@ -105,7 +110,7 @@ const ContentScheduler = () => {
 
       // Save scheduled post
       const { error } = await supabase
-        .from('scheduled_posts' as any)
+        .from('scheduled_posts')
         .insert({
           creator_id: user.id,
           title,
@@ -132,7 +137,7 @@ const ContentScheduler = () => {
   const deleteScheduledPost = async (postId: string) => {
     try {
       const { error } = await supabase
-        .from('scheduled_posts' as any)
+        .from('scheduled_posts')
         .delete()
         .eq('id', postId);
 
