@@ -238,25 +238,8 @@ const Search = () => {
       return;
     }
 
-    // Check if user is subscribed to the post creator
-    if (subscriptions.has(post.user_id)) {
-      navigate(`/posts/${post.id}`);
-    } else {
-      // Show subscription prompt
-      toast({
-        title: "Subscription Required",
-        description: "Subscribe to this creator to view their content",
-        action: (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate(`/creator/${post.user_id}`)}
-          >
-            Subscribe
-          </Button>
-        ),
-      });
-    }
+    // For posts, always allow access since posts don't have premium field
+    navigate(`/posts/${post.id}`);
   };
 
   const handleContentClick = (content: Content) => {
@@ -265,17 +248,12 @@ const Search = () => {
       return;
     }
 
-    // Check if user is subscribed to the content creator
-    if (subscriptions.has(content.creator_id)) {
-      toast({
-        title: "Content preview",
-        description: "Content detail page coming soon!",
-      });
-    } else {
-      // Show subscription prompt
+    // Only check subscription for premium content
+    if (content.is_premium && !subscriptions.has(content.creator_id)) {
+      // Show subscription prompt for premium content
       toast({
         title: "Subscription Required",
-        description: "Subscribe to this creator to view their content",
+        description: "Subscribe to this creator to view their premium content",
         action: (
           <Button 
             variant="outline" 
@@ -285,6 +263,12 @@ const Search = () => {
             Subscribe
           </Button>
         ),
+      });
+    } else {
+      // Allow access to free content or if user is subscribed
+      toast({
+        title: "Content preview",
+        description: "Content detail page coming soon!",
       });
     }
   };
@@ -420,9 +404,7 @@ const Search = () => {
             ) : (
               <div className="space-y-4">
                 {posts.map((post) => {
-                  const isSubscribed = isSubscribedToCreator(post.user_id);
-                  const shouldShowContent = isSubscribed || !user;
-
+                  // Posts are always visible since they don't have premium field
                   return (
                     <Card 
                       key={post.id} 
@@ -450,51 +432,30 @@ const Search = () => {
                               </span>
                             </div>
                             
-                            {shouldShowContent ? (
-                              <>
-                                {post.title && (
-                                  <h4 className="font-semibold text-sm mb-1">{post.title}</h4>
-                                )}
-                                {post.description && (
-                                  <p className="text-sm text-gray-600 mb-2">{post.description}</p>
-                                )}
-                                {post.text_content && !post.title && (
-                                  <p className="text-sm text-gray-700 mb-2 line-clamp-3">{post.text_content}</p>
-                                )}
-                                {post.media_url && (
-                                  <div className="mt-2">
-                                    {post.content_type === 'image' ? (
-                                      <img 
-                                        src={post.media_url} 
-                                        alt="Post media"
-                                        className="max-w-full h-32 object-cover rounded"
-                                      />
-                                    ) : post.content_type === 'video' ? (
-                                      <video 
-                                        src={post.media_url}
-                                        className="max-w-full h-32 object-cover rounded"
-                                        controls={false}
-                                      />
-                                    ) : null}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">
-                                <div className="text-center">
-                                  <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                  <p className="text-sm text-gray-600 mb-2">Subscribe to view this content</p>
-                                  <Button 
-                                    size="sm" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/creator/${post.user_id}`);
-                                    }}
-                                  >
-                                    <UserPlus className="w-4 h-4 mr-1" />
-                                    Subscribe
-                                  </Button>
-                                </div>
+                            {post.title && (
+                              <h4 className="font-semibold text-sm mb-1">{post.title}</h4>
+                            )}
+                            {post.description && (
+                              <p className="text-sm text-gray-600 mb-2">{post.description}</p>
+                            )}
+                            {post.text_content && !post.title && (
+                              <p className="text-sm text-gray-700 mb-2 line-clamp-3">{post.text_content}</p>
+                            )}
+                            {post.media_url && (
+                              <div className="mt-2">
+                                {post.content_type === 'image' ? (
+                                  <img 
+                                    src={post.media_url} 
+                                    alt="Post media"
+                                    className="max-w-full h-32 object-cover rounded"
+                                  />
+                                ) : post.content_type === 'video' ? (
+                                  <video 
+                                    src={post.media_url}
+                                    className="max-w-full h-32 object-cover rounded"
+                                    controls={false}
+                                  />
+                                ) : null}
                               </div>
                             )}
                           </div>
@@ -519,7 +480,7 @@ const Search = () => {
               <div className="space-y-4">
                 {contents.map((content) => {
                   const isSubscribed = isSubscribedToCreator(content.creator_id);
-                  const shouldShowContent = isSubscribed || !user;
+                  const shouldShowContent = !content.is_premium || isSubscribed || !user;
 
                   return (
                     <Card 
@@ -592,7 +553,7 @@ const Search = () => {
                               <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg mt-2">
                                 <div className="text-center">
                                   <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                  <p className="text-sm text-gray-600 mb-2">Subscribe to view this content</p>
+                                  <p className="text-sm text-gray-600 mb-2">Subscribe to view this premium content</p>
                                   <Button 
                                     size="sm" 
                                     onClick={(e) => {
