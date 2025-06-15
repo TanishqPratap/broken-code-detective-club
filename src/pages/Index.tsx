@@ -40,9 +40,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
           {/* Welcome Section */}
           <div className="text-center mb-8 sm:mb-12">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">
-              Your creativity, your community, your income.
-            </h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">Your Creativity, Your Community, Your Income</h1>
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready For Amazing Content?</p>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
