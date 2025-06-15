@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Play, Pause } from "lucide-react";
@@ -121,13 +120,41 @@ const Vibes = () => {
     });
   }, [isMuted]);
 
-  const handleScroll = (direction: 'up' | 'down') => {
-    if (direction === 'up' && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    } else if (direction === 'down' && currentIndex < vibes.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+  // Handle scroll with wheel and touch
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.deltaY > 0 && currentIndex < vibes.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else if (e.deltaY < 0 && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' && currentIndex < vibes.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setIsPlaying(!isPlaying);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+      window.addEventListener('keydown', handleKeyDown);
     }
-  };
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentIndex, vibes.length, isPlaying]);
 
   const handleLike = async (vibeId: string, currentlyLiked: boolean) => {
     if (!user) {
@@ -179,15 +206,15 @@ const Vibes = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-black">
-        <div className="text-white">Loading vibes...</div>
+      <div className="h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-lg">Loading vibes...</div>
       </div>
     );
   }
 
   if (vibes.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-black">
+      <div className="h-screen bg-black flex items-center justify-center">
         <div className="text-center text-white">
           <h2 className="text-2xl font-bold mb-4">No Vibes Yet</h2>
           <p className="text-gray-400">Be the first to create a vibe!</p>
@@ -199,159 +226,213 @@ const Vibes = () => {
   return (
     <div 
       ref={containerRef}
-      className="flex-1 bg-black relative overflow-hidden"
-      style={{ height: '100vh' }}
+      className="h-screen bg-black relative overflow-hidden"
+      style={{ 
+        height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 50
+      }}
     >
-      {/* Navigation buttons */}
+      {/* Progress indicators */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-1">
+        {vibes.map((_, index) => (
+          <div
+            key={index}
+            className={`w-1 h-6 rounded-full transition-all duration-300 cursor-pointer ${
+              index === currentIndex ? 'bg-white' : 'bg-white/40'
+            }`}
+            onClick={() => setCurrentIndex(index)}
+          />
+        ))}
+      </div>
+
+      {/* Navigation arrows */}
       <div className="absolute left-1/2 transform -translate-x-1/2 top-4 z-20 flex gap-2">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => handleScroll('up')}
+          onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
           disabled={currentIndex === 0}
-          className="text-white hover:bg-white/20"
+          className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm"
         >
           ↑
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => handleScroll('down')}
+          onClick={() => setCurrentIndex(Math.min(vibes.length - 1, currentIndex + 1))}
           disabled={currentIndex === vibes.length - 1}
-          className="text-white hover:bg-white/20"
+          className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm"
         >
           ↓
         </Button>
       </div>
 
-      {vibes.map((vibe, index) => (
-        <div
-          key={vibe.id}
-          className={`absolute inset-0 transition-transform duration-300 ${
-            index === currentIndex 
-              ? 'translate-y-0' 
-              : index < currentIndex 
-                ? '-translate-y-full' 
-                : 'translate-y-full'
-          }`}
-        >
-          {/* Video */}
-          {vibe.media_url && (
-            <video
-              ref={el => videoRefs.current[index] = el}
-              src={vibe.media_url}
-              className="w-full h-full object-cover"
-              loop
-              muted={isMuted}
-              playsInline
-              preload="metadata"
-            />
-          )}
-
-          {/* Overlay UI */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20">
-            {/* Top controls */}
-            <div className="absolute top-4 right-4 flex gap-2 z-10">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMute}
-                className="text-white hover:bg-white/20 p-2 rounded-full"
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
+      {/* Video container */}
+      <div className="relative w-full h-full">
+        {vibes.map((vibe, index) => (
+          <div
+            key={vibe.id}
+            className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
+              index === currentIndex 
+                ? 'translate-y-0 opacity-100' 
+                : index < currentIndex 
+                  ? '-translate-y-full opacity-0' 
+                  : 'translate-y-full opacity-0'
+            }`}
+          >
+            {/* Video */}
+            {vibe.media_url && (
+              <video
+                ref={el => videoRefs.current[index] = el}
+                src={vibe.media_url}
+                className="w-full h-full object-cover"
+                loop
+                muted={isMuted}
+                playsInline
+                preload="metadata"
                 onClick={togglePlayPause}
-                className="text-white hover:bg-white/20 p-2 rounded-full"
-              >
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              </Button>
+              />
+            )}
+
+            {/* Overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
+
+            {/* Top controls */}
+            <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+              <div className="text-white font-semibold text-lg">
+                Vibes
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMute}
+                  className="text-white hover:bg-white/20 p-2 rounded-full bg-black/30 backdrop-blur-sm"
+                >
+                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={togglePlayPause}
+                  className="text-white hover:bg-white/20 p-2 rounded-full bg-black/30 backdrop-blur-sm"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                </Button>
+              </div>
             </div>
 
-            {/* Creator info and actions */}
-            <div className="absolute bottom-20 left-4 right-20">
+            {/* Creator info and caption */}
+            <div className="absolute bottom-20 left-4 right-20 z-10">
               <div className="flex items-center gap-3 mb-3">
-                <Avatar className="w-10 h-10 border-2 border-white">
+                <Avatar className="w-12 h-12 border-2 border-white">
                   <AvatarImage src={vibe.creator_avatar} />
-                  <AvatarFallback className="bg-gray-600 text-white">
-                    {vibe.creator_name[0]}
+                  <AvatarFallback className="bg-gray-600 text-white text-lg font-semibold">
+                    {vibe.creator_name[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-white font-semibold">{vibe.creator_name}</p>
+                  <p className="text-white font-bold text-lg">{vibe.creator_name}</p>
                   <p className="text-gray-300 text-sm">@{vibe.creator_username}</p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto border-white text-white hover:bg-white hover:text-black bg-transparent"
+                >
+                  Follow
+                </Button>
               </div>
 
               {/* Caption */}
               {vibe.description && (
-                <p className="text-white text-sm mb-2 leading-relaxed">
+                <p className="text-white text-base mb-2 leading-relaxed max-w-xs">
                   {vibe.description}
                 </p>
               )}
 
+              {/* Hashtags from metadata */}
+              {vibe.metadata && typeof vibe.metadata === 'object' && 'hashtags' in vibe.metadata && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {(vibe.metadata.hashtags as string[])?.slice(0, 3).map((tag, idx) => (
+                    <span key={idx} className="text-blue-400 text-sm">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Music info if available */}
-              {vibe.metadata && typeof vibe.metadata === 'object' && 'music' in vibe.metadata && (
-                <div className="flex items-center gap-2 text-white text-xs opacity-80">
+              {vibe.metadata && typeof vibe.metadata === 'object' && 'effects' in vibe.metadata && 
+               (vibe.metadata.effects as any)?.music && (
+                <div className="flex items-center gap-2 text-white text-sm opacity-90 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 w-fit">
                   <span>♪</span>
-                  <span>{String(vibe.metadata.music)}</span>
+                  <span className="truncate max-w-48">
+                    {String((vibe.metadata.effects as any).music)}
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* Action buttons */}
-            <div className="absolute bottom-20 right-4 flex flex-col gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleLike(vibe.id, vibe.user_liked)}
-                className="text-white hover:bg-white/20 p-3 rounded-full flex flex-col items-center"
-              >
-                <Heart className={`w-7 h-7 ${vibe.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
-                <span className="text-xs mt-1">{vibe.likes_count}</span>
-              </Button>
+            {/* Action buttons - Instagram Reels style */}
+            <div className="absolute bottom-20 right-4 flex flex-col gap-6 z-10">
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => handleLike(vibe.id, vibe.user_liked)}
+                  className="text-white hover:bg-white/20 p-3 rounded-full bg-black/20 backdrop-blur-sm"
+                >
+                  <Heart className={`w-8 h-8 ${vibe.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
+                </Button>
+                <span className="text-white text-sm font-semibold mt-1">
+                  {vibe.likes_count > 0 ? vibe.likes_count : ''}
+                </span>
+              </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20 p-3 rounded-full"
-              >
-                <MessageCircle className="w-7 h-7" />
-              </Button>
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="text-white hover:bg-white/20 p-3 rounded-full bg-black/20 backdrop-blur-sm"
+                >
+                  <MessageCircle className="w-8 h-8" />
+                </Button>
+                <span className="text-white text-sm font-semibold mt-1">0</span>
+              </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20 p-3 rounded-full"
-              >
-                <Share2 className="w-7 h-7" />
-              </Button>
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="text-white hover:bg-white/20 p-3 rounded-full bg-black/20 backdrop-blur-sm"
+                >
+                  <Share2 className="w-8 h-8" />
+                </Button>
+              </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20 p-3 rounded-full"
-              >
-                <MoreHorizontal className="w-7 h-7" />
-              </Button>
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="text-white hover:bg-white/20 p-3 rounded-full bg-black/20 backdrop-blur-sm"
+                >
+                  <MoreHorizontal className="w-8 h-8" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      {/* Scroll indicators */}
-      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10">
-        <div className="flex flex-col gap-1">
-          {vibes.map((_, index) => (
-            <div
-              key={index}
-              className={`w-1 h-8 rounded-full transition-colors ${
-                index === currentIndex ? 'bg-white' : 'bg-white/30'
-              }`}
-            />
-          ))}
+      {/* Instructions overlay for first time users */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-center">
+        <div className="bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 text-white text-sm">
+          Scroll or use ↑↓ arrows • Space to play/pause
         </div>
       </div>
     </div>
