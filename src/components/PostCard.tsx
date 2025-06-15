@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -138,6 +139,8 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
     }
 
     try {
+      console.log('Like action triggered for post:', post.id, 'by user:', user.id);
+      
       if (isLiked) {
         // Unlike
         const { error } = await supabase
@@ -150,19 +153,22 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         if (error) throw error;
         setIsLiked(false);
         setLikesCount(prev => prev - 1);
+        console.log('Post unliked successfully');
       } else {
         // Like
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('posts_interactions')
           .insert({
             post_id: post.id,
             user_id: user.id,
             interaction_type: 'like'
-          });
+          })
+          .select();
 
         if (error) throw error;
         setIsLiked(true);
         setLikesCount(prev => prev + 1);
+        console.log('Post liked successfully, trigger should fire:', data);
       }
     } catch (error) {
       console.error('Error handling like:', error);
@@ -179,14 +185,17 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
     if (!commentText.trim()) return;
 
     try {
-      const { error } = await supabase
+      console.log('Comment action triggered for post:', post.id, 'by user:', user.id);
+      
+      const { data, error } = await supabase
         .from('posts_interactions')
         .insert({
           post_id: post.id,
           user_id: user.id,
           interaction_type: 'comment',
           comment_text: commentText.trim()
-        });
+        })
+        .select();
 
       if (error) throw error;
 
@@ -198,6 +207,7 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         fetchComments();
       }
       
+      console.log('Comment added successfully, trigger should fire:', data);
       toast.success("Comment added!");
     } catch (error) {
       console.error('Error adding comment:', error);

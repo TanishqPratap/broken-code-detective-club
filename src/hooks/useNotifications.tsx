@@ -325,7 +325,7 @@ export const useNotifications = () => {
     console.log('Setting up real-time notifications for user:', user.id);
 
     const channel = supabase
-      .channel(`notifications_${user.id}`, {
+      .channel(`notifications_realtime_${user.id}`, {
         config: {
           broadcast: { self: true },
           presence: { key: user.id }
@@ -344,7 +344,7 @@ export const useNotifications = () => {
           
           const newNotification = payload.new;
           showNotification(newNotification.title, newNotification.message);
-          toast.success('New notification received!');
+          toast.success(`New notification: ${newNotification.title}`);
         }
       )
       .on('postgres_changes',
@@ -369,7 +369,7 @@ export const useNotifications = () => {
       .subscribe((status) => {
         console.log('Notification channel subscription status:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to notifications');
+          console.log('Successfully subscribed to real-time notifications');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('Error subscribing to notifications channel');
         } else if (status === 'TIMED_OUT') {
