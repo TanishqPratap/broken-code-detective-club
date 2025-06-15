@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePushNotifications } from "./usePushNotifications";
+import { useNavigate } from "react-router-dom";
 
 export interface NotificationData {
   id: string;
@@ -309,28 +310,35 @@ export const useNotifications = () => {
       case 'comment':
       case 'comment_reply':
         if (notification.related_id) {
-          window.location.href = `/posts/${notification.related_id}`;
+          // Navigate to the specific post
+          window.open(`/post/${notification.related_id}`, '_blank');
         }
         break;
       case 'follow':
-        window.location.href = `/creator/${notification.user.id}`;
+        // Navigate to the follower's profile
+        window.open(`/creator/${notification.user.id}`, '_blank');
         break;
       case 'subscription':
-        window.location.href = `/profile`;
+        // Navigate to user's own profile
+        window.open(`/profile`, '_blank');
         break;
       case 'tip':
-        window.location.href = `/profile`;
+        // Navigate to user's profile to see tip details
+        window.open(`/profile`, '_blank');
         break;
       case 'live_stream':
         if (notification.related_id) {
-          window.location.href = `/watch/${notification.related_id}`;
+          // Navigate to the live stream
+          window.open(`/watch/${notification.related_id}`, '_blank');
         }
         break;
       case 'message':
-        window.location.href = `/dm`;
+        // Navigate to DM page
+        window.open(`/dm`, '_blank');
         break;
       case 'story_like':
-        window.location.href = `/creator/${notification.user.id}`;
+        // Navigate to the creator's profile to view stories
+        window.open(`/creator/${notification.user.id}`, '_blank');
         break;
       default:
         console.log('Unknown notification type:', notification.type);
