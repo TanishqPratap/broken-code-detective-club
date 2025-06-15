@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import NotificationItem from "@/components/NotificationItem";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 const Notifications = () => {
   const { user } = useAuth();
@@ -98,9 +99,11 @@ const Notifications = () => {
                   Mark all as read
                 </Button>
               )}
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
+              <Link to="/notifications/settings">
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
             </div>
           </div>
 

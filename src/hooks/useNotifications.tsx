@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePushNotifications } from "./usePushNotifications";
 
 export interface NotificationData {
   id: string;
@@ -28,6 +28,7 @@ export interface NotificationData {
 
 export const useNotifications = () => {
   const { user } = useAuth();
+  const { showNotification } = usePushNotifications();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -222,7 +223,7 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time notifications listener
+  // Set up real-time notifications listener with push notifications
   useEffect(() => {
     if (!user) return;
 
@@ -239,6 +240,11 @@ export const useNotifications = () => {
           console.log('New notification received:', payload);
           // Refetch notifications to get the complete data with relations
           fetchNotifications();
+          
+          // Show push notification
+          const newNotification = payload.new;
+          showNotification(newNotification.title, newNotification.message);
+          
           toast.success('New notification received!');
         }
       )
@@ -267,7 +273,7 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, showNotification]);
 
   return {
     notifications,
