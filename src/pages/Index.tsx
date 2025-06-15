@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostFeed from "@/components/PostFeed";
 import Footer from "@/components/Footer";
+import StoriesCarousel from "@/components/StoriesCarousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -58,6 +59,16 @@ const Index = () => {
                 Discover Content
               </Button>
             </div>
+          </div>
+
+          {/* Stories Section */}
+          <div className="mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900 dark:text-gray-100">Stories</h2>
+            <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <StoriesCarousel />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Feed Content */}

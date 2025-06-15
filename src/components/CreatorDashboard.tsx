@@ -1,16 +1,18 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare, PlayCircle } from "lucide-react";
+import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare, PlayCircle, Clock } from "lucide-react";
 import LivestreamDashboard from "./LivestreamDashboard";
 import PaidDMPricing from "./PaidDMPricing";
 import ContentManagement from "./ContentManagement";
 import CreatorSettings from "./CreatorSettings";
 import TrailerUpload from "./TrailerUpload";
+import StoriesCarousel from "./StoriesCarousel";
+import ContentScheduler from "./ContentScheduler";
+import NotificationSystem from "./NotificationSystem";
 
 const CreatorDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -33,8 +35,16 @@ const CreatorDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="stories">
+            <PlayCircle className="w-4 h-4 mr-2" />
+            Stories
+          </TabsTrigger>
+          <TabsTrigger value="scheduler">
+            <Clock className="w-4 h-4 mr-2" />
+            Scheduler
+          </TabsTrigger>
           <TabsTrigger value="trailers">
             <PlayCircle className="w-4 h-4 mr-2" />
             Trailers
@@ -149,6 +159,26 @@ const CreatorDashboard = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="stories">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Story Management</CardTitle>
+                <CardDescription>
+                  Manage your 24-hour stories and see how they're performing
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StoriesCarousel />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="scheduler">
+          <ContentScheduler />
+        </TabsContent>
+
         <TabsContent value="trailers">
           <TrailerUpload />
         </TabsContent>
@@ -166,7 +196,10 @@ const CreatorDashboard = () => {
         </TabsContent>
 
         <TabsContent value="settings">
-          <CreatorSettings />
+          <div className="space-y-6">
+            <CreatorSettings />
+            <NotificationSystem />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
