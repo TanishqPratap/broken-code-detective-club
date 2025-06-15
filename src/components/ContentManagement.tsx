@@ -21,7 +21,12 @@ interface Content {
   created_at: string;
 }
 
-const ContentManagement = () => {
+interface ContentManagementProps {
+  onUploadClick?: () => void;
+  onGoLiveClick?: () => void;
+}
+
+const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [contents, setContents] = useState<Content[]>([]);
@@ -79,8 +84,20 @@ const ContentManagement = () => {
     }
   };
 
+  const handleUploadClick = () => {
+    if (onUploadClick) {
+      onUploadClick();
+    } else {
+      setShowUploadModal(true);
+    }
+  };
+
   const handleGoLive = () => {
-    navigate("/creator");
+    if (onGoLiveClick) {
+      onGoLiveClick();
+    } else {
+      navigate("/creator");
+    }
   };
 
   const getContentIcon = (contentType: string) => {
@@ -118,7 +135,7 @@ const ContentManagement = () => {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setShowUploadModal(true)}>
+              <Button onClick={handleUploadClick}>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Content
               </Button>
@@ -138,7 +155,7 @@ const ContentManagement = () => {
                 Start by uploading your first piece of content or going live
               </p>
               <div className="flex gap-2 justify-center">
-                <Button onClick={() => setShowUploadModal(true)}>
+                <Button onClick={handleUploadClick}>
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Content
                 </Button>

@@ -13,6 +13,7 @@ const CreatorDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [showVibesUpload, setShowVibesUpload] = useState(false);
+  const [showContentUpload, setShowContentUpload] = useState(false);
 
   // Mock analytics data
   const analyticsData = {
@@ -20,6 +21,15 @@ const CreatorDashboard = () => {
     totalLikes: 890,
     totalFollowers: 456,
     totalEarnings: 1250.75
+  };
+
+  const handleGoLive = () => {
+    setActiveTab("livestream");
+  };
+
+  const handleNewContent = () => {
+    setActiveTab("content");
+    setShowContentUpload(true);
   };
 
   if (showVibesUpload) {
@@ -51,7 +61,7 @@ const CreatorDashboard = () => {
             <Film className="w-4 h-4 mr-2" />
             Create Vibe
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleNewContent}>
             <PlusCircle className="w-4 h-4 mr-2" />
             New Content
           </Button>
@@ -126,11 +136,11 @@ const CreatorDashboard = () => {
                   <Film className="w-6 h-6" />
                   Create Vibe
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={handleGoLive}>
                   <Video className="w-6 h-6" />
                   Go Live
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={handleNewContent}>
                   <PlusCircle className="w-6 h-6" />
                   Upload Content
                 </Button>
@@ -140,7 +150,10 @@ const CreatorDashboard = () => {
         </TabsContent>
 
         <TabsContent value="content">
-          <ContentManagement />
+          <ContentManagement 
+            onUploadClick={() => setShowContentUpload(true)}
+            onGoLiveClick={handleGoLive}
+          />
         </TabsContent>
 
         <TabsContent value="scheduler">
