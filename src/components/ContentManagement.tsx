@@ -32,6 +32,7 @@ const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementPr
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingContent, setEditingContent] = useState<Content | null>(null);
+  const [isGoingLive, setIsGoingLive] = useState(false);
 
   useEffect(() => {
     fetchContents();
@@ -91,12 +92,64 @@ const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementPr
     }
   };
 
-  const handleGoLive = () => {
+  const handleGoLive = async () => {
     if (onGoLiveClick) {
       onGoLiveClick();
-    } else {
-      // Navigate directly to the livestream dashboard to start streaming
+      return;
+    }
+
+    if (!user) {
+      toast.error("Please sign in to start streaming");
+      return;
+    }
+
+    setIsGoingLive(true);
+    
+    try {
+      console.log('Creating stream with Livepeer...');
+      const { data, error } = await supabase.functions.invoke('livepeer-stream', {
+        body: {
+          action: 'create',
+          streamData: {
+            title: `${user.user_metadata?.display_name || user.email || 'User'}'s Live Stream`,
+            description: 'Live stream started from content management'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      console.log('Livepeer stream created:', data);
+      
+      // Save stream to database
+      const { error: dbError } = await supabase
+        .from('live_streams')
+        .insert({
+          creator_id: user.id,
+          title: `${user.user_metadata?.display_name || user.email || 'User'}'s Live Stream`,
+          description: 'Live stream started from content management',
+          stream_key: data.streamKey,
+          playback_id: data.playbackId,
+          status: 'offline',
+          is_paid: false,
+          price: null
+        });
+
+      if (dbError) throw dbError;
+      
+      toast.success("Stream created successfully! Redirecting to livestream dashboard...");
+      
+      // Navigate to livestream dashboard
       navigate("/creator", { state: { activeTab: "livestream" } });
+      
+    } catch (error: any) {
+      console.error('Error creating stream:', error);
+      toast.error(`Failed to start livestream: ${error.message}`);
+    } finally {
+      setIsGoingLive(false);
     }
   };
 
@@ -139,9 +192,9 @@ const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementPr
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Content
               </Button>
-              <Button onClick={handleGoLive} variant="outline">
+              <Button onClick={handleGoLive} variant="outline" disabled={isGoingLive}>
                 <Tv className="w-4 h-4 mr-2" />
-                Go Live
+                {isGoingLive ? "Creating Stream..." : "Go Live"}
               </Button>
             </div>
           </div>
@@ -159,9 +212,9 @@ const ContentManagement = ({ onUploadClick, onGoLiveClick }: ContentManagementPr
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Content
                 </Button>
-                <Button onClick={handleGoLive} variant="outline">
+                <Button onClick={handleGoLive} variant="outline" disabled={isGoingLive}>
                   <Tv className="w-4 h-4 mr-2" />
-                  Go Live
+                  {isGoingLive ? "Creating Stream..." : "Go Live"}
                 </Button>
               </div>
             </div>
