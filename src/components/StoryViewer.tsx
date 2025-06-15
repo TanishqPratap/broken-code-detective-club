@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -108,16 +109,20 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
   if (!currentStory) return null;
 
-  return (
+  // Render the story viewer using React Portal to ensure it's outside any container constraints
+  return createPortal(
     <div 
-      className="fixed top-0 left-0 w-screen h-screen bg-black z-[99999] overflow-hidden"
+      className="fixed inset-0 w-full h-full bg-black z-[9999] flex items-center justify-center"
       style={{ 
         position: 'fixed',
         top: 0,
         left: 0,
+        right: 0,
+        bottom: 0,
         width: '100vw',
         height: '100vh',
-        zIndex: 99999
+        zIndex: 9999,
+        backgroundColor: '#000000'
       }}
     >
       {/* Progress bars */}
@@ -155,8 +160,8 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       <div className="absolute left-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToPrevious} />
       <div className="absolute right-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content - Full screen */}
-      <div className="absolute inset-0 w-full h-full">
+      {/* Story content - Centered and responsive */}
+      <div className="relative w-full h-full max-w-md mx-auto flex items-center justify-center">
         {currentStory.content_type === 'image' ? (
           <img
             src={currentStory.media_url}
@@ -223,7 +228,8 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
           <ChevronRight className="w-6 h-6" />
         </Button>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 
