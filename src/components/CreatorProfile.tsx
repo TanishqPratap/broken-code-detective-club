@@ -65,7 +65,7 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
         )}
       </div>
 
-      <div className="container mx-auto px-4">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Profile Header */}
         <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8">
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-end sm:gap-6">

@@ -287,8 +287,8 @@ const CreatorProfilePage = () => {
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <main className="flex-1 ml-64">
-        <div className="w-full min-h-screen">
+      <main className="flex-1 ml-64 overflow-hidden">
+        <div className="w-full min-h-screen bg-background">
           <CreatorProfile
             creator={{
               id: creator.id,
@@ -308,7 +308,7 @@ const CreatorProfilePage = () => {
 
           {/* Trailers Section */}
           {trailers.length > 0 && (
-            <div className="px-4 py-6 sm:py-8">
+            <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-6 sm:py-8">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Free Previews</h2>
               <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {trailers.map((trailer) => (
