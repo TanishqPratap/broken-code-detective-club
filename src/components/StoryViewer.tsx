@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, X, Heart, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Story = Tables<"stories"> & {
@@ -21,6 +23,8 @@ interface StoryViewerProps {
 const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
   const { user } = useAuth();
 
   const currentStory = stories[currentIndex];
@@ -48,6 +52,11 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     return () => clearInterval(interval);
   }, [currentIndex, currentStory, duration, stories.length, onClose]);
 
+  // Reset like state when story changes
+  useEffect(() => {
+    setIsLiked(false);
+  }, [currentIndex]);
+
   const goToPrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -61,6 +70,31 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       setProgress(0);
     } else {
       onClose();
+    }
+  };
+
+  const handleLike = async () => {
+    if (!user || !currentStory || isLiking) return;
+
+    try {
+      setIsLiking(true);
+      
+      // For now, we'll just show a visual feedback
+      // In a real app, you'd save this to a story_likes table
+      setIsLiked(!isLiked);
+      
+      if (!isLiked) {
+        toast.success("Story liked!");
+      } else {
+        toast.success("Story unliked!");
+      }
+      
+      console.log(`${isLiked ? 'Unliked' : 'Liked'} story:`, currentStory.id);
+    } catch (error) {
+      console.error('Error liking story:', error);
+      toast.error("Failed to like story");
+    } finally {
+      setIsLiking(false);
     }
   };
 
@@ -104,17 +138,17 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
 
       {/* Story content */}
-      <div className="relative w-full h-full max-w-md mx-auto bg-black">
+      <div className="relative w-full h-full max-w-md mx-auto bg-black flex items-center justify-center">
         {currentStory.content_type === 'image' ? (
           <img
             src={currentStory.media_url}
             alt="Story"
-            className="w-full h-full object-contain"
+            className="max-w-full max-h-full object-contain"
           />
         ) : (
           <video
             src={currentStory.media_url}
-            className="w-full h-full object-contain"
+            className="max-w-full max-h-full object-contain"
             autoPlay
             muted
             loop
@@ -133,8 +167,14 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
         {/* Action buttons */}
         <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4">
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <Heart className="w-5 h-5" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`text-white hover:bg-white/20 transition-colors ${isLiked ? 'text-red-500' : ''}`}
+            onClick={handleLike}
+            disabled={isLiking}
+          >
+            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
           </Button>
           <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
             <MessageCircle className="w-5 h-5" />
