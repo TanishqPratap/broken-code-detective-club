@@ -297,69 +297,66 @@ export const useNotifications = () => {
 
   const handleNotificationClick = (notification: NotificationData) => {
     console.log('Notification clicked:', notification);
-    
+
     // Mark as read when clicked
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
 
-    /**
-     * Notification routing:
-     * - For content: /content/:id
-     * - For vibe: /vibes or /vibes/:id (if route exists)
-     * - Otherwise, use previous logic for posts, profiles, streams, etc.
-     */
     const type = notification.type;
     const contentType = notification.metadata?.related_content_type || notification.metadata?.content_type || notification.metadata?.contentCategory;
     const contentId = notification.related_id;
 
-    // Handle content route only by contentType
+    // Show a toast to confirm the handler is firing
+    toast.info("Navigating to content...", { description: JSON.stringify({ type, contentType, contentId }) });
+
+    // Handle content
     if (contentType === 'content') {
       if (contentId) {
-        window.open(`/content/${contentId}`, '_blank');
+        window.location.href = `/content/${contentId}`;
       }
       return;
     }
 
-    // Handle vibe route only by contentType
+    // Handle vibe
     if (contentType === 'vibe') {
       if (contentId) {
-        window.open(`/vibes/${contentId}`, '_blank');
+        window.location.href = `/vibes/${contentId}`;
       } else {
-        window.open(`/vibes`, '_blank');
+        window.location.href = `/vibes`;
       }
       return;
     }
 
-    // Previous canonical routes:
+    // Fallback: previous logic
     switch (type) {
       case 'like':
       case 'comment':
       case 'comment_reply':
         if (contentType === 'post' && contentId) {
-          window.open(`/posts/${contentId}`, '_blank');
+          window.location.href = `/posts/${contentId}`;
         }
         break;
       case 'follow':
       case 'story_like':
         if (notification.user?.id) {
-          window.open(`/creator/${notification.user.id}`, '_blank');
+          window.location.href = `/creator/${notification.user.id}`;
         }
         break;
       case 'subscription':
       case 'tip':
-        window.open(`/profile`, '_blank');
+        window.location.href = `/profile`;
         break;
       case 'live_stream':
         if (contentId) {
-          window.open(`/watch/${contentId}`, '_blank');
+          window.location.href = `/watch/${contentId}`;
         }
         break;
       case 'message':
-        window.open(`/dm`, '_blank');
+        window.location.href = `/dm`;
         break;
       default:
-        console.log('Unknown notification type:', notification.type);
+        toast.info('Unknown notification type: ' + notification.type);
         break;
     }
   };
