@@ -104,20 +104,21 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
 
       {/* Story content */}
-      <div className="relative w-full h-full max-w-md mx-auto">
+      <div className="relative w-full h-full max-w-md mx-auto bg-black">
         {currentStory.content_type === 'image' ? (
           <img
             src={currentStory.media_url}
             alt="Story"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
         ) : (
           <video
             src={currentStory.media_url}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             autoPlay
             muted
             loop
+            playsInline
           />
         )}
 
