@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { X, Send, Heart, MessageCircle } from "lucide-react";
+import { X, Send, Heart, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface Comment {
@@ -38,6 +37,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
   const [replyText, setReplyText] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
 
   const fetchComments = async () => {
     try {
@@ -207,39 +207,54 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     return `${Math.floor(diffInSeconds / 86400)}d`;
   };
 
-  const renderComment = (comment: Comment, isReply = false): JSX.Element => (
-    <div key={comment.id} className={isReply ? "ml-8 mt-3" : ""}>
-      <div className="flex space-x-3 mb-3">
-        <Avatar className="w-8 h-8 flex-shrink-0">
-          <AvatarImage src={comment.profiles?.avatar_url || ""} />
-          <AvatarFallback className="bg-gray-600 text-white text-xs">
-            {comment.profiles?.display_name?.[0]?.toUpperCase() || 
-             comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-1">
-            <span className="font-medium text-sm">
-              {comment.profiles?.display_name || comment.profiles?.username || 'Unknown'}
-            </span>
-            <span className="text-gray-400 text-xs">
-              {formatTimeAgo(comment.created_at)}
-            </span>
-          </div>
-          <p className="text-sm text-gray-100 break-words mb-2">
-            {comment.comment_text}
-          </p>
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleLikeComment(comment.id, comment.user_liked)}
-              className="text-gray-400 hover:text-white text-xs p-0 h-auto"
-            >
-              <Heart className={`w-3 h-3 mr-1 ${comment.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
-              {comment.likes_count > 0 ? comment.likes_count : 'Like'}
-            </Button>
-            {!isReply && (
+  const toggleRepliesVisibility = (commentId: string) => {
+    setCollapsedReplies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
+  const renderComment = (comment: Comment, depth = 0): JSX.Element => {
+    const isCollapsed = collapsedReplies.has(comment.id);
+    const hasReplies = comment.replies.length > 0;
+    
+    return (
+      <div key={comment.id} className={depth > 0 ? "ml-6 mt-3" : ""}>
+        <div className="flex space-x-3 mb-2">
+          <Avatar className="w-8 h-8 flex-shrink-0">
+            <AvatarImage src={comment.profiles?.avatar_url || ""} />
+            <AvatarFallback className="bg-gray-600 text-white text-xs">
+              {comment.profiles?.display_name?.[0]?.toUpperCase() || 
+               comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="font-medium text-sm">
+                {comment.profiles?.display_name || comment.profiles?.username || 'Unknown'}
+              </span>
+              <span className="text-gray-400 text-xs">
+                {formatTimeAgo(comment.created_at)}
+              </span>
+            </div>
+            <p className="text-sm text-gray-100 break-words mb-2">
+              {comment.comment_text}
+            </p>
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleLikeComment(comment.id, comment.user_liked)}
+                className="text-gray-400 hover:text-white text-xs p-0 h-auto"
+              >
+                <Heart className={`w-3 h-3 mr-1 ${comment.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
+                {comment.likes_count > 0 ? comment.likes_count : 'Like'}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -249,66 +264,81 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
                 <MessageCircle className="w-3 h-3 mr-1" />
                 Reply
               </Button>
+              {hasReplies && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleRepliesVisibility(comment.id)}
+                  className="text-blue-400 hover:text-blue-300 text-xs p-0 h-auto flex items-center"
+                >
+                  {isCollapsed ? (
+                    <ChevronDown className="w-3 h-3 mr-1" />
+                  ) : (
+                    <ChevronUp className="w-3 h-3 mr-1" />
+                  )}
+                  {isCollapsed ? `Show ${comment.replies.length} ${comment.replies.length === 1 ? 'reply' : 'replies'}` : `Hide ${comment.replies.length} ${comment.replies.length === 1 ? 'reply' : 'replies'}`}
+                </Button>
+              )}
+            </div>
+            
+            {/* Reply input for this specific comment */}
+            {replyingTo === comment.id && (
+              <div className="mt-3 flex items-start space-x-2">
+                <Avatar className="w-6 h-6 flex-shrink-0">
+                  <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
+                  <AvatarFallback className="bg-gray-600 text-white text-xs">
+                    {user?.user_metadata?.display_name?.[0]?.toUpperCase() || 
+                     user?.email?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 flex items-center space-x-2">
+                  <Input
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply..."
+                    className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 text-sm"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitComment(comment.id);
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={() => handleSubmitComment(comment.id)}
+                    disabled={!replyText.trim() || submitting}
+                    size="sm"
+                    variant="ghost"
+                    className="text-blue-400 hover:text-blue-300 p-1"
+                  >
+                    <Send className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setReplyingTo(null);
+                      setReplyText("");
+                    }}
+                    size="sm"
+                    variant="ghost"
+                    className="text-gray-400 hover:text-white p-1"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-          
-          {/* Reply input for this specific comment */}
-          {replyingTo === comment.id && (
-            <div className="mt-3 flex items-center space-x-2">
-              <Avatar className="w-6 h-6 flex-shrink-0">
-                <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                <AvatarFallback className="bg-gray-600 text-white text-xs">
-                  {user?.user_metadata?.display_name?.[0]?.toUpperCase() || 
-                   user?.email?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 flex items-center space-x-2">
-                <Input
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Write a reply..."
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 text-sm"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmitComment(comment.id);
-                    }
-                  }}
-                />
-                <Button
-                  onClick={() => handleSubmitComment(comment.id)}
-                  disabled={!replyText.trim() || submitting}
-                  size="sm"
-                  variant="ghost"
-                  className="text-blue-400 hover:text-blue-300 p-1"
-                >
-                  <Send className="w-3 h-3" />
-                </Button>
-                <Button
-                  onClick={() => {
-                    setReplyingTo(null);
-                    setReplyText("");
-                  }}
-                  size="sm"
-                  variant="ghost"
-                  className="text-gray-400 hover:text-white p-1"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
+        
+        {/* Render replies with increased depth */}
+        {hasReplies && !isCollapsed && (
+          <div className="mt-2 border-l-2 border-gray-700 pl-3">
+            {comment.replies.map(reply => renderComment(reply, depth + 1))}
+          </div>
+        )}
       </div>
-      
-      {/* Render replies */}
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="space-y-2">
-          {comment.replies.map(reply => renderComment(reply, true))}
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   if (!isOpen) return null;
 
