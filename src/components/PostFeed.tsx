@@ -69,18 +69,23 @@ const PostFeed = () => {
       if (user) {
         console.log('Fetching posts for authenticated user:', user.id);
         
-        // Get list of creators the user is subscribed to
+        // Get list of creators the user is subscribed to with detailed debugging
         const { data: subscriptions, error: subError } = await supabase
           .from('subscriptions')
-          .select('creator_id')
-          .eq('subscriber_id', user.id)
-          .eq('status', 'active');
+          .select('creator_id, status, created_at, current_period_start, current_period_end')
+          .eq('subscriber_id', user.id);
 
         if (subError) {
           console.error('Error fetching subscriptions:', subError);
         }
 
-        const subscribedCreatorIds = subscriptions?.map(sub => sub.creator_id) || [];
+        console.log('All subscriptions found:', subscriptions);
+
+        // Filter for active subscriptions
+        const activeSubscriptions = subscriptions?.filter(sub => sub.status === 'active') || [];
+        console.log('Active subscriptions:', activeSubscriptions);
+
+        const subscribedCreatorIds = activeSubscriptions.map(sub => sub.creator_id);
         console.log('Subscribed to creators:', subscribedCreatorIds);
 
         // Include user's own posts in the feed
@@ -93,6 +98,19 @@ const PostFeed = () => {
           // If no subscriptions and no own posts, just get user's own posts
           postsQuery = postsQuery.eq('user_id', user.id);
           console.log('No subscriptions found, showing only own posts');
+        }
+
+        // Debug: Also check if there are any posts from subscribed creators
+        if (subscribedCreatorIds.length > 0) {
+          const { data: creatorPosts, error: creatorPostsError } = await supabase
+            .from('posts')
+            .select('id, user_id, created_at')
+            .in('user_id', subscribedCreatorIds);
+          
+          console.log('Posts from subscribed creators:', creatorPosts);
+          if (creatorPostsError) {
+            console.error('Error checking creator posts:', creatorPostsError);
+          }
         }
       } else {
         // For non-authenticated users, limit to recent posts (sample feed)
