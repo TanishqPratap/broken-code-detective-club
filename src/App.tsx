@@ -38,6 +38,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Index />} />
                   <Route path="posts" element={<Posts />} />
+                  <Route path="post/:postId" element={<PostView />} />
                   <Route path="vibes" element={<Vibes />} />
                   <Route path="profile" element={<Profile />} />
                   <Route path="search" element={<Search />} />
@@ -48,7 +49,7 @@ function App() {
                   <Route path="dm" element={<PaidDM />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="notification-settings" element={<NotificationSettings />} />
-                  <Route path="post/:postId" element={<PostView />} />
+                  <Route path="posts/:postId" element={<PostView />} />
                   <Route path="trailer/:trailerId" element={<TrailerView />} />
                   <Route path="watch/:streamId" element={<Watch />} />
                   <Route path="stream-payment-success" element={<StreamPaymentSuccess />} />
