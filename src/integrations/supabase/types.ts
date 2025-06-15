@@ -216,31 +216,37 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_one_time_media: boolean | null
           media_type: string | null
           media_url: string | null
           recipient_id: string
           sender_id: string
           updated_at: string
+          viewed_at: string | null
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
+          is_one_time_media?: boolean | null
           media_type?: string | null
           media_url?: string | null
           recipient_id: string
           sender_id: string
           updated_at?: string
+          viewed_at?: string | null
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
+          is_one_time_media?: boolean | null
           media_type?: string | null
           media_url?: string | null
           recipient_id?: string
           sender_id?: string
           updated_at?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {

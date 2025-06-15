@@ -101,6 +101,8 @@ const PaidDMChat = ({ sessionId, currentUserId, onBack }: PaidDMChatProps) => {
           updated_at: m.updated_at,
           media_url: m.media_url || undefined,
           media_type: (m.media_type === 'image' || m.media_type === 'video' || m.media_type === 'audio') ? m.media_type : undefined,
+          is_one_time_media: m.is_one_time_media || false,
+          viewed_at: m.viewed_at || undefined,
         }));
         setMessages(typedMessages);
       }
@@ -131,6 +133,16 @@ const PaidDMChat = ({ sessionId, currentUserId, onBack }: PaidDMChatProps) => {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (payload) => {
+          const updatedMessage = payload.new as MessageRow;
+          setMessages((prev) => prev.map(msg => 
+            msg.id === updatedMessage.id ? { ...msg, ...updatedMessage } : msg
+          ));
+        }
+      )
       .subscribe();
 
     return () => {
@@ -143,7 +155,7 @@ const PaidDMChat = ({ sessionId, currentUserId, onBack }: PaidDMChatProps) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const uploadMedia = async (file: File) => {
+  const uploadMedia = async (file: File, isOneTime: boolean = false) => {
     if (!sessionInfo) return;
     try {
       setUploadingMedia(true);
@@ -159,12 +171,18 @@ const PaidDMChat = ({ sessionId, currentUserId, onBack }: PaidDMChatProps) => {
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(filePath);
       const recipient_id = currentUserId === sessionInfo.creator_id ? sessionInfo.subscriber_id : sessionInfo.creator_id;
+      
+      const contentText = isOneTime 
+        ? `Sent a one-time ${mediaType}` 
+        : `Sent a ${mediaType}`;
+      
       await supabase.from("messages").insert({
         sender_id: currentUserId,
         recipient_id,
-        content: `Sent a ${mediaType}`,
+        content: contentText,
         media_url: publicUrl,
         media_type: mediaType,
+        is_one_time_media: isOneTime,
       });
     } catch (error) {
       console.error("Error uploading media:", error);
