@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search as SearchIcon, Users, FileText, Star, DollarSign } from "lucide-react";
+import { Search as SearchIcon, Users, FileText, Star, DollarSign, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Creator {
   id: string;
@@ -61,6 +62,7 @@ interface Content {
 const Search = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -68,6 +70,7 @@ const Search = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('creators');
 
   useEffect(() => {
@@ -82,6 +85,8 @@ const Search = () => {
     if (!query.trim()) return;
     
     setLoading(true);
+    setError(null);
+    
     try {
       // Search creators
       const { data: creatorsData, error: creatorsError } = await supabase
@@ -164,8 +169,29 @@ const Search = () => {
 
       console.log('Content search results:', contentsData);
       setContents(contentsData || []);
+
+      // Show success toast if results found
+      const totalResults = (creatorsData?.length || 0) + (postsData?.length || 0) + (contentsData?.length || 0);
+      if (totalResults > 0) {
+        toast({
+          title: "Search completed",
+          description: `Found ${totalResults} result${totalResults === 1 ? '' : 's'} for "${query}"`,
+        });
+      } else {
+        toast({
+          title: "No results found",
+          description: `No results found for "${query}". Try different keywords.`,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Search error:', error);
+      setError('An error occurred while searching. Please try again.');
+      toast({
+        title: "Search failed",
+        description: "An error occurred while searching. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -183,6 +209,18 @@ const Search = () => {
     navigate(`/creator/${creatorId}`);
   };
 
+  const handlePostClick = (postId: string) => {
+    navigate(`/posts/${postId}`);
+  };
+
+  const handleContentClick = (contentId: string) => {
+    // For now, just show a toast since we don't have a content detail page
+    toast({
+      title: "Content preview",
+      description: "Content detail page coming soon!",
+    });
+  };
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -196,7 +234,7 @@ const Search = () => {
 
   return (
     <Layout onAuthClick={() => setShowAuthModal(true)}>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto p-4">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold mb-4">Search</h1>
           
@@ -216,6 +254,13 @@ const Search = () => {
             </Button>
           </form>
         </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
 
         {searchQuery && (
           <div className="mb-4">
@@ -242,7 +287,7 @@ const Search = () => {
           </TabsList>
 
           <TabsContent value="creators" className="space-y-4 mt-6">
-            {creators.length === 0 && searchQuery ? (
+            {creators.length === 0 && searchQuery && !loading ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">No creators found for "{searchQuery}"</p>
               </div>
@@ -293,7 +338,7 @@ const Search = () => {
           </TabsContent>
 
           <TabsContent value="posts" className="space-y-4 mt-6">
-            {posts.length === 0 && searchQuery ? (
+            {posts.length === 0 && searchQuery && !loading ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">No posts found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
@@ -303,7 +348,11 @@ const Search = () => {
             ) : (
               <div className="space-y-4">
                 {posts.map((post) => (
-                  <Card key={post.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <Card 
+                    key={post.id} 
+                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handlePostClick(post.id)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="w-10 h-10">
@@ -331,7 +380,7 @@ const Search = () => {
                             <p className="text-sm text-gray-600 mb-2">{post.description}</p>
                           )}
                           {post.text_content && !post.title && (
-                            <p className="text-sm text-gray-700 mb-2">{post.text_content}</p>
+                            <p className="text-sm text-gray-700 mb-2 line-clamp-3">{post.text_content}</p>
                           )}
                           {post.media_url && (
                             <div className="mt-2">
@@ -350,11 +399,6 @@ const Search = () => {
                               ) : null}
                             </div>
                           )}
-                          {!post.title && !post.description && !post.text_content && !post.media_url && (
-                            <p className="text-sm text-gray-500 italic">
-                              {post.content_type} content
-                            </p>
-                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -365,7 +409,7 @@ const Search = () => {
           </TabsContent>
 
           <TabsContent value="content" className="space-y-4 mt-6">
-            {contents.length === 0 && searchQuery ? (
+            {contents.length === 0 && searchQuery && !loading ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">No content found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
@@ -375,7 +419,11 @@ const Search = () => {
             ) : (
               <div className="space-y-4">
                 {contents.map((content) => (
-                  <Card key={content.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <Card 
+                    key={content.id} 
+                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleContentClick(content.id)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="w-10 h-10">
@@ -403,7 +451,7 @@ const Search = () => {
                           </div>
                           <h4 className="font-semibold text-sm mb-1">{content.title}</h4>
                           {content.description && (
-                            <p className="text-sm text-gray-600 mb-2">{content.description}</p>
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{content.description}</p>
                           )}
                           <div className="flex items-center gap-2 mt-2">
                             {content.is_premium && content.price && (
@@ -447,6 +495,13 @@ const Search = () => {
             <SearchIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Search for creators, posts, and content</h3>
             <p className="text-gray-600">Enter a search term to find creators by name, posts by title and description, or premium content by title and description</p>
+          </div>
+        )}
+
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-gray-600">Searching...</p>
           </div>
         )}
       </div>
