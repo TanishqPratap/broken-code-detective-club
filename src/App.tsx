@@ -12,6 +12,7 @@ import Creator from "./pages/Creator";
 import CreatorProfile from "./pages/CreatorProfile";
 import Discover from "./pages/Discover";
 import Watch from "./pages/Watch";
+import Live from "./pages/Live";
 import Posts from "./pages/Posts";
 import PostView from "./pages/PostView";
 import TrailerView from "./pages/TrailerView";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/creator/:creatorId" element={<CreatorProfile />} />
               <Route path="/creator/:creatorId/trailer/:trailerId" element={<TrailerView />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/live" element={<Live />} />
               <Route path="/posts" element={<Posts />} />
               <Route path="/posts/:postId" element={<PostView />} />
               <Route path="/watch/:streamId" element={<Watch />} />

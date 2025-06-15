@@ -31,7 +31,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     { path: "/dm", label: "Messages", icon: MessageSquare },
     { path: "/notifications", label: "Notifications", icon: Bell },
     { path: "/creator", label: "Create", icon: PlusSquare },
-    { path: "/creator", label: "Live", icon: Video }, // Changed to point to creator dashboard for live streaming
+    { path: "/live", label: "Live", icon: Video },
   ];
 
   return (
