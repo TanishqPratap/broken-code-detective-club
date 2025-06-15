@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -280,8 +281,8 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
   };
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
+    <Card className="overflow-hidden bg-white border border-gray-200">
+      <CardHeader className="pb-3 bg-white">
         <div className="flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer hover:opacity-80"
@@ -311,7 +312,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 bg-white">
         <div className="mb-4">
           <h3 className="font-medium mb-2">{trailer.title}</h3>
           {trailer.description && (
@@ -416,7 +417,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
 
         {/* Comments Section */}
         {showComments && (
-          <div className="mt-4 space-y-4 border-t pt-4">
+          <div className="mt-4 space-y-4 border-t pt-4 bg-white">
             {user && (
               <div className="flex gap-2">
                 <Input
