@@ -43,11 +43,12 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     try {
       setLoading(true);
       
-      // Get all interactions for this post
+      // First, try to get comments using a simpler query without parent_comment_id
       const { data: interactionsData, error: interactionsError } = await supabase
         .from('posts_interactions')
-        .select('id, comment_text, created_at, user_id, parent_comment_id, interaction_type')
+        .select('id, comment_text, created_at, user_id, interaction_type')
         .eq('post_id', vibeId)
+        .eq('interaction_type', 'comment')
         .order('created_at', { ascending: true });
 
       if (interactionsError) {
@@ -57,73 +58,44 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
       }
 
       if (interactionsData && interactionsData.length > 0) {
-        // Separate comments and likes
-        const commentsData = interactionsData.filter(item => item.interaction_type === 'comment');
-        const likesData = interactionsData.filter(item => item.interaction_type === 'like');
+        // Get user profiles for the comments
+        const userIds = [...new Set(interactionsData.map(comment => comment.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', userIds);
 
-        if (commentsData.length > 0) {
-          // Get user profiles for the comments
-          const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url')
-            .in('id', userIds);
-
-          if (profilesError) {
-            console.error('Error fetching profiles:', profilesError);
-            setComments([]);
-            return;
-          }
-
-          const profilesMap = new Map(
-            profilesData?.map(profile => [profile.id, profile]) || []
-          );
-
-          // Process comments with profiles and likes
-          const processedComments: Comment[] = commentsData.map(comment => ({
-            id: comment.id,
-            comment_text: comment.comment_text || '',
-            created_at: comment.created_at,
-            user_id: comment.user_id,
-            parent_comment_id: comment.parent_comment_id,
-            profiles: profilesMap.get(comment.user_id) || null,
-            replies: [],
-            likes_count: 0, // We'll calculate this later if needed
-            user_liked: false // We'll calculate this later if needed
-          }));
-
-          // Build comment tree structure
-          const commentMap = new Map<string, Comment>();
-          const rootComments: Comment[] = [];
-
-          // First, create a map of all comments
-          processedComments.forEach(comment => {
-            commentMap.set(comment.id, comment);
-          });
-
-          // Then, organize them into a tree structure
-          processedComments.forEach(comment => {
-            if (comment.parent_comment_id) {
-              const parent = commentMap.get(comment.parent_comment_id);
-              if (parent) {
-                if (!parent.replies) parent.replies = [];
-                parent.replies.push(comment);
-              }
-            } else {
-              rootComments.push(comment);
-            }
-          });
-
-          setComments(rootComments);
-        } else {
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
           setComments([]);
+          return;
         }
+
+        const profilesMap = new Map(
+          profilesData?.map(profile => [profile.id, profile]) || []
+        );
+
+        // Process comments with profiles
+        const processedComments: Comment[] = interactionsData.map(comment => ({
+          id: comment.id,
+          comment_text: comment.comment_text || '',
+          created_at: comment.created_at,
+          user_id: comment.user_id,
+          parent_comment_id: null, // For now, all comments are top-level
+          profiles: profilesMap.get(comment.user_id) || null,
+          replies: [],
+          likes_count: 0,
+          user_liked: false
+        }));
+
+        setComments(processedComments);
       } else {
         setComments([]);
       }
     } catch (error) {
       console.error('Error fetching comments:', error);
       toast.error('Failed to load comments');
+      setComments([]);
     } finally {
       setLoading(false);
     }
@@ -147,8 +119,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           post_id: vibeId,
           user_id: user.id,
           interaction_type: 'comment',
-          comment_text: text.trim(),
-          parent_comment_id: parentId
+          comment_text: text.trim()
         });
 
       if (error) throw error;
@@ -183,20 +154,17 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           .delete()
           .eq('post_id', vibeId)
           .eq('user_id', user.id)
-          .eq('interaction_type', 'like')
-          .eq('parent_comment_id', commentId);
+          .eq('interaction_type', 'like');
       } else {
         await supabase
           .from('posts_interactions')
           .insert({
             post_id: vibeId,
             user_id: user.id,
-            interaction_type: 'like',
-            parent_comment_id: commentId
+            interaction_type: 'like'
           });
       }
 
-      // Update local state would go here if we were tracking likes
       toast.success(currentlyLiked ? 'Unliked' : 'Liked');
     } catch (error) {
       console.error('Error liking comment:', error);
@@ -215,8 +183,8 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     return `${Math.floor(diffInSeconds / 86400)}d`;
   };
 
-  const renderComment = (comment: Comment, depth: number = 0): JSX.Element => (
-    <div key={comment.id} className={`${depth > 0 ? 'ml-8 border-l border-gray-700 pl-3' : ''}`}>
+  const renderComment = (comment: Comment): JSX.Element => (
+    <div key={comment.id}>
       <div className="flex space-x-3 mb-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={comment.profiles?.avatar_url || ""} />
@@ -305,13 +273,6 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           )}
         </div>
       </div>
-      
-      {/* Render replies recursively */}
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2">
-          {comment.replies.map(reply => renderComment(reply, depth + 1))}
-        </div>
-      )}
     </div>
   );
 
