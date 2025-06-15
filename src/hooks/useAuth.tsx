@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +19,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Only set up listener once
   useEffect(() => {
-    console.log("[AuthProvider useEffect] Checking initial session...");
+    console.log("[AuthProvider] Initializing AuthProvider and listeners...");
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[AuthProvider onAuthStateChange]", event, session?.user?.id || "No session");
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      // For debug: fire on sign out
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        toast({
+          title: "Signed out successfully",
+          description: "You have been signed out.",
+          variant: "default"
+        });
+      }
+    });
+
+    // Initial session fetch (fires INITIAL_SESSION event above)
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("[AuthProvider useEffect] getSession result:", session);
       setSession(session);
@@ -27,33 +50,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("[AuthProvider onAuthStateChange]", event, session?.user?.id || "No session");
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 100);
-        }
-      }
-    );
-
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const signOut = async () => {
+    console.log("[AuthProvider signOut] Sign out requested");
+
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log("[signOut] Starting sign out process...");
+      // Remove local auth state immediately
       setUser(null);
       setSession(null);
 
-      // Extra: try clearing browser storage directly (last resort; should not be needed)
+      // Extra: try clearing browser storage (optional)
       try {
         localStorage.removeItem("supabase.auth.token");
         sessionStorage.removeItem("supabase.auth.token");
@@ -63,35 +72,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("[signOut] Error clearing storage:", e);
       }
 
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      // Call Supabase sign out (do not reload)
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+
       if (error) {
         console.error("[signOut] Supabase sign out error:", error);
-        if (error.message.includes('Session not found')) {
-          console.log("[signOut] Session was already invalid, proceeding with local cleanup");
-        } else {
-          console.warn("[signOut] Unusual sign out error:", error.message);
-        }
       } else {
-        console.log("[signOut] Successfully signed out from Supabase");
+        console.log("[signOut] Signed out from Supabase");
       }
+      
+      // Do NOT reload page: let Provider update state, UI should react automatically
+      // Optionally, a route navigation can be handled by your app's layout component if (!user) return <Navigate ... />
 
-      // Confirm current session after signout
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log("[signOut] Session after signOut:", session);
-      });
-
-      toast({
-        title: "Signed out successfully",
-        description: "You have been signed out.",
-        variant: "default"
-      });
-
-      console.log("[signOut] Navigating to home page...");
-      window.location.href = '/';
-
-    } catch (error) {
-      console.error('[signOut] Unexpected sign out error:', error);
+    } catch (err) {
+      console.error("[signOut] Unexpected error:", err);
       setUser(null);
       setSession(null);
       toast({
@@ -99,15 +93,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You have been signed out.",
         variant: "default"
       });
-      window.location.href = '/';
     } finally {
       setLoading(false);
     }
   };
 
-  // Add a log whenever user/session changes (for testing)
+  // Log on every change (debug)
   useEffect(() => {
-    console.log("[AuthProvider] user:", user, "session:", session, "loading:", loading);
+    console.log("[AuthProvider] Current state -> user:", user, "session:", session, "loading:", loading);
   }, [user, session, loading]);
 
   return (
