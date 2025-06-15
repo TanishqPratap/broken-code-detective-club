@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -250,7 +251,7 @@ export const useNotifications = () => {
     try {
       console.log('Creating test notification for user:', user.id);
       
-      const { error } = await supabase.rpc('create_notification', {
+      const { data, error } = await supabase.rpc('create_notification', {
         p_user_id: user.id,
         p_type: 'like',
         p_title: 'Test Notification',
@@ -264,9 +265,11 @@ export const useNotifications = () => {
         throw error;
       }
 
-      console.log('Test notification created successfully');
+      console.log('Test notification created successfully:', data);
       toast.success('Test notification created!');
-      fetchNotifications();
+      
+      // Force refresh notifications
+      await fetchNotifications();
       
     } catch (error) {
       console.error('Error in createTestNotification:', error);
@@ -338,6 +341,8 @@ export const useNotifications = () => {
         }, 
         (payload) => {
           console.log('New notification received via realtime:', payload);
+          
+          // Force refresh notifications to get the complete data
           fetchNotifications();
           
           const newNotification = payload.new;

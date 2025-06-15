@@ -209,11 +209,11 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         setLikesCount(prev => prev + 1);
         console.log('Post liked successfully');
         
-        // Create notification if not liking own post
+        // Create notification manually if not liking own post
         if (post.user_id !== user.id) {
-          console.log('Creating like notification');
+          console.log('Creating like notification manually');
           try {
-            const { error: notifError } = await supabase.rpc('create_notification', {
+            const { data: notificationData, error: notifError } = await supabase.rpc('create_notification', {
               p_user_id: post.user_id,
               p_type: 'like',
               p_title: 'New Like',
@@ -226,11 +226,13 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
             
             if (notifError) {
               console.error('Error creating like notification:', notifError);
+              // Don't throw here, like was successful
             } else {
-              console.log('Like notification created successfully');
+              console.log('Like notification created successfully:', notificationData);
             }
           } catch (notifError) {
             console.error('Error in notification creation:', notifError);
+            // Don't throw here, like was successful
           }
         }
       }
@@ -275,11 +277,11 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
       
       console.log('Comment added successfully');
       
-      // Create notification if not commenting on own post
+      // Create notification manually if not commenting on own post
       if (post.user_id !== user.id) {
-        console.log('Creating comment notification');
+        console.log('Creating comment notification manually');
         try {
-          const { error: notifError } = await supabase.rpc('create_notification', {
+          const { data: notificationData, error: notifError } = await supabase.rpc('create_notification', {
             p_user_id: post.user_id,
             p_type: 'comment',
             p_title: 'New Comment',
@@ -292,11 +294,13 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
           
           if (notifError) {
             console.error('Error creating comment notification:', notifError);
+            // Don't throw here, comment was successful
           } else {
-            console.log('Comment notification created successfully');
+            console.log('Comment notification created successfully:', notificationData);
           }
         } catch (notifError) {
           console.error('Error in comment notification creation:', notifError);
+          // Don't throw here, comment was successful
         }
       }
       
