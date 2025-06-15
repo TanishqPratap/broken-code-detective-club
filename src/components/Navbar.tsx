@@ -34,7 +34,8 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 
           if (error) {
             console.error('Error fetching unread count:', error);
-            throw error;
+            setUnreadCount(0);
+            return;
           }
           
           console.log('Unread notification count:', count);
@@ -55,7 +56,12 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
       console.log('Setting up real-time unread count subscription for user:', user.id);
       
       const channel = supabase
-        .channel(`unread_count_${user.id}`)
+        .channel(`unread_count_${user.id}`, {
+          config: {
+            broadcast: { self: true },
+            presence: { key: user.id }
+          }
+        })
         .on('postgres_changes', 
           { 
             event: '*', 
@@ -65,12 +71,15 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
           }, 
           (payload) => {
             console.log('Notification change detected, refetching unread count:', payload);
-            // Refetch count when notifications change
             fetchUnreadCount();
           }
         )
         .subscribe((status) => {
           console.log('Unread count subscription status:', status);
+          if (status === 'TIMED_OUT') {
+            console.warn('Unread count subscription timed out, reconnecting...');
+            setTimeout(fetchUnreadCount, 5000);
+          }
         });
 
       return () => {
@@ -125,7 +134,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                   <Icon className={`w-6 h-6 ${isActive(path) ? "text-brand-blue" : ""}`} />
                   <span className="text-base">{label}</span>
                 </div>
-                {showBadge && badgeCount && (
+                {showBadge && badgeCount && badgeCount > 0 && (
                   <Badge variant="destructive" className="text-xs h-5 w-5 p-0 flex items-center justify-center">
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </Badge>

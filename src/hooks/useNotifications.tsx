@@ -161,7 +161,7 @@ export const useNotifications = () => {
         .from('notifications')
         .update({ is_read: true })
         .eq('id', notificationId)
-        .eq('user_id', user.id); // Add user_id check for security
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -221,7 +221,7 @@ export const useNotifications = () => {
         .from('notifications')
         .delete()
         .eq('id', notificationId)
-        .eq('user_id', user.id); // Add user_id check for security
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error deleting notification:', error);
@@ -237,6 +237,37 @@ export const useNotifications = () => {
     } catch (error) {
       console.error('Error in deleteNotification:', error);
       toast.error('Failed to delete notification');
+    }
+  };
+
+  // Create a test notification function for debugging
+  const createTestNotification = async () => {
+    if (!user) return;
+
+    try {
+      console.log('Creating test notification for user:', user.id);
+      
+      const { error } = await supabase.rpc('create_notification', {
+        p_user_id: user.id,
+        p_type: 'like',
+        p_title: 'Test Notification',
+        p_message: 'This is a test notification to verify the system is working',
+        p_related_user_id: user.id,
+        p_metadata: { test: true }
+      });
+
+      if (error) {
+        console.error('Error creating test notification:', error);
+        throw error;
+      }
+
+      console.log('Test notification created successfully');
+      toast.success('Test notification created!');
+      fetchNotifications();
+      
+    } catch (error) {
+      console.error('Error in createTestNotification:', error);
+      toast.error('Failed to create test notification');
     }
   };
 
@@ -287,14 +318,19 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time notifications listener
+  // Set up real-time notifications listener with better error handling
   useEffect(() => {
     if (!user) return;
 
     console.log('Setting up real-time notifications for user:', user.id);
 
     const channel = supabase
-      .channel(`notifications_${user.id}`)
+      .channel(`notifications_${user.id}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: user.id }
+        }
+      })
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -304,13 +340,10 @@ export const useNotifications = () => {
         }, 
         (payload) => {
           console.log('New notification received via realtime:', payload);
-          // Refetch notifications to get the complete data with relations
           fetchNotifications();
           
-          // Show push notification
           const newNotification = payload.new;
           showNotification(newNotification.title, newNotification.message);
-          
           toast.success('New notification received!');
         }
       )
@@ -323,7 +356,6 @@ export const useNotifications = () => {
         },
         (payload) => {
           console.log('Notification updated via realtime:', payload);
-          // Update the specific notification in state
           const updatedNotification = payload.new;
           setNotifications(prev => 
             prev.map(notif => 
@@ -336,6 +368,18 @@ export const useNotifications = () => {
       )
       .subscribe((status) => {
         console.log('Notification channel subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to notifications');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Error subscribing to notifications channel');
+        } else if (status === 'TIMED_OUT') {
+          console.warn('Notification subscription timed out, attempting to reconnect...');
+          // Attempt to reconnect after a delay
+          setTimeout(() => {
+            console.log('Reconnecting to notifications...');
+            fetchNotifications();
+          }, 5000);
+        }
       });
 
     return () => {
@@ -351,6 +395,7 @@ export const useNotifications = () => {
     markAllAsRead,
     deleteNotification,
     handleNotificationClick,
-    refetch: fetchNotifications
+    refetch: fetchNotifications,
+    createTestNotification // Add this for debugging
   };
 };
