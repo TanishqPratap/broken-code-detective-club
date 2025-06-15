@@ -50,7 +50,11 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
         .eq('post_id', vibeId)
         .order('created_at', { ascending: true });
 
-      if (interactionsError) throw interactionsError;
+      if (interactionsError) {
+        console.error('Error fetching interactions:', interactionsError);
+        setComments([]);
+        return;
+      }
 
       if (interactionsData && interactionsData.length > 0) {
         // Separate comments and likes
@@ -65,7 +69,11 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
             .select('id, username, display_name, avatar_url')
             .in('id', userIds);
 
-          if (profilesError) throw profilesError;
+          if (profilesError) {
+            console.error('Error fetching profiles:', profilesError);
+            setComments([]);
+            return;
+          }
 
           const profilesMap = new Map(
             profilesData?.map(profile => [profile.id, profile]) || []
@@ -73,7 +81,11 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
 
           // Process comments with profiles and likes
           const processedComments: Comment[] = commentsData.map(comment => ({
-            ...comment,
+            id: comment.id,
+            comment_text: comment.comment_text || '',
+            created_at: comment.created_at,
+            user_id: comment.user_id,
+            parent_comment_id: comment.parent_comment_id,
             profiles: profilesMap.get(comment.user_id) || null,
             replies: [],
             likes_count: 0, // We'll calculate this later if needed
@@ -203,7 +215,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     return `${Math.floor(diffInSeconds / 86400)}d`;
   };
 
-  const renderComment = (comment: Comment, depth: number = 0) => (
+  const renderComment = (comment: Comment, depth: number = 0): JSX.Element => (
     <div key={comment.id} className={`${depth > 0 ? 'ml-8 border-l border-gray-700 pl-3' : ''}`}>
       <div className="flex space-x-3 mb-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
