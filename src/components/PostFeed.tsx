@@ -52,24 +52,12 @@ const PostFeed = () => {
 
   const fetchFeedContent = async () => {
     try {
-      // Fetch posts based on new logic
-      let postsQuery = supabase
-        .from('posts')
-        .select(`
-          id,
-          user_id,
-          content_type,
-          text_content,
-          media_url,
-          media_type,
-          created_at
-        `)
-        .order('created_at', { ascending: false });
-
+      console.log('=== STARTING FEED FETCH ===');
+      
       if (user) {
-        console.log('Fetching posts for authenticated user:', user.id);
+        console.log('Fetching content for authenticated user:', user.id);
         
-        // Get list of creators the user is subscribed to
+        // Get subscriptions first
         const { data: subscriptions, error: subError } = await supabase
           .from('subscriptions')
           .select('creator_id, status')
@@ -81,56 +69,67 @@ const PostFeed = () => {
         }
 
         const subscribedCreatorIds = subscriptions?.map(sub => sub.creator_id) || [];
-        console.log('Subscribed to creators:', subscribedCreatorIds);
+        console.log('Active subscriptions to creators:', subscribedCreatorIds);
 
-        // For authenticated users: show posts from subscribed creators + own posts + all free posts
-        // We'll fetch all posts and filter appropriately
-        const { data: allPosts, error: postsError } = await postsQuery.limit(50);
-        
-        if (postsError) throw postsError;
+        // Fetch ALL posts
+        const { data: allPosts, error: postsError } = await supabase
+          .from('posts')
+          .select(`
+            id,
+            user_id,
+            content_type,
+            text_content,
+            media_url,
+            media_type,
+            created_at
+          `)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (postsError) {
+          console.error('Error fetching posts:', postsError);
+          throw postsError;
+        }
+
+        console.log('Total posts found:', allPosts?.length || 0);
 
         // Get creator profiles to check subscription prices
         const creatorIds = [...new Set(allPosts?.map(post => post.user_id) || [])];
+        console.log('Unique creator IDs from posts:', creatorIds);
+
         const { data: creatorProfiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, subscription_price')
+          .select('id, subscription_price, username, display_name')
           .in('id', creatorIds);
 
         if (profilesError) {
           console.error('Error fetching creator profiles:', profilesError);
         }
 
+        console.log('Creator profiles:', creatorProfiles);
+
         const creatorProfilesMap = new Map(
           creatorProfiles?.map(profile => [profile.id, profile]) || []
         );
 
-        // Filter posts based on new logic:
-        // 1. Posts from subscribed creators (all posts)
-        // 2. User's own posts
-        // 3. Free posts from all creators (creators with no subscription price)
+        // Filter posts: subscribed creators + own posts + free posts
         const filteredPosts = allPosts?.filter(post => {
-          // Own posts
-          if (post.user_id === user.id) return true;
-          
-          // Posts from subscribed creators
-          if (subscribedCreatorIds.includes(post.user_id)) return true;
-          
-          // Free posts (creators with no subscription price)
+          const isOwnPost = post.user_id === user.id;
+          const isSubscribed = subscribedCreatorIds.includes(post.user_id);
           const creatorProfile = creatorProfilesMap.get(post.user_id);
-          if (!creatorProfile?.subscription_price) return true;
+          const isFreePost = !creatorProfile?.subscription_price;
           
-          return false;
+          console.log(`Post ${post.id}: own=${isOwnPost}, subscribed=${isSubscribed}, free=${isFreePost}, creator=${creatorProfile?.username}`);
+          
+          return isOwnPost || isSubscribed || isFreePost;
         }) || [];
 
-        console.log('Filtered posts:', filteredPosts.length);
-        
-        // Use filtered posts directly
-        const postsData = filteredPosts;
-        
-        // Process posts normally
+        console.log('Posts after filtering:', filteredPosts.length);
+
+        // Process posts with profile data
         let processedPosts: FeedItem[] = [];
-        if (postsData && postsData.length > 0) {
-          const userIds = [...new Set(postsData.map(post => post.user_id))];
+        if (filteredPosts.length > 0) {
+          const userIds = [...new Set(filteredPosts.map(post => post.user_id))];
           const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
             .select('id, display_name, username, avatar_url')
@@ -143,7 +142,7 @@ const PostFeed = () => {
           );
 
           const postsWithData = await Promise.all(
-            postsData.map(async (post) => {
+            filteredPosts.map(async (post) => {
               const { count: likesCount } = await supabase
                 .from('posts_interactions')
                 .select('*', { count: 'exact', head: true })
@@ -182,7 +181,9 @@ const PostFeed = () => {
           processedPosts = postsWithData.map(post => ({ type: 'post' as const, data: post }));
         }
 
-        // Fetch ALL trailers for authenticated users
+        console.log('Processed posts:', processedPosts.length);
+
+        // Fetch ALL trailers
         const { data: trailersData, error: trailersError } = await supabase
           .from('trailer_content')
           .select(`
@@ -198,25 +199,30 @@ const PostFeed = () => {
           .order('created_at', { ascending: false })
           .limit(20);
 
-        if (trailersError) throw trailersError;
+        if (trailersError) {
+          console.error('Error fetching trailers:', trailersError);
+          throw trailersError;
+        }
 
-        // Process trailer content
+        console.log('Total trailers found:', trailersData?.length || 0);
+
+        // Process trailers
         let processedTrailers: FeedItem[] = [];
         if (trailersData && trailersData.length > 0) {
-          const creatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
-          const { data: creatorProfilesData, error: creatorProfilesError } = await supabase
+          const trailerCreatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
+          const { data: trailerCreatorProfilesData, error: trailerCreatorProfilesError } = await supabase
             .from('profiles')
             .select('id, username, display_name, avatar_url, is_verified, subscription_price')
-            .in('id', creatorIds);
+            .in('id', trailerCreatorIds);
 
-          if (creatorProfilesError) throw creatorProfilesError;
+          if (trailerCreatorProfilesError) throw trailerCreatorProfilesError;
 
-          const creatorProfilesMap = new Map(
-            creatorProfilesData?.map(profile => [profile.id, profile]) || []
+          const trailerCreatorProfilesMap = new Map(
+            trailerCreatorProfilesData?.map(profile => [profile.id, profile]) || []
           );
 
           processedTrailers = trailersData.map(trailer => {
-            const creatorProfile = creatorProfilesMap.get(trailer.creator_id);
+            const creatorProfile = trailerCreatorProfilesMap.get(trailer.creator_id);
             
             return {
               type: 'trailer' as const,
@@ -235,24 +241,53 @@ const PostFeed = () => {
           });
         }
 
+        console.log('Processed trailers:', processedTrailers.length);
+
         // Combine and sort by created_at
         const allItems = [...processedPosts, ...processedTrailers].sort((a, b) => 
           new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
         );
 
-        console.log('Final feed items:', allItems);
+        console.log('=== FINAL FEED SUMMARY ===');
+        console.log('Total items in feed:', allItems.length);
+        console.log('Posts:', processedPosts.length);
+        console.log('Trailers:', processedTrailers.length);
+        console.log('Feed items:', allItems.map(item => ({
+          type: item.type,
+          id: item.data.id,
+          title: item.type === 'post' ? (item.data as any).text_content?.substring(0, 50) : item.data.title,
+          creator: item.type === 'post' ? (item.data as any).profiles?.username : (item.data as any).creator?.username
+        })));
+
         setFeedItems(allItems);
       } else {
-        // For non-authenticated users, show sample content
-        const { data: postsData, error: postsError } = await postsQuery.limit(5);
+        console.log('Fetching content for unauthenticated user');
+        
+        // For non-authenticated users, show only free posts and sample trailers
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select(`
+            id,
+            user_id,
+            content_type,
+            text_content,
+            media_url,
+            media_type,
+            created_at
+          `)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
         if (postsError) throw postsError;
 
-        // Show only free posts for unauthenticated users
+        console.log('Posts for unauthenticated user:', postsData?.length || 0);
+
+        // Show only free posts
         if (postsData && postsData.length > 0) {
           const creatorIds = [...new Set(postsData.map(post => post.user_id))];
           const { data: creatorProfiles, error: profilesError } = await supabase
             .from('profiles')
-            .select('id, subscription_price')
+            .select('id, subscription_price, username, display_name, avatar_url')
             .in('id', creatorIds);
 
           const creatorProfilesMap = new Map(
@@ -261,117 +296,97 @@ const PostFeed = () => {
 
           const freePosts = postsData.filter(post => {
             const creatorProfile = creatorProfilesMap.get(post.user_id);
-            return !creatorProfile?.subscription_price;
+            const isFree = !creatorProfile?.subscription_price;
+            console.log(`Post ${post.id} from ${creatorProfile?.username}: free=${isFree}`);
+            return isFree;
           });
 
-          // Process free posts
-          let processedPosts: FeedItem[] = [];
-          if (freePosts && freePosts.length > 0) {
-            const userIds = [...new Set(freePosts.map(post => post.user_id))];
-            const { data: profilesData, error: profilesError } = await supabase
-              .from('profiles')
-              .select('id, display_name, username, avatar_url')
-              .in('id', userIds);
+          console.log('Free posts for unauthenticated user:', freePosts.length);
 
-            if (profilesError) throw profilesError;
+          const postsWithData = await Promise.all(
+            freePosts.map(async (post) => {
+              const { count: likesCount } = await supabase
+                .from('posts_interactions')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id)
+                .eq('interaction_type', 'like');
 
-            const profilesMap = new Map(
-              profilesData?.map(profile => [profile.id, profile]) || []
-            );
+              const profile = creatorProfilesMap.get(post.user_id);
 
-            const postsWithData = await Promise.all(
-              freePosts.map(async (post) => {
-                const { count: likesCount } = await supabase
-                  .from('posts_interactions')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('post_id', post.id)
-                  .eq('interaction_type', 'like');
-
-                let userLiked = false;
-                if (user) {
-                  const { data: userLikeData } = await supabase
-                    .from('posts_interactions')
-                    .select('id')
-                    .eq('post_id', post.id)
-                    .eq('user_id', user.id)
-                    .eq('interaction_type', 'like')
-                    .single();
-                  
-                  userLiked = !!userLikeData;
-                }
-
-                const profile = profilesMap.get(post.user_id);
-
-                return {
-                  ...post,
-                  content_type: post.content_type as 'text' | 'image' | 'video',
-                  profiles: profile || {
-                    display_name: null,
-                    username: 'Unknown User',
-                    avatar_url: null
-                  },
-                  likes_count: likesCount || 0,
-                  user_liked: userLiked
-                };
-              })
-            );
-
-            processedPosts = postsWithData.map(post => ({ type: 'post' as const, data: post }));
-            setFeedItems(processedPosts);
-          }
-        }
-
-        // Show sample trailers for unauthenticated users
-        const { data: trailersData, error: trailersError } = await supabase
-          .from('trailer_content')
-          .select(`
-            id,
-            title,
-            description,
-            content_type,
-            media_url,
-            order_position,
-            created_at,
-            creator_id
-          `)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        if (trailersError) throw trailersError;
-
-        let processedTrailers: FeedItem[] = [];
-        if (trailersData && trailersData.length > 0) {
-          const creatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
-          const { data: creatorProfilesData, error: creatorProfilesError } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url, is_verified, subscription_price')
-            .in('id', creatorIds);
-
-          if (creatorProfilesError) throw creatorProfilesError;
-
-          const creatorProfilesMap = new Map(
-            creatorProfilesData?.map(profile => [profile.id, profile]) || []
+              return {
+                ...post,
+                content_type: post.content_type as 'text' | 'image' | 'video',
+                profiles: profile || {
+                  display_name: null,
+                  username: 'Unknown User',
+                  avatar_url: null
+                },
+                likes_count: likesCount || 0,
+                user_liked: false
+              };
+            })
           );
 
-          processedTrailers = trailersData.map(trailer => {
-            const creatorProfile = creatorProfilesMap.get(trailer.creator_id);
-            
-            return {
-              type: 'trailer' as const,
-              data: {
-                ...trailer,
-                creator: {
-                  id: trailer.creator_id,
-                  username: creatorProfile?.username || 'Unknown',
-                  display_name: creatorProfile?.display_name || null,
-                  avatar_url: creatorProfile?.avatar_url || null,
-                  is_verified: creatorProfile?.is_verified || false,
-                  subscription_price: creatorProfile?.subscription_price || null,
+          const processedPosts = postsWithData.map(post => ({ type: 'post' as const, data: post }));
+          
+          // Also show sample trailers
+          const { data: trailersData, error: trailersError } = await supabase
+            .from('trailer_content')
+            .select(`
+              id,
+              title,
+              description,
+              content_type,
+              media_url,
+              order_position,
+              created_at,
+              creator_id
+            `)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (trailersError) throw trailersError;
+
+          let processedTrailers: FeedItem[] = [];
+          if (trailersData && trailersData.length > 0) {
+            const trailerCreatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
+            const { data: trailerCreatorProfilesData, error: trailerCreatorProfilesError } = await supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url, is_verified, subscription_price')
+              .in('id', trailerCreatorIds);
+
+            if (trailerCreatorProfilesError) throw trailerCreatorProfilesError;
+
+            const trailerCreatorProfilesMap = new Map(
+              trailerCreatorProfilesData?.map(profile => [profile.id, profile]) || []
+            );
+
+            processedTrailers = trailersData.map(trailer => {
+              const creatorProfile = trailerCreatorProfilesMap.get(trailer.creator_id);
+              
+              return {
+                type: 'trailer' as const,
+                data: {
+                  ...trailer,
+                  creator: {
+                    id: trailer.creator_id,
+                    username: creatorProfile?.username || 'Unknown',
+                    display_name: creatorProfile?.display_name || null,
+                    avatar_url: creatorProfile?.avatar_url || null,
+                    is_verified: creatorProfile?.is_verified || false,
+                    subscription_price: creatorProfile?.subscription_price || null,
+                  }
                 }
-              }
-            };
-          });
-          setFeedItems(processedTrailers);
+              };
+            });
+          }
+
+          const allItems = [...processedPosts, ...processedTrailers].sort((a, b) => 
+            new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
+          );
+
+          console.log('Content for unauthenticated user:', allItems.length);
+          setFeedItems(allItems);
         }
       }
     } catch (error) {
