@@ -303,37 +303,66 @@ export const useNotifications = () => {
       markAsRead(notification.id);
     }
 
-    // Use canonical route definitions that match src/App.tsx
-    switch (notification.type) {
+    /**
+     * Notification routing:
+     * - For content: /content/:id
+     * - For vibe: /vibes or /vibes/:id (if route exists)
+     * - Otherwise, use previous logic for posts, profiles, streams, etc.
+     */
+    const type = notification.type;
+    const contentType = notification.metadata?.related_content_type || notification.metadata?.content_type || notification.metadata?.contentCategory;
+    const contentId = notification.related_id;
+
+    // Handle content route
+    if (
+      type === 'content' ||
+      contentType === 'content'
+    ) {
+      if (contentId) {
+        window.open(`/content/${contentId}`, '_blank');
+      }
+      return;
+    }
+
+    // Handle vibe route
+    if (
+      type === 'vibe' ||
+      contentType === 'vibe'
+    ) {
+      // If you have /vibes/:vibeId use that, else fallback to /vibes
+      if (contentId) {
+        window.open(`/vibes/${contentId}`, '_blank');
+      } else {
+        window.open(`/vibes`, '_blank');
+      }
+      return;
+    }
+
+    // Previous canonical routes:
+    switch (type) {
       case 'like':
       case 'comment':
       case 'comment_reply':
-        // /posts/:postId
-        if (notification.related_id) {
-          window.open(`/posts/${notification.related_id}`, '_blank');
+        if (contentType === 'post' && contentId) {
+          window.open(`/posts/${contentId}`, '_blank');
         }
         break;
       case 'follow':
       case 'story_like':
-        // /creator/:creatorId
-        // notification.user.id should be the creator's id
         if (notification.user?.id) {
           window.open(`/creator/${notification.user.id}`, '_blank');
         }
         break;
       case 'subscription':
       case 'tip':
-        // /profile (no other info needed)
         window.open(`/profile`, '_blank');
         break;
       case 'live_stream':
-        // /watch/:streamId
-        if (notification.related_id) {
-          window.open(`/watch/${notification.related_id}`, '_blank');
+        if (contentId) {
+          window.open(`/watch/${contentId}`, '_blank');
         }
         break;
       case 'message':
-        // /dm
         window.open(`/dm`, '_blank');
         break;
       default:
