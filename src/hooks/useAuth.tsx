@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,29 +19,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
+    console.log("[AuthProvider useEffect] Checking initial session...");
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.id || 'No session');
+      console.log("[AuthProvider useEffect] getSession result:", session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id || 'No session');
+        console.log("[AuthProvider onAuthStateChange]", event, session?.user?.id || "No session");
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
-        // If the event is SIGNED_OUT, ensure we're on the home page
         if (event === 'SIGNED_OUT') {
-          console.log('User signed out, redirecting to home...');
-          // Clear any cached data
           setSession(null);
           setUser(null);
-          // Use window.location since we're outside Router context
           setTimeout(() => {
             window.location.href = '/';
           }, 100);
@@ -56,59 +49,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       setLoading(true);
-      console.log('Starting sign out process...');
-      
-      // Clear local state immediately
-      console.log('Clearing local state...');
+      console.log("[signOut] Starting sign out process...");
       setUser(null);
       setSession(null);
-      
+
+      // Extra: try clearing browser storage directly (last resort; should not be needed)
+      try {
+        localStorage.removeItem("supabase.auth.token");
+        sessionStorage.removeItem("supabase.auth.token");
+        localStorage.removeItem("sb-access-token");
+        localStorage.removeItem("sb-refresh-token");
+      } catch (e) {
+        console.log("[signOut] Error clearing storage:", e);
+      }
+
       // Sign out from Supabase
-      console.log('Attempting to sign out from Supabase...');
       const { error } = await supabase.auth.signOut({ scope: 'global' });
-      
       if (error) {
-        console.error('Supabase sign out error:', error);
-        // Even if there's an error, we've cleared local state
+        console.error("[signOut] Supabase sign out error:", error);
         if (error.message.includes('Session not found')) {
-          console.log('Session was already invalid, proceeding with local cleanup');
+          console.log("[signOut] Session was already invalid, proceeding with local cleanup");
         } else {
-          console.warn('Sign out error, but proceeding with local cleanup:', error.message);
+          console.warn("[signOut] Unusual sign out error:", error.message);
         }
       } else {
-        console.log('Successfully signed out from Supabase');
+        console.log("[signOut] Successfully signed out from Supabase");
       }
-      
-      // Show success message
+
+      // Confirm current session after signout
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log("[signOut] Session after signOut:", session);
+      });
+
       toast({
         title: "Signed out successfully",
         description: "You have been signed out.",
         variant: "default"
       });
 
-      // Navigate to home page using window.location since we're outside Router context
-      console.log('Navigating to home page...');
+      console.log("[signOut] Navigating to home page...");
       window.location.href = '/';
-      
+
     } catch (error) {
-      console.error('Unexpected sign out error:', error);
-      
-      // Even on unexpected errors, clear state and redirect
+      console.error('[signOut] Unexpected sign out error:', error);
       setUser(null);
       setSession(null);
-      
       toast({
         title: "Signed out",
         description: "You have been signed out.",
         variant: "default"
       });
-      
-      // Force navigation
       window.location.href = '/';
     } finally {
       setLoading(false);
     }
   };
+
+  // Add a log whenever user/session changes (for testing)
+  useEffect(() => {
+    console.log("[AuthProvider] user:", user, "session:", session, "loading:", loading);
+  }, [user, session, loading]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>
