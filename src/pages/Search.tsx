@@ -90,7 +90,7 @@ const Search = () => {
 
       setCreators(creatorsWithCounts);
 
-      // Search posts
+      // Search posts with proper join
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -100,7 +100,7 @@ const Search = () => {
           text_content,
           media_url,
           created_at,
-          profiles!posts_user_id_fkey (
+          profiles (
             username,
             display_name,
             avatar_url
