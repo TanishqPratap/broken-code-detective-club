@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,207 @@ import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CreatorDashboardProps {
   onNavigateToLivestream?: () => void;
   onNavigateToContent?: () => void;
 }
 
+interface AnalyticsData {
+  totalViews: number;
+  totalLikes: number;
+  totalFollowers: number;
+  totalEarnings: number;
+}
+
 const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: CreatorDashboardProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [showVibesUpload, setShowVibesUpload] = useState(false);
   const [showContentUpload, setShowContentUpload] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
+    totalViews: 0,
+    totalLikes: 0,
+    totalFollowers: 0,
+    totalEarnings: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Mock analytics data
-  const analyticsData = {
-    totalViews: 12500,
-    totalLikes: 890,
-    totalFollowers: 456,
-    totalEarnings: 1250.75
+  useEffect(() => {
+    if (user) {
+      fetchAnalyticsData();
+    }
+  }, [user]);
+
+  const fetchAnalyticsData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch followers count
+      const { count: followersCount, error: followersError } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', user.id);
+
+      if (followersError) {
+        console.error('Error fetching followers:', followersError);
+      }
+
+      // Fetch total likes from posts interactions
+      const { count: postLikesCount, error: postLikesError } = await supabase
+        .from('posts_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('interaction_type', 'like')
+        .in('post_id', 
+          await supabase
+            .from('posts')
+            .select('id')
+            .eq('user_id', user.id)
+            .then(({ data }) => data?.map(post => post.id) || [])
+        );
+
+      if (postLikesError) {
+        console.error('Error fetching post likes:', postLikesError);
+      }
+
+      // Fetch content likes
+      const { count: contentLikesCount, error: contentLikesError } = await supabase
+        .from('content_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('interaction_type', 'like')
+        .in('content_id',
+          await supabase
+            .from('content')
+            .select('id')
+            .eq('creator_id', user.id)
+            .then(({ data }) => data?.map(content => content.id) || [])
+        );
+
+      if (contentLikesError) {
+        console.error('Error fetching content likes:', contentLikesError);
+      }
+
+      // Fetch story likes
+      const { count: storyLikesCount, error: storyLikesError } = await supabase
+        .from('story_likes')
+        .select('*', { count: 'exact', head: true })
+        .in('story_id',
+          await supabase
+            .from('stories')
+            .select('id')
+            .eq('creator_id', user.id)
+            .then(({ data }) => data?.map(story => story.id) || [])
+        );
+
+      if (storyLikesError) {
+        console.error('Error fetching story likes:', storyLikesError);
+      }
+
+      // Fetch earnings from tips
+      const { data: tipsData, error: tipsError } = await supabase
+        .from('tips')
+        .select('amount')
+        .eq('creator_id', user.id);
+
+      if (tipsError) {
+        console.error('Error fetching tips:', tipsError);
+      }
+
+      // Fetch earnings from stream tips
+      const { data: streamTipsData, error: streamTipsError } = await supabase
+        .from('stream_tips')
+        .select('amount')
+        .in('stream_id',
+          await supabase
+            .from('live_streams')
+            .select('id')
+            .eq('creator_id', user.id)
+            .then(({ data }) => data?.map(stream => stream.id) || [])
+        );
+
+      if (streamTipsError) {
+        console.error('Error fetching stream tips:', streamTipsError);
+      }
+
+      // Calculate total earnings
+      const tipEarnings = tipsData?.reduce((sum, tip) => sum + Number(tip.amount), 0) || 0;
+      const streamTipEarnings = streamTipsData?.reduce((sum, tip) => sum + Number(tip.amount), 0) || 0;
+      const totalEarnings = tipEarnings + streamTipEarnings;
+
+      // Calculate total likes
+      const totalLikes = (postLikesCount || 0) + (contentLikesCount || 0) + (storyLikesCount || 0);
+
+      // For views, we'll use a combination of stream viewers and content interactions as a proxy
+      const { count: streamViewersCount, error: streamViewersError } = await supabase
+        .from('stream_viewers')
+        .select('*', { count: 'exact', head: true })
+        .in('stream_id',
+          await supabase
+            .from('live_streams')
+            .select('id')
+            .eq('creator_id', user.id)
+            .then(({ data }) => data?.map(stream => stream.id) || [])
+        );
+
+      if (streamViewersError) {
+        console.error('Error fetching stream viewers:', streamViewersError);
+      }
+
+      // Calculate approximate views (stream viewers + post interactions + content interactions)
+      const { count: postInteractionsCount, error: postInteractionsError } = await supabase
+        .from('posts_interactions')
+        .select('*', { count: 'exact', head: true })
+        .in('post_id',
+          await supabase
+            .from('posts')
+            .select('id')
+            .eq('user_id', user.id)
+            .then(({ data }) => data?.map(post => post.id) || [])
+        );
+
+      if (postInteractionsError) {
+        console.error('Error fetching post interactions:', postInteractionsError);
+      }
+
+      const { count: contentInteractionsCount, error: contentInteractionsError } = await supabase
+        .from('content_interactions')
+        .select('*', { count: 'exact', head: true })
+        .in('content_id',
+          await supabase
+            .from('content')
+            .select('id')
+            .eq('creator_id', user.id)
+            .then(({ data }) => data?.map(content => content.id) || [])
+        );
+
+      if (contentInteractionsError) {
+        console.error('Error fetching content interactions:', contentInteractionsError);
+      }
+
+      const approximateViews = (streamViewersCount || 0) + (postInteractionsCount || 0) + (contentInteractionsCount || 0);
+
+      setAnalyticsData({
+        totalViews: approximateViews,
+        totalLikes: totalLikes,
+        totalFollowers: followersCount || 0,
+        totalEarnings: totalEarnings
+      });
+
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load analytics data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoLive = () => {
@@ -97,8 +280,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{analyticsData.totalViews.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : analyticsData.totalViews.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Based on interactions & stream views"}
+                </p>
               </CardContent>
             </Card>
 
@@ -108,8 +295,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{analyticsData.totalLikes.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+15.3% from last month</p>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : analyticsData.totalLikes.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Across all your content"}
+                </p>
               </CardContent>
             </Card>
 
@@ -119,8 +310,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{analyticsData.totalFollowers.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+8.7% from last month</p>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : analyticsData.totalFollowers.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "People following you"}
+                </p>
               </CardContent>
             </Card>
 
@@ -130,8 +325,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${analyticsData.totalEarnings.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">+12.5% from last month</p>
+                <div className="text-2xl font-bold">
+                  ${loading ? "..." : analyticsData.totalEarnings.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "From tips & stream donations"}
+                </p>
               </CardContent>
             </Card>
           </div>
