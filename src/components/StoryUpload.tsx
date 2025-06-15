@@ -25,6 +25,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
+      console.log('File selected:', selectedFile.name, selectedFile.type, selectedFile.size);
+      
       // Validate file type
       if (!selectedFile.type.startsWith('image/') && !selectedFile.type.startsWith('video/')) {
         toast.error("Please select an image or video file");
@@ -56,49 +58,59 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
 
     try {
       setUploading(true);
-      console.log('Starting story upload...');
+      console.log('Starting story upload for user:', user.id);
 
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      console.log('Uploading file to:', filePath);
+      console.log('Uploading file to path:', filePath);
 
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('story-media')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw uploadError;
+        toast.error(`Upload failed: ${uploadError.message}`);
+        return;
       }
+
+      console.log('File uploaded successfully:', uploadData);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('story-media')
         .getPublicUrl(filePath);
 
-      console.log('File uploaded, public URL:', publicUrl);
+      console.log('Public URL generated:', publicUrl);
 
       // Save story to database
-      const { error: dbError } = await supabase
+      const { data: storyData, error: dbError } = await supabase
         .from('stories')
         .insert({
           creator_id: user.id,
           media_url: publicUrl,
           content_type: file.type.startsWith('image/') ? 'image' : 'video',
           text_overlay: textOverlay || null,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
-        });
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        })
+        .select();
 
       if (dbError) {
         console.error('Database error:', dbError);
-        throw dbError;
+        toast.error(`Database error: ${dbError.message}`);
+        return;
       }
 
-      console.log('Story saved to database successfully');
+      console.log('Story saved to database:', storyData);
       toast.success("Story uploaded successfully!");
+      
+      // Reset form
       setIsOpen(false);
       setFile(null);
       setTextOverlay("");
@@ -109,11 +121,17 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
         onStoryUploaded();
       }
     } catch (error) {
-      console.error('Error uploading story:', error);
-      toast.error("Failed to upload story. Please try again.");
+      console.error('Unexpected error uploading story:', error);
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setUploading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFile(null);
+    setPreview(null);
+    setTextOverlay("");
   };
 
   return (
@@ -139,7 +157,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Upload an image or video for your story
               </p>
-              <input
+              <Input
                 type="file"
                 accept="image/*,video/*"
                 onChange={handleFileSelect}
@@ -147,8 +165,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                 id="story-upload"
               />
               <Label htmlFor="story-upload" className="cursor-pointer">
-                <Button type="button" variant="outline">
-                  Choose File
+                <Button type="button" variant="outline" asChild>
+                  <span>Choose File</span>
                 </Button>
               </Label>
             </div>
@@ -191,12 +209,9 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setFile(null);
-                    setPreview(null);
-                    setTextOverlay("");
-                  }}
+                  onClick={resetForm}
                   className="flex-1"
+                  disabled={uploading}
                 >
                   Change File
                 </Button>
