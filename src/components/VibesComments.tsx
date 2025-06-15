@@ -155,7 +155,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
         setNewComment("");
       }
       
-      fetchComments();
+      await fetchComments();
       toast.success("Comment added!");
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -239,15 +239,17 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
               <Heart className={`w-3 h-3 mr-1 ${comment.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
               {comment.likes_count > 0 ? comment.likes_count : 'Like'}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyingTo(comment.id)}
-              className="text-gray-400 hover:text-white text-xs p-0 h-auto"
-            >
-              <MessageCircle className="w-3 h-3 mr-1" />
-              Reply
-            </Button>
+            {!isReply && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyingTo(comment.id)}
+                className="text-gray-400 hover:text-white text-xs p-0 h-auto"
+              >
+                <MessageCircle className="w-3 h-3 mr-1" />
+                Reply
+              </Button>
+            )}
           </div>
           
           {/* Reply input for this specific comment */}
