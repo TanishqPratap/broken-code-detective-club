@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, Heart, Star, Zap, Trophy, Globe } from "lucide-react";
@@ -28,11 +29,6 @@ const Community = () => {
       icon: Trophy,
       title: "Success Stories",
       description: "Get inspired by stories from creators who have built successful communities and businesses."
-    },
-    {
-      icon: Calendar,
-      title: "Virtual Events",
-      description: "Join live webinars, workshops, and networking events to learn and connect with others."
     }
   ];
 
