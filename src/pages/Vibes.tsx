@@ -318,7 +318,7 @@ const Vibes = () => {
                         size="sm"
                         className="border-white text-white hover:bg-white hover:text-black bg-transparent text-xs px-2 py-1 h-6"
                       >
-                        Follow
+                        Subscribe
                       </Button>
                     </div>
                   </div>
