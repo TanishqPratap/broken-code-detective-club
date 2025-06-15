@@ -1,5 +1,6 @@
 
 import { Heart, Github, Twitter, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -32,9 +33,9 @@ const Footer = () => {
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Platform</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/features" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Features
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
@@ -42,9 +43,9 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/security" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Security
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -54,19 +55,19 @@ const Footer = () => {
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Support</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/help-center" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Help Center
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/community" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Community
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/contact" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Contact Us
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -76,24 +77,24 @@ const Footer = () => {
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/privacy-policy" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/terms-of-service" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Terms of Service
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/cookie-policy" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Cookie Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
+                <Link to="/dmca" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   DMCA
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

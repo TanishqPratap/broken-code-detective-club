@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +24,15 @@ import Watch from "@/pages/Watch";
 import StreamPaymentSuccess from "@/pages/StreamPaymentSuccess";
 import NotFound from "@/pages/NotFound";
 import ContentView from "@/pages/ContentView";
+import Features from "@/pages/Features";
+import Security from "@/pages/Security";
+import HelpCenter from "@/pages/HelpCenter";
+import Community from "@/pages/Community";
+import Contact from "@/pages/Contact";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import CookiePolicy from "@/pages/CookiePolicy";
+import DMCA from "@/pages/DMCA";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +63,15 @@ function App() {
                   <Route path="watch/:streamId" element={<Watch />} />
                   <Route path="stream-payment-success" element={<StreamPaymentSuccess />} />
                   <Route path="content/:contentId" element={<ContentView />} />
+                  <Route path="features" element={<Features />} />
+                  <Route path="security" element={<Security />} />
+                  <Route path="help-center" element={<HelpCenter />} />
+                  <Route path="community" element={<Community />} />
+                  <Route path="contact" element={<Contact />} />
+                  <Route path="privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="terms-of-service" element={<TermsOfService />} />
+                  <Route path="cookie-policy" element={<CookiePolicy />} />
+                  <Route path="dmca" element={<DMCA />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>
