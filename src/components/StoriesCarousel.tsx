@@ -162,7 +162,7 @@ const StoriesCarousel = () => {
         ))}
       </div>
 
-      {/* Story Viewer */}
+      {/* Story Viewer - Full Screen */}
       {selectedStoryGroup && (
         <StoryViewer
           stories={selectedStoryGroup}
