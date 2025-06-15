@@ -101,7 +101,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   if (!currentStory) return null;
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex gap-1 z-20">
         {stories.map((_, index) => (
@@ -137,9 +137,9 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       <div className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToPrevious} />
       <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content container - Vertical phone aspect ratio */}
-      <div className="relative w-full max-w-md h-full flex items-center justify-center">
-        <div className="relative w-full h-full max-h-screen bg-black overflow-hidden">
+      {/* Story content - Full viewport */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-full h-full">
           {currentStory.content_type === 'image' ? (
             <img
               src={currentStory.media_url}
