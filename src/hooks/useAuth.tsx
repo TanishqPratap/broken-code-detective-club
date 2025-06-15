@@ -39,42 +39,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       setLoading(true);
+      console.log('Starting sign out process...');
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Sign out error:', error);
-        toast({
-          title: "Sign out error",
-          description: "There was an issue signing out. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Clear local state
+      // Clear local state first
       setUser(null);
       
+      // Check if we have a current session before trying to sign out
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        console.log('Session found, signing out from Supabase...');
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.error('Supabase sign out error:', error);
+          // Don't show error for "session not found" as user is already signed out
+          if (!error.message.includes('Session not found')) {
+            toast({
+              title: "Sign out error",
+              description: "There was an issue signing out, but you've been logged out locally.",
+              variant: "destructive"
+            });
+          }
+        }
+      } else {
+        console.log('No session found, user already signed out');
+      }
+      
+      // Always show success message and redirect
       toast({
         title: "Signed out successfully",
         description: "You have been signed out.",
         variant: "default"
       });
 
-      // Navigate to home page using proper routing
+      // Navigate to home page
       setTimeout(() => {
         window.location.href = '/';
-      }, 100);
+      }, 500);
       
     } catch (error) {
       console.error('Unexpected sign out error:', error);
       
+      // Still clear local state and redirect even on error
+      setUser(null);
+      
       toast({
-        title: "Sign out error",
-        description: "There was an unexpected error. Please try again.",
-        variant: "destructive"
+        title: "Signed out",
+        description: "You have been signed out.",
+        variant: "default"
       });
+      
+      // Navigate to home page
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } finally {
       setLoading(false);
     }
