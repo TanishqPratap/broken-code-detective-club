@@ -64,8 +64,9 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
           profilesData?.map(profile => [profile.id, profile]) || []
         );
 
-        const processedInteractions = interactionsData.map(interaction => ({
+        const processedInteractions: Interaction[] = interactionsData.map(interaction => ({
           ...interaction,
+          interaction_type: interaction.interaction_type as 'like' | 'comment',
           user: profilesMap.get(interaction.user_id) || {
             username: 'Unknown User',
             display_name: null,
