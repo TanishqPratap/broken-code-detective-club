@@ -1,106 +1,70 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { useAuth } from "@/hooks/useAuth";
 import Index from "@/pages/Index";
-import Creator from "@/pages/Creator";
 import Profile from "@/pages/Profile";
-import Search from "@/pages/Search";
-import Posts from "@/pages/Posts";
-import PostView from "@/pages/PostView";
-import ContentView from "@/pages/ContentView";
-import TrailerView from "@/pages/TrailerView";
 import CreatorProfile from "@/pages/CreatorProfile";
+import Creator from "@/pages/Creator";
+import Search from "@/pages/Search";
 import Discover from "@/pages/Discover";
+import Vibes from "@/pages/Vibes";
 import Live from "@/pages/Live";
 import Watch from "@/pages/Watch";
-import Vibes from "@/pages/Vibes";
+import PaidDM from "@/pages/PaidDM";
 import Notifications from "@/pages/Notifications";
 import NotificationSettings from "@/pages/NotificationSettings";
-import PaidDM from "@/pages/PaidDM";
+import PostView from "@/pages/PostView";
+import Posts from "@/pages/Posts";
+import ContentView from "@/pages/ContentView";
+import TrailerView from "@/pages/TrailerView";
 import StreamPaymentSuccess from "@/pages/StreamPaymentSuccess";
 import NotFound from "@/pages/NotFound";
-import MobileLayout from "@/components/MobileLayout";
 import Layout from "@/components/Layout";
-import LivepeerProvider from "@/components/LivepeerProvider";
+import MobileLayout from "@/components/MobileLayout";
+import RouteGuard from "@/components/RouteGuard";
 import { useIsMobile } from "@/hooks/use-mobile";
-import "./App.css";
 
-const queryClient = new QueryClient();
-
-function AppContent() {
+const AppContent = () => {
+  const { loading } = useAuth();
   const isMobile = useIsMobile();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const LayoutComponent = isMobile ? MobileLayout : Layout;
 
   return (
     <Router>
       <Routes>
-        {isMobile ? (
-          <Route path="/" element={<MobileLayout />}>
-            <Route index element={<Index />} />
-            <Route path="creator" element={<Creator />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/:username" element={<CreatorProfile />} />
-            <Route path="search" element={<Search />} />
-            <Route path="posts" element={<Posts />} />
-            <Route path="post/:id" element={<PostView />} />
-            <Route path="content/:id" element={<ContentView />} />
-            <Route path="trailer/:id" element={<TrailerView />} />
-            <Route path="discover" element={<Discover />} />
-            <Route path="live" element={<Live />} />
-            <Route path="watch/:playbackId" element={<Watch />} />
-            <Route path="vibes" element={<Vibes />} />
-            <Route path="vibes/:id" element={<PostView />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="notification-settings" element={<NotificationSettings />} />
-            <Route path="dm" element={<PaidDM />} />
-            <Route path="dm/:sessionId" element={<PaidDM />} />
-            <Route path="payment-success" element={<StreamPaymentSuccess />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        ) : (
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Index />} />
-            <Route path="creator" element={<Creator />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/:username" element={<CreatorProfile />} />
-            <Route path="search" element={<Search />} />
-            <Route path="posts" element={<Posts />} />
-            <Route path="post/:id" element={<PostView />} />
-            <Route path="content/:id" element={<ContentView />} />
-            <Route path="trailer/:id" element={<TrailerView />} />
-            <Route path="discover" element={<Discover />} />
-            <Route path="live" element={<Live />} />
-            <Route path="watch/:playbackId" element={<Watch />} />
-            <Route path="vibes" element={<Vibes />} />
-            <Route path="vibes/:id" element={<PostView />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="notification-settings" element={<NotificationSettings />} />
-            <Route path="dm" element={<PaidDM />} />
-            <Route path="dm/:sessionId" element={<PaidDM />} />
-            <Route path="payment-success" element={<StreamPaymentSuccess />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        )}
+        <Route path="/" element={<LayoutComponent />}>
+          <Route index element={<Index />} />
+          <Route path="profile" element={<RouteGuard><Profile /></RouteGuard>} />
+          <Route path="profile/:username" element={<CreatorProfile />} />
+          <Route path="creator" element={<RouteGuard><Creator /></RouteGuard>} />
+          <Route path="search" element={<Search />} />
+          <Route path="discover" element={<Discover />} />
+          <Route path="vibes" element={<Vibes />} />
+          <Route path="vibes/:id" element={<PostView />} />
+          <Route path="live" element={<Live />} />
+          <Route path="watch/:streamId" element={<Watch />} />
+          <Route path="dm" element={<RouteGuard><PaidDM /></RouteGuard>} />
+          <Route path="notifications" element={<RouteGuard><Notifications /></RouteGuard>} />
+          <Route path="notification-settings" element={<RouteGuard><NotificationSettings /></RouteGuard>} />
+          <Route path="post/:id" element={<PostView />} />
+          <Route path="posts" element={<Posts />} />
+          <Route path="content/:id" element={<ContentView />} />
+          <Route path="trailer/:id" element={<TrailerView />} />
+          <Route path="stream-payment-success" element={<RouteGuard><StreamPaymentSuccess /></RouteGuard>} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
-}
+};
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <LivepeerProvider>
-            <AppContent />
-            <Toaster />
-          </LivepeerProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
+export default AppContent;
