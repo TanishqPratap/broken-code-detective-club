@@ -116,6 +116,33 @@ export type Database = {
           },
         ]
       }
+      content_interactions: {
+        Row: {
+          comment_text: string | null
+          content_id: string
+          created_at: string
+          id: string
+          interaction_type: string
+          user_id: string
+        }
+        Insert: {
+          comment_text?: string | null
+          content_id: string
+          created_at?: string
+          id?: string
+          interaction_type: string
+          user_id: string
+        }
+        Update: {
+          comment_text?: string | null
+          content_id?: string
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string

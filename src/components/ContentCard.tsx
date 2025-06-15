@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Eye, FileText, Image, Video } from "lucide-react";
+import ContentInteractions from "./ContentInteractions";
 
 interface Content {
   id: string;
@@ -115,6 +116,9 @@ const ContentCard = ({ content }: ContentCardProps) => {
               </div>
             </div>
           </div>
+
+          {/* Add interactions component */}
+          <ContentInteractions contentId={content.id} />
         </div>
       </CardContent>
     </Card>
