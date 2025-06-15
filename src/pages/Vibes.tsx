@@ -261,6 +261,37 @@ const Vibes = () => {
     }
   };
 
+  const handleShare = async (vibe: Post) => {
+    const shareUrl = `${window.location.origin}/vibes?id=${vibe.id}`;
+    const shareText = `Check out this vibe by ${vibe.creator_name}: ${vibe.description || 'Amazing content!'}`;
+
+    try {
+      // Check if Web Share API is supported
+      if (navigator.share) {
+        await navigator.share({
+          title: `Vibe by ${vibe.creator_name}`,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success('Shared successfully!');
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // Final fallback - try to copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError);
+        toast.error('Failed to share. Please copy the URL manually.');
+      }
+    }
+  };
+
   const handleCommentClick = (vibeId: string) => {
     setActiveVibeId(vibeId);
     setShowComments(true);
@@ -453,6 +484,7 @@ const Vibes = () => {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => handleShare(vibe)}
                       className="text-white hover:bg-white/20 p-2 rounded-full bg-transparent"
                     >
                       <Share2 className="w-6 h-6" />
