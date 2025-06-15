@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Heart, User, Video, Search, Plus, MessageSquare } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface NavbarProps {
   onAuthClick: () => void;
@@ -30,7 +31,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
   ];
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
@@ -59,6 +60,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 
           {/* User Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <ThemeToggle />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -71,7 +73,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-800" align="end" forceMount>
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
