@@ -1,57 +1,55 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Heart, User, Video, Search, Plus, MessageSquare, Home, Compass, Film, Bell, PlusSquare, Menu } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import ThemeToggle from "@/components/ThemeToggle";
+
 interface NavbarProps {
   onAuthClick: () => void;
 }
-const Navbar = ({
-  onAuthClick
-}: NavbarProps) => {
-  const {
-    user,
-    signOut
-  } = useAuth();
+
+const Navbar = ({ onAuthClick }: NavbarProps) => {
+  const { user, signOut } = useAuth();
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Mock function to get unread notification count
+  // In a real app, this would be connected to your notification system
+  useEffect(() => {
+    if (user) {
+      // Simulate fetching unread count
+      setUnreadCount(3); // Mock unread count
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user]);
+
   const isActive = (path: string) => location.pathname === path;
-  const navItems = [{
-    path: "/",
-    label: "Home",
-    icon: Home
-  }, {
-    path: "/search",
-    label: "Search",
-    icon: Search
-  }, {
-    path: "/discover",
-    label: "Explore",
-    icon: Compass
-  }, {
-    path: "/posts",
-    label: "Reels",
-    icon: Film
-  }, {
-    path: "/dm",
-    label: "Messages",
-    icon: MessageSquare
-  }, {
-    path: "/notifications",
-    label: "Notifications",
-    icon: Bell
-  }, {
-    path: "/creator",
-    label: "Create",
-    icon: PlusSquare
-  }, {
-    path: "/live",
-    label: "Live",
-    icon: Video
-  }];
-  return <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-40 flex flex-col">
+
+  const navItems = [
+    { path: "/", label: "Home", icon: Home },
+    { path: "/search", label: "Search", icon: Search },
+    { path: "/discover", label: "Explore", icon: Compass },
+    { path: "/posts", label: "Reels", icon: Film },
+    { path: "/dm", label: "Messages", icon: MessageSquare },
+    { 
+      path: "/notifications", 
+      label: "Notifications", 
+      icon: Bell,
+      showBadge: unreadCount > 0,
+      badgeCount: unreadCount
+    },
+    { path: "/creator", label: "Create", icon: PlusSquare },
+    { path: "/live", label: "Live", icon: Video }
+  ];
+
+  return (
+    <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-40 flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <Link to="/" className="flex items-center space-x-3">
@@ -65,16 +63,25 @@ const Navbar = ({
       {/* Navigation Items */}
       <nav className="flex-1 px-4 py-6 overflow-y-auto">
         <div className="space-y-2">
-          {navItems.map(({
-          path,
-          label,
-          icon: Icon
-        }) => <Link key={`${path}-${label}`} to={path}>
-              <div className={`flex items-center space-x-4 px-4 py-3 rounded-lg transition-colors ${isActive(path) ? "bg-brand-light-cyan dark:bg-brand-dark-blue font-semibold text-brand-navy dark:text-brand-light-cyan" : "hover:bg-brand-pale-cyan dark:hover:bg-gray-800"}`}>
-                <Icon className={`w-6 h-6 ${isActive(path) ? "text-brand-blue" : ""}`} />
-                <span className="text-base">{label}</span>
+          {navItems.map(({ path, label, icon: Icon, showBadge, badgeCount }) => (
+            <Link key={`${path}-${label}`} to={path}>
+              <div className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                isActive(path) 
+                  ? "bg-brand-light-cyan dark:bg-brand-dark-blue font-semibold text-brand-navy dark:text-brand-light-cyan" 
+                  : "hover:bg-brand-pale-cyan dark:hover:bg-gray-800"
+              }`}>
+                <div className="flex items-center space-x-4">
+                  <Icon className={`w-6 h-6 ${isActive(path) ? "text-brand-blue" : ""}`} />
+                  <span className="text-base">{label}</span>
+                </div>
+                {showBadge && badgeCount && (
+                  <Badge variant="destructive" className="text-xs h-5 w-5 p-0 flex items-center justify-center">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </Badge>
+                )}
               </div>
-            </Link>)}
+            </Link>
+          ))}
         </div>
       </nav>
 
@@ -83,7 +90,8 @@ const Navbar = ({
         <div className="space-y-4">
           <ThemeToggle />
           
-          {user ? <DropdownMenu>
+          {user ? (
+            <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-brand-pale-cyan dark:hover:bg-gray-800 cursor-pointer transition-colors">
                   <Avatar className="h-8 w-8">
@@ -112,11 +120,16 @@ const Navbar = ({
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu> : <Button onClick={onAuthClick} className="w-full">
+            </DropdownMenu>
+          ) : (
+            <Button onClick={onAuthClick} className="w-full">
               Sign In
-            </Button>}
+            </Button>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Navbar;
