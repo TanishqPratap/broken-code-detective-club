@@ -114,6 +114,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
   };
 
   const uploadVideo = async (file: File): Promise<string> => {
+    console.log('Starting video upload:', file.name, file.size);
     const fileExt = file.name.split('.').pop();
     const fileName = `${user!.id}/${Date.now()}.${fileExt}`;
     
@@ -121,12 +122,18 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       .from('post-media')
       .upload(fileName, file);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+
+    console.log('Upload successful:', data);
 
     const { data: { publicUrl } } = supabase.storage
       .from('post-media')
       .getPublicUrl(fileName);
 
+    console.log('Public URL:', publicUrl);
     return publicUrl;
   };
 
@@ -148,18 +155,41 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
 
     try {
       setUploading(true);
+      console.log('Starting vibe upload process...');
 
       // Upload video file
       const mediaUrl = await uploadVideo(videoFile);
+      console.log('Video uploaded, URL:', mediaUrl);
 
       // Get video duration
       let duration = 0;
       if (videoRef.current) {
-        duration = Math.floor(videoRef.current.duration);
+        duration = Math.floor(videoRef.current.duration) || 0;
       }
 
+      // Prepare metadata
+      const vibeMetadata = {
+        ...metadata,
+        hashtags: hashtags.split('#').filter(tag => tag.trim()).map(tag => tag.trim()),
+        effects: {
+          music: selectedMusic,
+          textOverlays,
+          stickers
+        }
+      };
+
+      console.log('Creating vibe post with data:', {
+        user_id: user.id,
+        content_type: 'reel',
+        description: description.trim(),
+        media_url: mediaUrl,
+        media_type: videoFile.type,
+        duration,
+        metadata: vibeMetadata
+      });
+
       // Create the vibe post
-      const { error: postError } = await supabase
+      const { data: postData, error: postError } = await supabase
         .from('posts')
         .insert({
           user_id: user.id,
@@ -168,19 +198,17 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
           media_url: mediaUrl,
           media_type: videoFile.type,
           duration,
-          metadata: {
-            ...metadata,
-            hashtags: hashtags.split('#').filter(tag => tag.trim()).map(tag => tag.trim()),
-            effects: {
-              music: selectedMusic,
-              textOverlays,
-              stickers
-            }
-          }
-        });
+          metadata: vibeMetadata
+        })
+        .select()
+        .single();
 
-      if (postError) throw postError;
+      if (postError) {
+        console.error('Post creation error:', postError);
+        throw postError;
+      }
 
+      console.log('Vibe post created successfully:', postData);
       toast.success('Vibe uploaded successfully!');
       
       // Reset form
@@ -192,13 +220,20 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       setTextOverlays([]);
       setStickers([]);
       setMetadata({});
+      setIsPlaying(false);
       
       onUploadComplete?.();
       onClose?.();
       
     } catch (error) {
       console.error('Error uploading vibe:', error);
-      toast.error('Failed to upload vibe');
+      if (error.message?.includes('violates row-level security')) {
+        toast.error('Authentication error. Please sign out and sign in again.');
+      } else if (error.message?.includes('column') && error.message?.includes('does not exist')) {
+        toast.error('Database error. Some features may not be available yet.');
+      } else {
+        toast.error(`Failed to upload vibe: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setUploading(false);
     }
@@ -301,6 +336,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full mt-4"
+                disabled={uploading}
               >
                 {videoFile ? 'Change Video' : 'Select Video'}
               </Button>
@@ -316,6 +352,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="min-h-[100px]"
+              disabled={uploading}
             />
           </div>
 
@@ -327,6 +364,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
               placeholder="#trending #viral #fun"
               value={hashtags}
               onChange={(e) => setHashtags(e.target.value)}
+              disabled={uploading}
             />
           </div>
 
@@ -336,6 +374,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
               variant="outline"
               size="sm"
               onClick={() => setShowEnhancements(!showEnhancements)}
+              disabled={uploading}
             >
               <Palette className="w-4 h-4 mr-2" />
               Effects
@@ -360,7 +399,14 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
             disabled={uploading || !videoFile || !description.trim()}
             className="w-full"
           >
-            {uploading ? 'Uploading...' : 'Share Vibe'}
+            {uploading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Uploading Vibe...
+              </div>
+            ) : (
+              'Share Vibe'
+            )}
           </Button>
         </CardContent>
       </Card>
