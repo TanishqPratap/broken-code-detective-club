@@ -19,7 +19,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch real unread notification count
+  // Simple fetch of unread count without real-time subscription
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (user) {
@@ -51,43 +51,35 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 
     fetchUnreadCount();
 
-    // Set up real-time subscription for unread count updates with unique channel name
-    if (user) {
-      const channelName = `unread_count_${user.id}_${Date.now()}`;
-      console.log('Setting up real-time unread count subscription:', channelName);
-      
-      const channel = supabase
-        .channel(channelName, {
-          config: {
-            broadcast: { self: true },
-            presence: { key: user.id }
-          }
-        })
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          }, 
-          (payload) => {
-            console.log('Notification change detected, refetching unread count:', payload);
-            fetchUnreadCount();
-          }
-        )
-        .subscribe((status) => {
-          console.log('Unread count subscription status:', status);
-          if (status === 'TIMED_OUT') {
-            console.warn('Unread count subscription timed out, reconnecting...');
-            setTimeout(fetchUnreadCount, 5000);
-          }
-        });
+    // Refresh unread count every 30 seconds as a fallback
+    const interval = setInterval(fetchUnreadCount, 30000);
 
-      return () => {
-        console.log('Cleaning up unread count subscription:', channelName);
-        supabase.removeChannel(channel);
-      };
-    }
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  // Listen for custom events from useNotifications hook to update count
+  useEffect(() => {
+    const handleNotificationUpdate = () => {
+      if (user) {
+        // Refetch count when notifications are updated
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+          .then(({ count }) => {
+            setUnreadCount(count || 0);
+          });
+      }
+    };
+
+    window.addEventListener('notificationUpdate', handleNotificationUpdate);
+
+    return () => {
+      window.removeEventListener('notificationUpdate', handleNotificationUpdate);
+    };
   }, [user]);
 
   const isActive = (path: string) => location.pathname === path;

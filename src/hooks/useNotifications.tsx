@@ -33,6 +33,11 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Dispatch custom event to notify other components of notification updates
+  const dispatchNotificationUpdate = () => {
+    window.dispatchEvent(new CustomEvent('notificationUpdate'));
+  };
+
   const fetchNotifications = async () => {
     if (!user) {
       console.log('No user, skipping notification fetch');
@@ -180,6 +185,9 @@ export const useNotifications = () => {
             : notif
         )
       );
+
+      // Notify other components of the update
+      dispatchNotificationUpdate();
       
     } catch (error) {
       console.error('Error in markAsRead:', error);
@@ -207,6 +215,9 @@ export const useNotifications = () => {
       setNotifications(prev => 
         prev.map(notif => ({ ...notif, is_read: true }))
       );
+
+      // Notify other components of the update
+      dispatchNotificationUpdate();
       
       toast.success("All notifications marked as read");
       
@@ -236,6 +247,9 @@ export const useNotifications = () => {
       setNotifications(prev => 
         prev.filter(notif => notif.id !== notificationId)
       );
+
+      // Notify other components of the update
+      dispatchNotificationUpdate();
       
       toast.success("Notification deleted");
       
@@ -272,6 +286,7 @@ export const useNotifications = () => {
       setTimeout(() => {
         console.log('Force refreshing notifications after test creation');
         fetchNotifications();
+        dispatchNotificationUpdate();
       }, 500);
       
     } catch (error) {
@@ -328,65 +343,80 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Single consolidated real-time subscription for notifications
+  // Single real-time subscription for all notification events
   useEffect(() => {
     if (!user) return;
 
-    // Create a unique channel name with timestamp to avoid conflicts
-    const channelName = `notifications_main_${user.id}_${Date.now()}`;
-    console.log('Setting up main notifications channel:', channelName);
+    let isSubscribed = false;
+    const channelName = `notifications_realtime_${user.id}`;
+    console.log('Setting up SINGLE real-time notifications channel:', channelName);
     
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        (payload) => {
-          console.log('New notification received via realtime:', payload);
-          
-          // Force refresh notifications to get the complete data
-          setTimeout(() => {
-            console.log('Refreshing notifications due to realtime event');
-            fetchNotifications();
-          }, 100);
-          
-          const newNotification = payload.new;
-          showNotification(newNotification.title, newNotification.message);
-          toast.success(`New notification: ${newNotification.title}`);
-        }
-      )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Notification updated via realtime:', payload);
-          const updatedNotification = payload.new;
-          setNotifications(prev => 
-            prev.map(notif => 
-              notif.id === updatedNotification.id 
-                ? { ...notif, is_read: updatedNotification.is_read }
-                : notif
-            )
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log('Main notification channel subscription status:', status);
-      });
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: false },
+        presence: { key: user.id }
+      }
+    });
+
+    // Only subscribe once
+    if (!isSubscribed) {
+      channel
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          (payload) => {
+            console.log('New notification received via realtime:', payload);
+            
+            const newNotification = payload.new;
+            showNotification(newNotification.title, newNotification.message);
+            toast.success(`New notification: ${newNotification.title}`);
+            
+            // Refresh notifications to get the complete data
+            setTimeout(() => {
+              console.log('Refreshing notifications due to realtime event');
+              fetchNotifications();
+              dispatchNotificationUpdate();
+            }, 100);
+          }
+        )
+        .on('postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Notification updated via realtime:', payload);
+            const updatedNotification = payload.new;
+            setNotifications(prev => 
+              prev.map(notif => 
+                notif.id === updatedNotification.id 
+                  ? { ...notif, is_read: updatedNotification.is_read }
+                  : notif
+              )
+            );
+            dispatchNotificationUpdate();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Real-time notification channel subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
+          }
+        });
+    }
 
     return () => {
-      console.log('Cleaning up main notification channel:', channelName);
+      console.log('Cleaning up real-time notification channel:', channelName);
+      isSubscribed = false;
       supabase.removeChannel(channel);
     };
-  }, [user, showNotification]);
+  }, [user?.id]); // Only depend on user.id to prevent recreation
 
   return {
     notifications,
