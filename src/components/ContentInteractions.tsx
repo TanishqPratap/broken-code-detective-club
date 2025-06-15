@@ -36,7 +36,7 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
   const [showComments, setShowComments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
   const fetchInteractions = async () => {
     try {
@@ -166,8 +166,8 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
       return;
     }
 
-    const text = parentCommentId ? replyText : commentText;
-    if (!text.trim()) {
+    const text = parentCommentId ? replyTexts[parentCommentId] : commentText;
+    if (!text || !text.trim()) {
       toast.error('Please enter a comment');
       return;
     }
@@ -187,7 +187,7 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
       if (error) throw error;
 
       if (parentCommentId) {
-        setReplyText("");
+        setReplyTexts(prev => ({ ...prev, [parentCommentId]: "" }));
         setReplyingTo(null);
       } else {
         setCommentText("");
@@ -208,6 +208,10 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
     return interactions.reduce((total, comment) => {
       return total + 1 + (comment.replies?.length || 0);
     }, 0);
+  };
+
+  const handleReplyTextChange = (commentId: string, value: string) => {
+    setReplyTexts(prev => ({ ...prev, [commentId]: value }));
   };
 
   const renderComment = (comment: Interaction, isReply = false) => (
@@ -243,14 +247,14 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
             <div className="mt-2 flex gap-2">
               <Textarea
                 placeholder="Write a reply..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
+                value={replyTexts[comment.id] || ""}
+                onChange={(e) => handleReplyTextChange(comment.id, e.target.value)}
                 className="min-h-[60px] resize-none text-sm"
               />
               <div className="flex flex-col gap-1">
                 <Button
                   onClick={() => handleComment(comment.id)}
-                  disabled={loading || !replyText.trim()}
+                  disabled={loading || !replyTexts[comment.id]?.trim()}
                   size="sm"
                 >
                   <Send className="w-3 h-3" />
@@ -260,7 +264,7 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
                   size="sm"
                   onClick={() => {
                     setReplyingTo(null);
-                    setReplyText("");
+                    setReplyTexts(prev => ({ ...prev, [comment.id]: "" }));
                   }}
                   className="text-xs"
                 >
