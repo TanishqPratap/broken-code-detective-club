@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Play, Star, Eye, Heart, MessageCircle, Share, Send } from "lucide-react";
+import { Play, Star, Eye, Heart, MessageCircle, Share, Send, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -305,9 +306,17 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
               <p className="text-sm text-muted-foreground">@{trailer.creator.username}</p>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-700">
-            Free Preview
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-700">
+              Free Preview
+            </Badge>
+            {trailer.creator.subscription_price && (
+              <Badge variant="outline" className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                ${trailer.creator.subscription_price}/mo
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
 
