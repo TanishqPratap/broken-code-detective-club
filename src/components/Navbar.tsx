@@ -39,8 +39,8 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
       {/* Logo */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <Link to="/" className="flex items-center space-x-3">
-          <Heart className="w-8 h-8 text-primary" />
-          <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <Heart className="w-8 h-8 text-brand-blue" />
+          <span className="text-2xl font-bold bg-gradient-to-r from-brand-navy to-brand-blue bg-clip-text text-transparent">
             CreatorHub
           </span>
         </Link>
@@ -54,11 +54,11 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
               <div
                 className={`flex items-center space-x-4 px-4 py-3 rounded-lg transition-colors ${
                   isActive(path)
-                    ? "bg-gray-100 dark:bg-gray-800 font-semibold"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                    ? "bg-brand-light-cyan dark:bg-brand-dark-blue font-semibold text-brand-navy dark:text-brand-light-cyan"
+                    : "hover:bg-brand-pale-cyan dark:hover:bg-gray-800"
                 }`}
               >
-                <Icon className={`w-6 h-6 ${isActive(path) ? "text-primary" : ""}`} />
+                <Icon className={`w-6 h-6 ${isActive(path) ? "text-brand-blue" : ""}`} />
                 <span className="text-base">{label}</span>
               </div>
             </Link>
@@ -74,7 +74,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                <div className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-brand-pale-cyan dark:hover:bg-gray-800 cursor-pointer transition-colors">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="" alt="User" />
                     <AvatarFallback>

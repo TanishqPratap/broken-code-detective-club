@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,80 +16,84 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 210 100% 19%; /* #03045E */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 100% 19%; /* #03045E */
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 194 100% 85%; /* #90E0EF */
+    --accent-foreground: 210 100% 19%; /* #03045E */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 210 100% 19%; /* #03045E */
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-foreground: 210 100% 27%; /* #023E8A */
+    --sidebar-primary: 210 100% 19%; /* #03045E */
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
+    --sidebar-accent: 194 100% 85%; /* #90E0EF */
+    --sidebar-accent-foreground: 210 100% 19%; /* #03045E */
     --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 194 100% 42%; /* #0077B6 */
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Custom brand colors */
+    --brand-navy: 210 100% 19%; /* #03045E */
+    --brand-dark-blue: 210 100% 27%; /* #023E8A */
+    --brand-blue: 194 100% 36%; /* #0077B6 */
+    --brand-medium-blue: 194 100% 42%; /* #0096C7 */
+    --brand-light-blue: 194 100% 57%; /* #00B4D8 */
+    --brand-cyan: 194 100% 75%; /* #90E0EF */
+    --brand-light-cyan: 194 100% 85%; /* #ADE8F4 */
+    --brand-pale-cyan: 194 100% 95%; /* #CAF0F8 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 210 100% 4%; /* Very dark navy based on #03045E */
+    --foreground: 194 100% 95%; /* #CAF0F8 */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 100% 6%; /* Slightly lighter navy */
+    --card-foreground: 194 100% 95%; /* #CAF0F8 */
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 100% 6%; /* Slightly lighter navy */
+    --popover-foreground: 194 100% 95%; /* #CAF0F8 */
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 194 100% 85%; /* #ADE8F4 */
+    --primary-foreground: 210 100% 19%; /* #03045E */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 100% 12%; /* Dark navy variant */
+    --secondary-foreground: 194 100% 85%; /* #ADE8F4 */
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 100% 12%; /* Dark navy variant */
+    --muted-foreground: 194 50% 65%; /* Muted cyan */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 194 100% 42%; /* #0096C7 */
+    --accent-foreground: 194 100% 95%; /* #CAF0F8 */
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 210 100% 12%; /* Dark navy variant */
+    --input: 210 100% 12%; /* Dark navy variant */
+    --ring: 194 100% 75%; /* #90E0EF */
+
+    --sidebar-background: 210 100% 8%; /* Dark navy for sidebar */
+    --sidebar-foreground: 194 100% 85%; /* #ADE8F4 */
+    --sidebar-primary: 194 100% 57%; /* #00B4D8 */
+    --sidebar-primary-foreground: 210 100% 19%; /* #03045E */
+    --sidebar-accent: 210 100% 15%; /* Darker navy accent */
+    --sidebar-accent-foreground: 194 100% 85%; /* #ADE8F4 */
+    --sidebar-border: 210 100% 15%; /* Darker navy border */
+    --sidebar-ring: 194 100% 57%; /* #00B4D8 */
   }
 }
 
@@ -100,4 +105,34 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom brand color utilities */
+@layer utilities {
+  .bg-brand-navy { background-color: hsl(var(--brand-navy)); }
+  .bg-brand-dark-blue { background-color: hsl(var(--brand-dark-blue)); }
+  .bg-brand-blue { background-color: hsl(var(--brand-blue)); }
+  .bg-brand-medium-blue { background-color: hsl(var(--brand-medium-blue)); }
+  .bg-brand-light-blue { background-color: hsl(var(--brand-light-blue)); }
+  .bg-brand-cyan { background-color: hsl(var(--brand-cyan)); }
+  .bg-brand-light-cyan { background-color: hsl(var(--brand-light-cyan)); }
+  .bg-brand-pale-cyan { background-color: hsl(var(--brand-pale-cyan)); }
+  
+  .text-brand-navy { color: hsl(var(--brand-navy)); }
+  .text-brand-dark-blue { color: hsl(var(--brand-dark-blue)); }
+  .text-brand-blue { color: hsl(var(--brand-blue)); }
+  .text-brand-medium-blue { color: hsl(var(--brand-medium-blue)); }
+  .text-brand-light-blue { color: hsl(var(--brand-light-blue)); }
+  .text-brand-cyan { color: hsl(var(--brand-cyan)); }
+  .text-brand-light-cyan { color: hsl(var(--brand-light-cyan)); }
+  .text-brand-pale-cyan { color: hsl(var(--brand-pale-cyan)); }
+
+  .border-brand-navy { border-color: hsl(var(--brand-navy)); }
+  .border-brand-dark-blue { border-color: hsl(var(--brand-dark-blue)); }
+  .border-brand-blue { border-color: hsl(var(--brand-blue)); }
+  .border-brand-medium-blue { border-color: hsl(var(--brand-medium-blue)); }
+  .border-brand-light-blue { border-color: hsl(var(--brand-light-blue)); }
+  .border-brand-cyan { border-color: hsl(var(--brand-cyan)); }
+  .border-brand-light-cyan { border-color: hsl(var(--brand-light-cyan)); }
+  .border-brand-pale-cyan { border-color: hsl(var(--brand-pale-cyan)); }
 }
