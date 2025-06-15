@@ -328,13 +328,13 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time notifications listener with unique channel name
+  // Single consolidated real-time subscription for notifications
   useEffect(() => {
     if (!user) return;
 
     // Create a unique channel name with timestamp to avoid conflicts
-    const channelName = `notifications_${user.id}_${Date.now()}`;
-    console.log('Setting up real-time notifications channel:', channelName);
+    const channelName = `notifications_main_${user.id}_${Date.now()}`;
+    console.log('Setting up main notifications channel:', channelName);
     
     const channel = supabase
       .channel(channelName)
@@ -379,11 +379,11 @@ export const useNotifications = () => {
         }
       )
       .subscribe((status) => {
-        console.log('Notification channel subscription status:', status);
+        console.log('Main notification channel subscription status:', status);
       });
 
     return () => {
-      console.log('Cleaning up notification channel:', channelName);
+      console.log('Cleaning up main notification channel:', channelName);
       supabase.removeChannel(channel);
     };
   }, [user, showNotification]);

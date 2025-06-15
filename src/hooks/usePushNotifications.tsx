@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -61,45 +60,6 @@ export const usePushNotifications = () => {
   useEffect(() => {
     loadSettings();
   }, [user]);
-
-  // Listen for new notifications from the database with unique channel name
-  useEffect(() => {
-    if (!user || !settings.pushEnabled) return;
-
-    // Create a unique channel name with timestamp to avoid conflicts
-    const channelName = `push-notifications-${user.id}-${Date.now()}`;
-    console.log('Setting up push notifications channel:', channelName);
-
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        (payload) => {
-          const notification = payload.new;
-          console.log('New notification for push:', notification);
-          
-          // Check if user wants this type of notification
-          const shouldShow = checkNotificationPreference(notification.type);
-          
-          if (shouldShow) {
-            showNotification(notification.title, notification.message);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Push notification channel subscription status:', status);
-      });
-
-    return () => {
-      console.log('Cleaning up push notification channel:', channelName);
-      supabase.removeChannel(channel);
-    };
-  }, [user, settings]);
 
   const checkNotificationPreference = (type: string): boolean => {
     switch (type) {
