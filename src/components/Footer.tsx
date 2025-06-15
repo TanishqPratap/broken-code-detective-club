@@ -112,7 +112,7 @@ const Footer = () => {
             © 2024 CreatorHub. All rights reserved.
           </p>
           <div className="flex items-center text-brand-cyan text-xs sm:text-sm">
-            <span>Made with</span>
+            <span className="text-zinc-950">Made with</span>
             <Heart className="w-4 h-4 mx-1 text-brand-light-blue fill-current" />
             <span>for creators worldwide</span>
           </div>
