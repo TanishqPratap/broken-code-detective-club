@@ -1,7 +1,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/components/theme-provider";
 
 interface ThemeToggleProps {
   variant?: "default" | "ghost" | "outline";
@@ -9,7 +9,11 @@ interface ThemeToggleProps {
 }
 
 const ThemeToggle = ({ variant = "ghost", size = "icon" }: ThemeToggleProps) => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
 
   return (
     <Button
