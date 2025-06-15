@@ -5,18 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, X, Heart, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface Story {
-  id: string;
-  creator_id: string;
+type Story = Tables<"stories"> & {
   creator_name: string;
   creator_avatar: string;
-  media_url: string;
-  content_type: 'image' | 'video';
-  text_overlay?: string;
-  created_at: string;
-  expires_at: string;
-}
+};
 
 interface StoryViewerProps {
   stories: Story[];

@@ -7,18 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import StoryViewer from "./StoryViewer";
 import StoryUpload from "./StoryUpload";
+import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface Story {
-  id: string;
-  creator_id: string;
+type Story = Tables<"stories"> & {
   creator_name: string;
   creator_avatar: string;
-  media_url: string;
-  content_type: 'image' | 'video';
-  text_overlay?: string;
-  created_at: string;
-  expires_at: string;
-}
+};
 
 interface StoryGroup {
   creator_id: string;
@@ -43,9 +38,11 @@ const StoriesCarousel = () => {
     if (!user) return;
 
     try {
-      // Fetch stories from followed creators and own stories
+      console.log('Fetching stories...');
+      
+      // Fetch stories that haven't expired yet
       const { data: stories, error } = await supabase
-        .from('stories' as any)
+        .from('stories')
         .select(`
           *,
           profiles:creator_id (
@@ -57,7 +54,12 @@ const StoriesCarousel = () => {
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching stories:', error);
+        throw error;
+      }
+
+      console.log('Fetched stories:', stories);
 
       // Group stories by creator
       const groupedStories: { [key: string]: StoryGroup } = {};
@@ -78,21 +80,16 @@ const StoriesCarousel = () => {
         }
 
         groupedStories[creatorId].stories.push({
-          id: story.id,
-          creator_id: creatorId,
+          ...story,
           creator_name: creatorName,
-          creator_avatar: creatorAvatar,
-          media_url: story.media_url,
-          content_type: story.content_type,
-          text_overlay: story.text_overlay,
-          created_at: story.created_at,
-          expires_at: story.expires_at
+          creator_avatar: creatorAvatar
         });
       });
 
       setStoryGroups(Object.values(groupedStories));
     } catch (error) {
       console.error('Error fetching stories:', error);
+      toast.error("Failed to load stories");
     } finally {
       setLoading(false);
     }

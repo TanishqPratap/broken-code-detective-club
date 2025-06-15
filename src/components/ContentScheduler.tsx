@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,13 +32,17 @@ const ContentScheduler = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchScheduledPosts();
+    if (user) {
+      fetchScheduledPosts();
+    }
   }, [user]);
 
   const fetchScheduledPosts = async () => {
     if (!user) return;
 
     try {
+      console.log('Fetching scheduled posts for user:', user.id);
+      
       const { data, error } = await supabase
         .from('scheduled_posts')
         .select('*')
@@ -67,6 +72,7 @@ const ContentScheduler = () => {
 
     try {
       setSaving(true);
+      console.log('Scheduling post...');
 
       // Combine date and time
       const [hours, minutes] = selectedTime.split(':');
@@ -83,6 +89,7 @@ const ContentScheduler = () => {
 
       // Upload media if provided
       if (file) {
+        console.log('Uploading media file...');
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
@@ -91,13 +98,17 @@ const ContentScheduler = () => {
           .from('post-media')
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw uploadError;
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('post-media')
           .getPublicUrl(filePath);
 
         mediaUrl = publicUrl;
+        console.log('Media uploaded:', mediaUrl);
       }
 
       // Save scheduled post
@@ -112,15 +123,19 @@ const ContentScheduler = () => {
           status: 'scheduled'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
+      console.log('Post scheduled successfully');
       toast.success("Post scheduled successfully!");
       setIsOpen(false);
       resetForm();
       fetchScheduledPosts();
     } catch (error) {
       console.error('Error scheduling post:', error);
-      toast.error("Failed to schedule post");
+      toast.error("Failed to schedule post. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -128,13 +143,19 @@ const ContentScheduler = () => {
 
   const deleteScheduledPost = async (postId: string) => {
     try {
+      console.log('Deleting scheduled post:', postId);
+      
       const { error } = await supabase
         .from('scheduled_posts')
         .delete()
         .eq('id', postId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
+      console.log('Post deleted successfully');
       toast.success("Scheduled post deleted");
       fetchScheduledPosts();
     } catch (error) {

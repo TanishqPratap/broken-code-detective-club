@@ -1,12 +1,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Plus, Image, Video } from "lucide-react";
+import { Upload, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,30 +49,41 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   };
 
   const uploadStory = async () => {
-    if (!user || !file) return;
+    if (!user || !file) {
+      toast.error("Please select a file");
+      return;
+    }
 
     try {
       setUploading(true);
+      console.log('Starting story upload...');
 
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
+      console.log('Uploading file to:', filePath);
+
       const { error: uploadError } = await supabase.storage
         .from('story-media')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('story-media')
         .getPublicUrl(filePath);
 
+      console.log('File uploaded, public URL:', publicUrl);
+
       // Save story to database
       const { error: dbError } = await supabase
-        .from('stories' as any)
+        .from('stories')
         .insert({
           creator_id: user.id,
           media_url: publicUrl,
@@ -82,8 +92,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
         });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
 
+      console.log('Story saved to database successfully');
       toast.success("Story uploaded successfully!");
       setIsOpen(false);
       setFile(null);
@@ -96,7 +110,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
       }
     } catch (error) {
       console.error('Error uploading story:', error);
-      toast.error("Failed to upload story");
+      toast.error("Failed to upload story. Please try again.");
     } finally {
       setUploading(false);
     }
