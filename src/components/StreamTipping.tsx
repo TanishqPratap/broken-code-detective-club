@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,21 +38,35 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
   const [loading, setLoading] = useState(false);
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [totalTips, setTotalTips] = useState(0);
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    amountUSD: number;
+    amountINR: number;
+    exchangeRate: number;
+  } | null>(null);
 
   const suggestedAmounts = [1, 5, 10, 25, 50];
 
   useEffect(() => {
     // Load Razorpay script
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => setRazorpayLoaded(true);
-    document.body.appendChild(script);
-
+    loadRazorpayScript();
     fetchRecentTips();
     const cleanup = subscribeToTips();
     return cleanup;
   }, [streamId]);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const fetchRecentTips = async () => {
     try {
@@ -158,15 +171,6 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
       return;
     }
 
-    if (!razorpayLoaded) {
-      toast({
-        title: "Payment Loading",
-        description: "Please wait for payment system to load",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const amount = parseFloat(tipAmount);
     if (!amount || amount <= 0) {
       toast({
@@ -178,91 +182,105 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
     }
 
     setLoading(true);
+
     try {
-      // Create payment order
-      const { data: orderData, error: orderError } = await supabase.functions.invoke(
-        'create-tip-payment',
-        {
-          body: {
-            streamId,
-            amount,
-            message: tipMessage.trim() || null
-          }
+      // Load Razorpay script if not already loaded
+      const isRazorpayLoaded = await loadRazorpayScript();
+      if (!isRazorpayLoaded) {
+        throw new Error("Failed to load Razorpay. Please check your internet connection.");
+      }
+
+      // Create payment order via edge function
+      const { data: orderData, error: orderError } = await supabase.functions.invoke('create-tip-payment', {
+        body: {
+          streamId,
+          amount,
+          message: tipMessage.trim() || null
         }
-      );
+      });
 
       if (orderError) throw orderError;
+
+      console.log('Stream tip payment order created:', orderData);
+
+      // Store payment info for display
+      setPaymentInfo({
+        amountUSD: orderData.amount_usd,
+        amountINR: orderData.amount_inr,
+        exchangeRate: orderData.exchange_rate
+      });
 
       const options = {
         key: orderData.key_id,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Stream Tip",
-        description: `Tip for livestream`,
+        description: `Tip of $${amount}${tipMessage.trim() ? ` - ${tipMessage.trim()}` : ''}`,
         order_id: orderData.order_id,
         handler: async function (response: any) {
+          console.log('Razorpay payment successful:', response);
+          
           try {
-            // Verify payment
-            const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
-              'verify-tip-payment',
-              {
-                body: {
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  streamId,
-                  amount,
-                  message: tipMessage.trim() || null
-                }
+            // Verify payment with backend
+            const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-tip-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                streamId,
+                amount,
+                message: tipMessage.trim() || null
               }
-            );
+            });
 
-            if (verifyError) throw verifyError;
+            if (verificationError) throw verificationError;
 
+            console.log('Stream tip payment verified successfully:', verificationData);
+            
             setTipAmount("");
             setTipMessage("");
+            setPaymentInfo(null);
             toast({
-              title: "Tip sent successfully!",
-              description: `You sent $${amount} to the creator`,
+              title: "Tip Sent!",
+              description: `Successfully sent $${amount} tip (₹${paymentInfo?.amountINR.toFixed(2)} INR)`,
             });
-          } catch (error: any) {
-            console.error('Payment verification error:', error);
+            
+          } catch (verifyError: any) {
+            console.error('Payment verification failed:', verifyError);
             toast({
-              title: "Payment verification failed",
-              description: "Please contact support if money was deducted",
+              title: "Payment Verification Failed",
+              description: "Payment was processed but verification failed. Please contact support.",
               variant: "destructive",
             });
           }
         },
         prefill: {
-          email: user.email,
+          email: user.email || '',
         },
         theme: {
-          color: "#3399cc"
+          color: "#9333ea"
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Razorpay payment cancelled');
+            setLoading(false);
+            setPaymentInfo(null);
+          }
         }
       };
 
-      const rzp = new window.Razorpay(options);
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
       
-      rzp.on('payment.failed', function (response: any) {
-        console.error('Payment failed:', response.error);
-        toast({
-          title: "Payment failed",
-          description: response.error.description,
-          variant: "destructive",
-        });
-      });
-
-      rzp.open();
     } catch (error: any) {
-      console.error('Error creating tip payment:', error);
+      console.error('Error creating stream tip payment:', error);
       toast({
-        title: "Error",
-        description: "Failed to initiate payment",
+        title: "Payment Error",
+        description: error.message || "Failed to process payment. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
+      setPaymentInfo(null);
     }
   };
 
@@ -319,6 +337,11 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
                 step="0.01"
                 disabled={loading}
               />
+              {paymentInfo && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR (Rate: {paymentInfo.exchangeRate.toFixed(2)})
+                </p>
+              )}
             </div>
             
             <div>
@@ -336,15 +359,11 @@ const StreamTipping = ({ streamId, creatorId }: StreamTippingProps) => {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading || !tipAmount || parseFloat(tipAmount) <= 0 || !razorpayLoaded}
+              disabled={loading || !tipAmount || parseFloat(tipAmount) <= 0}
             >
               <Gift className="w-4 h-4 mr-2" />
-              {loading ? "Processing..." : "Send Tip"}
+              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)}` : `Send $${tipAmount || "0"} Tip`}
             </Button>
-            
-            {!razorpayLoaded && (
-              <p className="text-xs text-gray-500 text-center">Loading payment system...</p>
-            )}
           </form>
         )}
 
