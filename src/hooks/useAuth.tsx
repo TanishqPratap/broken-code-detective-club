@@ -40,44 +40,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       
-      // Clear any local state first
-      setUser(null);
-      
-      // Attempt to sign out from Supabase
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Sign out error:', error);
-        // Even if there's an error, we'll still redirect since local state is cleared
         toast({
-          title: "Sign out completed",
-          description: "You have been signed out.",
-          variant: "default"
+          title: "Sign out error",
+          description: "There was an issue signing out. Please try again.",
+          variant: "destructive"
         });
-      } else {
-        toast({
-          title: "Signed out successfully",
-          description: "You have been signed out.",
-          variant: "default"
-        });
+        return;
       }
-      
-      // Always redirect to home page after sign out attempt
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Unexpected sign out error:', error);
-      
-      // Clear local state even if there's an error
+
+      // Clear local state
       setUser(null);
       
       toast({
-        title: "Signed out",
+        title: "Signed out successfully",
         description: "You have been signed out.",
         variant: "default"
       });
+
+      // Navigate to home page using proper routing
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
       
-      // Redirect to home page
-      window.location.href = '/';
+    } catch (error) {
+      console.error('Unexpected sign out error:', error);
+      
+      toast({
+        title: "Sign out error",
+        description: "There was an unexpected error. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
