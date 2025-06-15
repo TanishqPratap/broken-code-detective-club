@@ -1,9 +1,6 @@
-
 import { Heart, Github, Twitter, Mail } from "lucide-react";
-
 const Footer = () => {
-  return (
-    <footer className="bg-gradient-to-r from-brand-navy to-brand-blue text-white py-8 sm:py-12 mt-12 sm:mt-20">
+  return <footer className="bg-gradient-to-r from-brand-navy to-brand-blue text-white py-8 sm:py-12 mt-12 sm:mt-20 bg-slate-50">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand */}
@@ -121,8 +118,6 @@ const Footer = () => {
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
