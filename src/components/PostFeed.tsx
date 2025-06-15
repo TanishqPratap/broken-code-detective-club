@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -123,8 +124,8 @@ const PostFeed = () => {
 
         console.log('Filtered posts:', filteredPosts.length);
         
-        // Use filtered posts
-        const { data: postsData } = { data: filteredPosts, error: null };
+        // Use filtered posts directly
+        const postsData = filteredPosts;
         
         // Process posts normally
         let processedPosts: FeedItem[] = [];
