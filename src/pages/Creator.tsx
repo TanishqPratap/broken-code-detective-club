@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -83,13 +84,15 @@ const Creator = () => {
         <div className="flex w-full max-w-[1400px] mx-auto px-4 py-8 gap-6">
           <CreatorSidebar active={activeSection} onSelect={setActiveSection} />
           <main className="flex-1 min-w-0">
-            <div className="mb-8 flex items-center gap-4">
-              <h1 className="text-3xl font-bold mb-2">Creator Dashboard</h1>
-              <Button onClick={handleOpenPaidDM} variant="outline" className="ml-auto">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Test Paid DM
-              </Button>
-            </div>
+            {!activeSessionId && (
+              <div className="mb-8 flex items-center gap-4">
+                <h1 className="text-3xl font-bold mb-2">Creator Dashboard</h1>
+                <Button onClick={handleOpenPaidDM} variant="outline" className="ml-auto">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Test Paid DM
+                </Button>
+              </div>
+            )}
             
             {activeSessionId && (
               <PaidDMChat 
@@ -99,10 +102,10 @@ const Creator = () => {
               />
             )}
             
-            {activeSection === "overview" && <CreatorDashboard />}
-            {activeSection === "livestream" && <LivestreamDashboard />}
-            {activeSection === "content" && <ContentManagement />}
-            {activeSection === "settings" && <CreatorSettings />}
+            {!activeSessionId && activeSection === "overview" && <CreatorDashboard />}
+            {!activeSessionId && activeSection === "livestream" && <LivestreamDashboard />}
+            {!activeSessionId && activeSection === "content" && <ContentManagement />}
+            {!activeSessionId && activeSection === "settings" && <CreatorSettings />}
           </main>
         </div>
       </SidebarProvider>
