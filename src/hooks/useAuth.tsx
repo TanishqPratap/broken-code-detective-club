@@ -1,11 +1,12 @@
 
 import { useState, useEffect, createContext, useContext } from "react";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -21,6 +23,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Initial session check:', session?.user?.id || 'No session');
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -29,12 +32,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id || 'No session');
+        setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
         // If the event is SIGNED_OUT, ensure we're on the home page
         if (event === 'SIGNED_OUT') {
           console.log('User signed out, redirecting to home...');
+          // Clear any cached data
+          setSession(null);
+          setUser(null);
           setTimeout(() => {
             if (window.location.pathname !== '/') {
               window.location.href = '/';
@@ -54,10 +61,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Clear local state immediately
       setUser(null);
+      setSession(null);
       
-      // Always attempt to sign out from Supabase
+      // Always attempt to sign out from Supabase with proper scope
       console.log('Attempting to sign out from Supabase...');
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error('Supabase sign out error:', error);
@@ -71,6 +79,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         console.log('Successfully signed out from Supabase');
       }
+      
+      // Clear any remaining session data
+      await supabase.auth.getSession().then(() => {
+        console.log('Session cleared');
+      });
       
       // Always show success message
       toast({
@@ -90,6 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Even on unexpected errors, clear state and redirect
       setUser(null);
+      setSession(null);
       
       toast({
         title: "Signed out",
@@ -107,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
