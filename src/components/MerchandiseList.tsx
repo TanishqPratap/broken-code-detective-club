@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -98,7 +99,7 @@ const MerchandiseList = () => {
     const amountInPaise = Math.round(convertedPrice * 100); // Razorpay expects amount in smallest currency unit
 
     const options = {
-      key: "rzp_test_key", // Replace with your Razorpay key
+      key: "Test_key", // Your test key
       amount: amountInPaise,
       currency: currency,
       name: "CreatorHub",
