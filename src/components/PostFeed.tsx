@@ -41,9 +41,31 @@ interface TrailerContent {
   };
 }
 
+interface Content {
+  id: string;
+  creator_id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  media_url: string | null;
+  thumbnail_url: string | null;
+  is_premium: boolean;
+  price: number | null;
+  created_at: string;
+  creator: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    is_verified: boolean;
+    subscription_price: number | null;
+  };
+}
+
 type FeedItem = 
   | { type: 'post'; data: Post }
-  | { type: 'trailer'; data: TrailerContent };
+  | { type: 'trailer'; data: TrailerContent }
+  | { type: 'content'; data: Content };
 
 const PostFeed = () => {
   const { user } = useAuth();
@@ -93,14 +115,41 @@ const PostFeed = () => {
 
         console.log('Total posts found:', allPosts?.length || 0);
 
+        // Fetch ALL content from content table
+        const { data: allContent, error: contentError } = await supabase
+          .from('content')
+          .select(`
+            id,
+            creator_id,
+            title,
+            description,
+            content_type,
+            media_url,
+            thumbnail_url,
+            is_premium,
+            price,
+            created_at
+          `)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (contentError) {
+          console.error('Error fetching content:', contentError);
+          throw contentError;
+        }
+
+        console.log('Total content found:', allContent?.length || 0);
+
         // Get creator profiles to check subscription prices
-        const creatorIds = [...new Set(allPosts?.map(post => post.user_id) || [])];
-        console.log('Unique creator IDs from posts:', creatorIds);
+        const postCreatorIds = [...new Set(allPosts?.map(post => post.user_id) || [])];
+        const contentCreatorIds = [...new Set(allContent?.map(content => content.creator_id) || [])];
+        const allCreatorIds = [...new Set([...postCreatorIds, ...contentCreatorIds])];
+        console.log('Unique creator IDs:', allCreatorIds);
 
         const { data: creatorProfiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, subscription_price, username, display_name')
-          .in('id', creatorIds);
+          .select('id, subscription_price, username, display_name, avatar_url, is_verified')
+          .in('id', allCreatorIds);
 
         if (profilesError) {
           console.error('Error fetching creator profiles:', profilesError);
@@ -125,6 +174,20 @@ const PostFeed = () => {
         }) || [];
 
         console.log('Posts after filtering:', filteredPosts.length);
+
+        // Filter content: subscribed creators + own content + free content
+        const filteredContent = allContent?.filter(content => {
+          const isOwnContent = content.creator_id === user.id;
+          const isSubscribed = subscribedCreatorIds.includes(content.creator_id);
+          const creatorProfile = creatorProfilesMap.get(content.creator_id);
+          const isFreeContent = !content.is_premium || content.price === null || content.price === 0;
+          
+          console.log(`Content ${content.id}: own=${isOwnContent}, subscribed=${isSubscribed}, free=${isFreeContent}, creator=${creatorProfile?.username}`);
+          
+          return isOwnContent || isSubscribed || isFreeContent;
+        }) || [];
+
+        console.log('Content after filtering:', filteredContent.length);
 
         // Process posts with profile data
         let processedPosts: FeedItem[] = [];
@@ -182,6 +245,31 @@ const PostFeed = () => {
         }
 
         console.log('Processed posts:', processedPosts.length);
+
+        // Process content with creator data
+        let processedContent: FeedItem[] = [];
+        if (filteredContent.length > 0) {
+          processedContent = filteredContent.map(content => {
+            const creatorProfile = creatorProfilesMap.get(content.creator_id);
+            
+            return {
+              type: 'content' as const,
+              data: {
+                ...content,
+                creator: {
+                  id: content.creator_id,
+                  username: creatorProfile?.username || 'Unknown',
+                  display_name: creatorProfile?.display_name || null,
+                  avatar_url: creatorProfile?.avatar_url || null,
+                  is_verified: creatorProfile?.is_verified || false,
+                  subscription_price: creatorProfile?.subscription_price || null,
+                }
+              }
+            };
+          });
+        }
+
+        console.log('Processed content:', processedContent.length);
 
         // Fetch ALL trailers
         const { data: trailersData, error: trailersError } = await supabase
@@ -244,13 +332,14 @@ const PostFeed = () => {
         console.log('Processed trailers:', processedTrailers.length);
 
         // Combine and sort by created_at
-        const allItems = [...processedPosts, ...processedTrailers].sort((a, b) => 
+        const allItems = [...processedPosts, ...processedContent, ...processedTrailers].sort((a, b) => 
           new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
         );
 
         console.log('=== FINAL FEED SUMMARY ===');
         console.log('Total items in feed:', allItems.length);
         console.log('Posts:', processedPosts.length);
+        console.log('Content:', processedContent.length);
         console.log('Trailers:', processedTrailers.length);
         console.log('Feed items:', allItems.map(item => ({
           type: item.type,
@@ -441,8 +530,10 @@ const PostFeed = () => {
                 post={item.data as Post} 
                 onDelete={handlePostDeleted}
               />
-            ) : (
+            ) : item.type === 'trailer' ? (
               <TrailerPreviewCard trailer={item.data as TrailerContent} />
+            ) : (
+              <ContentCard content={item.data as Content} />
             )}
           </div>
         ))
