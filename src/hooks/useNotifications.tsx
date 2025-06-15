@@ -304,60 +304,54 @@ export const useNotifications = () => {
     }
 
     const type = notification.type;
-    const contentType = notification.metadata?.related_content_type || notification.metadata?.content_type || notification.metadata?.contentCategory;
+    const contentType =
+      notification.metadata?.related_content_type ||
+      notification.metadata?.content_type ||
+      notification.metadata?.contentCategory;
     const contentId = notification.related_id;
 
-    // Show a toast to confirm the handler is firing
-    toast.info("Navigating to content...", { description: JSON.stringify({ type, contentType, contentId }) });
+    // Prefer slug if available for more robust URLs
+    const slug = notification.metadata?.slug;
 
-    // Handle content
-    if (contentType === 'content') {
-      if (contentId) {
-        window.location.href = `/content/${contentId}`;
+    // Show a toast to confirm the handler is firing and desired redirect URL
+    let goto = "";
+    if (contentType === "content") {
+      if (slug) {
+        goto = `/content/${slug}`;
+      } else if (contentId) {
+        goto = `/content/${contentId}`;
       }
-      return;
-    }
-
-    // Handle vibe
-    if (contentType === 'vibe') {
-      if (contentId) {
-        window.location.href = `/vibes/${contentId}`;
+    } else if (contentType === "vibe") {
+      if (slug) {
+        goto = `/vibes/${slug}`;
+      } else if (contentId) {
+        goto = `/vibes/${contentId}`;
       } else {
-        window.location.href = `/vibes`;
+        goto = "/vibes";
       }
-      return;
+    } else if (type === 'like' || type === 'comment' || type === 'comment_reply') {
+      if (contentType === 'post' && contentId) {
+        goto = `/posts/${contentId}`;
+      }
+    } else if (type === 'follow' || type === 'story_like') {
+      if (notification.user?.id) {
+        goto = `/creator/${notification.user.id}`;
+      }
+    } else if (type === 'subscription' || type === 'tip') {
+      goto = `/profile`;
+    } else if (type === 'live_stream') {
+      if (contentId) {
+        goto = `/watch/${contentId}`;
+      }
+    } else if (type === 'message') {
+      goto = `/dm`;
     }
 
-    // Fallback: previous logic
-    switch (type) {
-      case 'like':
-      case 'comment':
-      case 'comment_reply':
-        if (contentType === 'post' && contentId) {
-          window.location.href = `/posts/${contentId}`;
-        }
-        break;
-      case 'follow':
-      case 'story_like':
-        if (notification.user?.id) {
-          window.location.href = `/creator/${notification.user.id}`;
-        }
-        break;
-      case 'subscription':
-      case 'tip':
-        window.location.href = `/profile`;
-        break;
-      case 'live_stream':
-        if (contentId) {
-          window.location.href = `/watch/${contentId}`;
-        }
-        break;
-      case 'message':
-        window.location.href = `/dm`;
-        break;
-      default:
-        toast.info('Unknown notification type: ' + notification.type);
-        break;
+    if (goto) {
+      toast.info("Navigating...", { description: `Going to: ${goto}` });
+      window.location.href = goto;
+    } else {
+      toast.info('Unknown notification type: ' + notification.type);
     }
   };
 
