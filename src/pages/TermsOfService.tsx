@@ -160,7 +160,7 @@ const TermsOfService = () => {
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">
-                  <strong>Address:</strong> 123 Creator Street, Tech City, TC 12345
+                  <strong>Address:</strong> Near Acharya Institutes, New Delhi Mart, Soladevanahalli, Bangalore, Karnataka, 560107
                 </p>
               </div>
               <div className="pt-4">
@@ -177,3 +177,4 @@ const TermsOfService = () => {
 };
 
 export default TermsOfService;
+
