@@ -31,7 +31,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     { path: "/dm", label: "Messages", icon: MessageSquare },
     { path: "/notifications", label: "Notifications", icon: Bell },
     { path: "/creator", label: "Create", icon: PlusSquare },
-    { path: "/watch", label: "Live", icon: Video },
+    { path: "/creator", label: "Live", icon: Video }, // Changed to point to creator dashboard for live streaming
   ];
 
   return (
@@ -50,7 +50,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
       <nav className="flex-1 px-4 py-6 overflow-y-auto">
         <div className="space-y-2">
           {navItems.map(({ path, label, icon: Icon }) => (
-            <Link key={path} to={path}>
+            <Link key={`${path}-${label}`} to={path}>
               <div
                 className={`flex items-center space-x-4 px-4 py-3 rounded-lg transition-colors ${
                   isActive(path)
