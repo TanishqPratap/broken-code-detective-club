@@ -6,6 +6,7 @@ import Index from "@/pages/Index";
 import Creator from "@/pages/Creator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LivepeerProvider from "@/components/LivepeerProvider";
+import { AuthProvider } from "@/hooks/useAuth";
 import Profile from "./pages/Profile";
 import PostView from "./pages/PostView";
 import Watch from "./pages/Watch";
@@ -18,18 +19,20 @@ const App = () => {
     <BrowserRouter>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <LivepeerProvider>
-            <div className="min-h-screen">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/creator" element={<Creator />} />
-                <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/post/:id" element={<PostView />} />
-                <Route path="/watch/:id" element={<Watch />} />
-                <Route path="/shop" element={<Shop />} />
-              </Routes>
-            </div>
-          </LivepeerProvider>
+          <AuthProvider>
+            <LivepeerProvider>
+              <div className="min-h-screen">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/creator" element={<Creator />} />
+                  <Route path="/profile/:id" element={<Profile />} />
+                  <Route path="/post/:id" element={<PostView />} />
+                  <Route path="/watch/:id" element={<Watch />} />
+                  <Route path="/shop" element={<Shop />} />
+                </Routes>
+              </div>
+            </LivepeerProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </BrowserRouter>
