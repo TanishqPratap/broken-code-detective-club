@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import Creator from "./pages/Creator";
 import CreatorProfile from "./pages/CreatorProfile";
 import Discover from "./pages/Discover";
+import Search from "./pages/Search";
 import Watch from "./pages/Watch";
 import Live from "./pages/Live";
 import Posts from "./pages/Posts";
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/creator/:creatorId" element={<CreatorProfile />} />
               <Route path="/creator/:creatorId/trailer/:trailerId" element={<TrailerView />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/live" element={<Live />} />
               <Route path="/posts" element={<Posts />} />
               <Route path="/posts/:postId" element={<PostView />} />
@@ -48,7 +50,6 @@ const App = () => (
               <Route path="/creators/:creatorId" element={<Navigate to="/creator/:creatorId" replace />} />
               <Route path="/user/:userId" element={<Navigate to="/creator/:userId" replace />} />
               {/* Add missing routes that might be needed */}
-              <Route path="/search" element={<Navigate to="/discover" replace />} />
               <Route path="/notifications" element={<Navigate to="/" replace />} />
               {/* Catch all 404s */}
               <Route path="*" element={<NotFound />} />
