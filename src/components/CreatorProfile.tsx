@@ -53,7 +53,7 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="w-full">
       {/* Cover Photo */}
       <div className="h-40 sm:h-48 md:h-64 bg-gradient-to-r from-primary/30 to-primary/50 relative">
         {creator.coverImage && (

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -287,8 +288,8 @@ const CreatorProfilePage = () => {
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <main className="flex-1 ml-64 overflow-hidden">
-        <div className="w-full min-h-screen bg-background">
+      <main className="flex-1 ml-64">
+        <div className="w-full min-h-screen">
           <CreatorProfile
             creator={{
               id: creator.id,
