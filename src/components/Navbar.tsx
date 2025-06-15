@@ -101,6 +101,11 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     { path: "/live", label: "Live", icon: Video }
   ];
 
+  // NEW: Add merchandise/shop nav item (below a separator/group)
+  const shopNavItems = [
+    { path: "/shop", label: "Merchandise", icon: Heart },
+  ];
+
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-40 flex flex-col">
       {/* Logo */}
@@ -135,6 +140,28 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
               </div>
             </Link>
           ))}
+
+          {/* Separator for Merchandise section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
+
+          {/* Merchandise / Shop Nav Item */}
+          <div>
+            <div className="px-4 pb-1 text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 font-semibold">
+              Shop
+            </div>
+            {shopNavItems.map(({ path, label, icon: Icon }) => (
+              <Link key={`${path}-${label}`} to={path}>
+                <div className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  isActive(path) 
+                    ? "bg-brand-light-cyan dark:bg-brand-dark-blue font-semibold text-brand-navy dark:text-brand-light-cyan" 
+                    : "hover:bg-brand-pale-cyan dark:hover:bg-gray-800"
+                }`}>
+                  <Icon className={`w-6 h-6 ${isActive(path) ? "text-brand-blue" : ""}`} />
+                  <span className="text-base ml-4">{label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </nav>
 
@@ -186,3 +213,4 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 };
 
 export default Navbar;
+
