@@ -25,6 +25,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: Not
         return <Heart className={`${iconClass} text-pink-500 fill-current`} />;
       case 'comment':
         return <MessageCircle className={`${iconClass} text-blue-500`} />;
+      case 'comment_reply':
+        return <MessageCircle className={`${iconClass} text-purple-500`} />;
       case 'follow':
         return <UserPlus className={`${iconClass} text-green-500`} />;
       case 'live_stream':

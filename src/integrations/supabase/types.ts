@@ -123,6 +123,7 @@ export type Database = {
           created_at: string
           id: string
           interaction_type: string
+          parent_comment_id: string | null
           user_id: string
         }
         Insert: {
@@ -131,6 +132,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type: string
+          parent_comment_id?: string | null
           user_id: string
         }
         Update: {
@@ -139,9 +141,18 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type?: string
+          parent_comment_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "content_interactions_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "content_interactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       follows: {
         Row: {

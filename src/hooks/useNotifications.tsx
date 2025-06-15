@@ -291,6 +291,7 @@ export const useNotifications = () => {
     switch (notification.type) {
       case 'like':
       case 'comment':
+      case 'comment_reply':
         if (notification.related_id) {
           window.location.href = `/posts/${notification.related_id}`;
         }

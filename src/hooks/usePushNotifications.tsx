@@ -103,6 +103,7 @@ export const usePushNotifications = () => {
         return settings.newFollowers;
       case 'like':
       case 'comment':
+      case 'comment_reply':
         return settings.newPosts;
       case 'live_stream':
         return settings.liveStreams;
