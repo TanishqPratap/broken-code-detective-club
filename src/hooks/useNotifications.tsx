@@ -303,55 +303,50 @@ export const useNotifications = () => {
       markAsRead(notification.id);
     }
 
+    // Unpack data
     const type = notification.type;
+    // Try to get content type as robustly as possible
     const contentType =
       notification.metadata?.related_content_type ||
       notification.metadata?.content_type ||
-      notification.metadata?.contentCategory;
+      notification.metadata?.contentCategory ||
+      "";
+
     const contentId = notification.related_id;
-
-    // Prefer slug if available for more robust URLs
     const slug = notification.metadata?.slug;
-
-    // Show a toast to confirm the handler is firing and desired redirect URL
     let goto = "";
-    if (contentType === "content") {
-      if (slug) {
-        goto = `/content/${slug}`;
-      } else if (contentId) {
-        goto = `/content/${contentId}`;
-      }
-    } else if (contentType === "vibe") {
-      if (slug) {
-        goto = `/vibes/${slug}`;
-      } else if (contentId) {
-        goto = `/vibes/${contentId}`;
-      } else {
-        goto = "/vibes";
-      }
-    } else if (type === 'like' || type === 'comment' || type === 'comment_reply') {
-      if (contentType === 'post' && contentId) {
+
+    // 1. Direct content piece (priority: slug, then id)
+    if (type === "comment" || type === "comment_reply" || type === "like") {
+      // If it's a comment/like on content or post, go to the right page
+      if (contentType === "content" && (slug || contentId)) {
+        goto = slug ? `/content/${slug}` : `/content/${contentId}`;
+      } else if ((contentType === "post" || !contentType) && contentId) {
         goto = `/posts/${contentId}`;
+      } else if (contentType === "vibe" && (slug || contentId)) {
+        goto = slug ? `/vibes/${slug}` : `/vibes/${contentId}`;
       }
-    } else if (type === 'follow' || type === 'story_like') {
-      if (notification.user?.id) {
-        goto = `/creator/${notification.user.id}`;
-      }
+    } else if (type === "story_like" && contentType === "story" && contentId) {
+      goto = `/story/${contentId}`;
+    } else if (contentType === "content" && (slug || contentId)) {
+      goto = slug ? `/content/${slug}` : `/content/${contentId}`;
+    } else if (contentType === "vibe" && (slug || contentId)) {
+      goto = slug ? `/vibes/${slug}` : `/vibes/${contentId}`;
+    } else if (type === 'follow' && notification.user?.id) {
+      goto = `/creator/${notification.user.id}`;
     } else if (type === 'subscription' || type === 'tip') {
       goto = `/profile`;
-    } else if (type === 'live_stream') {
-      if (contentId) {
-        goto = `/watch/${contentId}`;
-      }
+    } else if (type === 'live_stream' && contentId) {
+      goto = `/watch/${contentId}`;
     } else if (type === 'message') {
       goto = `/dm`;
     }
 
     if (goto) {
-      toast.info("Navigating...", { description: `Going to: ${goto}` });
       window.location.href = goto;
     } else {
-      toast.info('Unknown notification type: ' + notification.type);
+      toast.info('Unknown notification destination!');
+      console.warn("Notification did not resolve to a destination:", notification);
     }
   };
 
