@@ -303,43 +303,60 @@ export const useNotifications = () => {
       markAsRead(notification.id);
     }
 
-    // Unpack data
+    // Extract data
     const type = notification.type;
-    // Try to get content type as robustly as possible
+    const meta = notification.metadata || {};
     const contentType =
-      notification.metadata?.related_content_type ||
-      notification.metadata?.content_type ||
-      notification.metadata?.contentCategory ||
+      meta.related_content_type ||
+      meta.content_type ||
+      meta.contentCategory ||
       "";
-
     const contentId = notification.related_id;
-    const slug = notification.metadata?.slug;
+    const slug = meta.slug;
     let goto = "";
 
-    // 1. Direct content piece (priority: slug, then id)
-    if (type === "comment" || type === "comment_reply" || type === "like") {
-      // If it's a comment/like on content or post, go to the right page
-      if (contentType === "content" && (slug || contentId)) {
+    // Improved strict resolution
+    const lowerType = (contentType || "").toLowerCase();
+    const byType = (type || "").toLowerCase();
+
+    if (byType === "comment" || byType === "comment_reply" || byType === "like") {
+      // If it's a comment/like on any content type...
+      if (lowerType === "content" && (slug || contentId)) {
         goto = slug ? `/content/${slug}` : `/content/${contentId}`;
-      } else if ((contentType === "post" || !contentType) && contentId) {
+      } else if (lowerType === "post" && contentId) {
         goto = `/posts/${contentId}`;
-      } else if (contentType === "vibe" && (slug || contentId)) {
+      } else if (lowerType === "vibe" && (slug || contentId)) {
         goto = slug ? `/vibes/${slug}` : `/vibes/${contentId}`;
+      } else {
+        // Fallback: if only slug and slug pattern
+        if (slug && meta.fallback_type === "content") {
+          goto = `/content/${slug}`;
+        } else if (slug && meta.fallback_type === "vibe") {
+          goto = `/vibes/${slug}`;
+        }
       }
-    } else if (type === "story_like" && contentType === "story" && contentId) {
+    } else if (byType === "story_like" && lowerType === "story" && contentId) {
       goto = `/story/${contentId}`;
-    } else if (contentType === "content" && (slug || contentId)) {
+    } else if (lowerType === "content" && (slug || contentId)) {
       goto = slug ? `/content/${slug}` : `/content/${contentId}`;
-    } else if (contentType === "vibe" && (slug || contentId)) {
+    } else if (lowerType === "vibe" && (slug || contentId)) {
       goto = slug ? `/vibes/${slug}` : `/vibes/${contentId}`;
-    } else if (type === 'follow' && notification.user?.id) {
+    } else if (byType === 'follow' && notification.user?.id) {
       goto = `/creator/${notification.user.id}`;
-    } else if (type === 'subscription' || type === 'tip') {
+    } else if (byType === 'subscription' || byType === 'tip') {
       goto = `/profile`;
-    } else if (type === 'live_stream' && contentId) {
+    } else if (byType === 'live_stream' && contentId) {
       goto = `/watch/${contentId}`;
-    } else if (type === 'message') {
+    } else if (byType === 'message') {
       goto = `/dm`;
+    }
+
+    // STRONGER fallback for "post" type: only go to /posts if confirmed
+    if (goto.startsWith("/posts/") && lowerType !== "post") {
+      // Don't redirect to posts if type is not post!
+      console.warn("Blocked misdirected /posts redirect for notification", notification);
+      toast.info("Notification is not related to a post!");
+      goto = "";
     }
 
     if (goto) {
