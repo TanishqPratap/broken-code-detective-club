@@ -225,43 +225,47 @@ const CreatorProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-8 sm:py-16">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-sm sm:text-base">Loading creator profile...</p>
+        <main className="flex-1 ml-64">
+          <div className="w-full min-h-screen px-4 py-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-sm sm:text-base">Loading creator profile...</p>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   if (error || !creator) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-8 sm:py-16">
-          <div className="text-center max-w-md mx-auto">
-            <div className="text-6xl mb-4">😕</div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-4">
-              {error === "Creator not found" ? "Creator Not Found" : "Something went wrong"}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mb-6">
-              {error === "Creator not found" 
-                ? "The creator you're looking for doesn't exist or may have been removed."
-                : error || "We couldn't load this creator's profile. Please try again."}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild>
-                <Link to="/discover">Discover Creators</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/">Go Home</Link>
-              </Button>
+        <main className="flex-1 ml-64">
+          <div className="w-full min-h-screen px-4 py-6">
+            <div className="text-center max-w-md mx-auto">
+              <div className="text-6xl mb-4">😕</div>
+              <h1 className="text-xl sm:text-2xl font-bold mb-4">
+                {error === "Creator not found" ? "Creator Not Found" : "Something went wrong"}
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground mb-6">
+                {error === "Creator not found" 
+                  ? "The creator you're looking for doesn't exist or may have been removed."
+                  : error || "We couldn't load this creator's profile. Please try again."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild>
+                  <Link to="/discover">Discover Creators</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/">Go Home</Link>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
@@ -273,7 +277,7 @@ const CreatorProfilePage = () => {
   const creatorUrl = `${window.location.origin}/creator/${creator.id}`;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       <SEOHead
         title={creatorTitle}
         description={creatorDescription}
@@ -283,35 +287,38 @@ const CreatorProfilePage = () => {
       />
       
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      
-      <CreatorProfile
-        creator={{
-          id: creator.id,
-          username: creator.username,
-          displayName: creator.display_name,
-          bio: creator.bio || "",
-          avatar: creator.avatar_url || "",
-          coverImage: "",
-          subscriberCount: creator.subscriber_count,
-          postCount: creator.post_count,
-          isSubscribed: creator.is_subscribed,
-          subscriptionPrice: creator.subscription_price
-        }}
-        onSubscribe={handleSubscribe}
-        onStartPaidDM={creator.chat_rate ? handleStartPaidDM : undefined}
-      />
+      <main className="flex-1 ml-64">
+        <div className="w-full min-h-screen">
+          <CreatorProfile
+            creator={{
+              id: creator.id,
+              username: creator.username,
+              displayName: creator.display_name,
+              bio: creator.bio || "",
+              avatar: creator.avatar_url || "",
+              coverImage: "",
+              subscriberCount: creator.subscriber_count,
+              postCount: creator.post_count,
+              isSubscribed: creator.is_subscribed,
+              subscriptionPrice: creator.subscription_price
+            }}
+            onSubscribe={handleSubscribe}
+            onStartPaidDM={creator.chat_rate ? handleStartPaidDM : undefined}
+          />
 
-      {/* Trailers Section */}
-      {trailers.length > 0 && (
-        <div className="container mx-auto px-4 py-6 sm:py-8">
-          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Free Previews</h2>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {trailers.map((trailer) => (
-              <TrailerPreviewCard key={trailer.id} trailer={trailer} />
-            ))}
-          </div>
+          {/* Trailers Section */}
+          {trailers.length > 0 && (
+            <div className="px-4 py-6 sm:py-8">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Free Previews</h2>
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {trailers.map((trailer) => (
+                  <TrailerPreviewCard key={trailer.id} trailer={trailer} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </main>
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
