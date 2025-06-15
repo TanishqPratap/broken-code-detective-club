@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Mail, Phone, MapPin, Clock, MessageSquare, HelpCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const Contact = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -18,11 +20,51 @@ const Contact = () => {
     category: "",
     message: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
+    
+    // Basic validation
+    if (!formData.name || !formData.email || !formData.subject || !formData.category || !formData.message) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Simulate API call - replace with actual backend integration
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log("Form submitted:", formData);
+      
+      toast({
+        title: "Message Sent!",
+        description: "Thank you for contacting us. We'll get back to you within 24 hours.",
+      });
+
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        subject: "",
+        category: "",
+        message: ""
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -47,7 +89,7 @@ const Contact = () => {
     {
       icon: MapPin,
       title: "Office Address",
-      value: "123 Creator Street, Tech City, TC 12345",
+      value: "Near Acharya Institutes, New Delhi Mart, Soladevanahalli, Bangalore, Karnataka, 560107",
       description: "Visit our headquarters"
     }
   ];
@@ -114,29 +156,31 @@ const Contact = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">Name *</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <Label htmlFor="category">Category *</Label>
+                  <Select onValueChange={(value) => setFormData({...formData, category: value})} disabled={isSubmitting}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
@@ -151,28 +195,30 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="subject">Subject</Label>
+                  <Label htmlFor="subject">Subject *</Label>
                   <Input
                     id="subject"
                     value={formData.subject}
                     onChange={(e) => setFormData({...formData, subject: e.target.value})}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="message">Message</Label>
+                  <Label htmlFor="message">Message *</Label>
                   <Textarea
                     id="message"
                     rows={5}
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full">
-                  Send Message
+                <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </Button>
               </form>
             </CardContent>
@@ -193,9 +239,9 @@ const Contact = () => {
                     <div className="p-2 bg-gradient-to-r from-brand-light-cyan to-brand-cyan rounded-lg">
                       <info.icon className="w-5 h-5 text-white" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">{info.title}</h3>
-                      <p className="text-brand-cyan font-medium">{info.value}</p>
+                      <p className="text-brand-cyan font-medium break-words">{info.value}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{info.description}</p>
                     </div>
                   </div>
