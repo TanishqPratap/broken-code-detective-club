@@ -17,7 +17,7 @@ interface Comment {
     username: string;
     display_name: string;
     avatar_url: string;
-  };
+  } | null;
 }
 
 interface VibesCommentsProps {
@@ -36,28 +36,44 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // First get the interactions
+      const { data: interactionsData, error: interactionsError } = await supabase
         .from('posts_interactions')
-        .select(`
-          id,
-          comment_text,
-          created_at,
-          user_id,
-          profiles!posts_interactions_user_id_fkey (
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('id, comment_text, created_at, user_id')
         .eq('post_id', vibeId)
         .eq('interaction_type', 'comment')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (interactionsError) throw interactionsError;
 
-      setComments(data || []);
+      if (interactionsData && interactionsData.length > 0) {
+        // Get user profiles for the comments
+        const userIds = [...new Set(interactionsData.map(comment => comment.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(
+          profilesData?.map(profile => [profile.id, profile]) || []
+        );
+
+        // Combine interactions with profiles
+        const processedComments: Comment[] = interactionsData.map(interaction => ({
+          ...interaction,
+          profiles: profilesMap.get(interaction.user_id) || null
+        }));
+
+        setComments(processedComments);
+      } else {
+        setComments([]);
+      }
     } catch (error) {
       console.error('Error fetching comments:', error);
+      toast.error('Failed to load comments');
     } finally {
       setLoading(false);
     }
@@ -86,7 +102,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
       if (error) throw error;
 
       setNewComment("");
-      fetchComments(); // Refresh comments
+      fetchComments();
       toast.success("Comment added!");
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -149,7 +165,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
             comments.map((comment) => (
               <div key={comment.id} className="flex space-x-3">
                 <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarImage src={comment.profiles?.avatar_url} />
+                  <AvatarImage src={comment.profiles?.avatar_url || ""} />
                   <AvatarFallback className="bg-gray-600 text-white text-xs">
                     {comment.profiles?.display_name?.[0]?.toUpperCase() || 
                      comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
