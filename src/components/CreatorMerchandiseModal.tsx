@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Upload, Image } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -35,12 +36,51 @@ const CreatorMerchandiseModal = ({
 }: Props) => {
   const [form, setForm] = useState(product || defaultForm);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset form when modal opens or product changes
   React.useEffect(() => {
     setForm(product || defaultForm);
   }, [open, product]);
+
+  const uploadImage = async (file: File) => {
+    try {
+      setUploading(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${creatorId}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('post-media')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('post-media')
+        .getPublicUrl(fileName);
+
+      setForm(f => ({ ...f, image_url: publicUrl }));
+      toast({ title: "Success", description: "Image uploaded successfully!" });
+    } catch (error: any) {
+      toast({ 
+        title: "Upload Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadImage(file);
+    }
+  };
 
   const saveMerchandise = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +126,7 @@ const CreatorMerchandiseModal = ({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <CardHeader>
           <CardTitle>{product ? "Edit Merchandise" : "Add Merchandise"}</CardTitle>
         </CardHeader>
@@ -111,11 +151,56 @@ const CreatorMerchandiseModal = ({
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
               required
             />
-            <Input
-              placeholder="Image URL"
-              value={form.image_url || ""}
-              onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
-            />
+            
+            {/* Image upload section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product Image</label>
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2"
+                >
+                  {uploading ? (
+                    <>
+                      <Upload className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Image className="w-4 h-4" />
+                      Upload Image
+                    </>
+                  )}
+                </Button>
+                {form.image_url && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setForm(f => ({ ...f, image_url: "" }))}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {form.image_url && (
+                <img
+                  src={form.image_url}
+                  alt="Product preview"
+                  className="w-full h-32 object-cover rounded border"
+                />
+              )}
+            </div>
+            
             <div className="flex items-center gap-2 my-1">
               <Switch
                 checked={!!form.is_digital}
@@ -150,10 +235,10 @@ const CreatorMerchandiseModal = ({
               <label htmlFor="is_published" className="text-sm">Published?</label>
             </div>
             <div className="flex gap-2 pt-2">
-              <Button type="submit" className="flex-1" disabled={loading}>
+              <Button type="submit" className="flex-1" disabled={loading || uploading}>
                 {product ? "Update" : "Add"}
               </Button>
-              <Button variant="outline" type="button" onClick={onClose} disabled={loading}>
+              <Button variant="outline" type="button" onClick={onClose} disabled={loading || uploading}>
                 Cancel
               </Button>
             </div>
