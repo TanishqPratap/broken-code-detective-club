@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +34,7 @@ export const useNotifications = () => {
 
   const fetchNotifications = async () => {
     if (!user) {
+      console.log('No user, skipping notification fetch');
       setLoading(false);
       return;
     }
@@ -244,7 +244,6 @@ export const useNotifications = () => {
     }
   };
 
-  // Create a test notification function for debugging
   const createTestNotification = async () => {
     if (!user) return;
 
@@ -268,8 +267,11 @@ export const useNotifications = () => {
       console.log('Test notification created successfully:', data);
       toast.success('Test notification created!');
       
-      // Force refresh notifications
-      await fetchNotifications();
+      // Force refresh notifications immediately
+      setTimeout(() => {
+        console.log('Force refreshing notifications after test creation');
+        fetchNotifications();
+      }, 500);
       
     } catch (error) {
       console.error('Error in createTestNotification:', error);
@@ -343,7 +345,10 @@ export const useNotifications = () => {
           console.log('New notification received via realtime:', payload);
           
           // Force refresh notifications to get the complete data
-          fetchNotifications();
+          setTimeout(() => {
+            console.log('Refreshing notifications due to realtime event');
+            fetchNotifications();
+          }, 100);
           
           const newNotification = payload.new;
           showNotification(newNotification.title, newNotification.message);
