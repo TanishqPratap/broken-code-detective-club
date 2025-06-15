@@ -90,7 +90,7 @@ const Search = () => {
 
       setCreators(creatorsWithCounts);
 
-      // Search posts with proper join
+      // Search posts - improved query to search text_content more effectively
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -106,12 +106,14 @@ const Search = () => {
             avatar_url
           )
         `)
+        .not('text_content', 'is', null)
         .ilike('text_content', `%${query}%`)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (postsError) throw postsError;
 
+      console.log('Posts search results:', postsData);
       setPosts(postsData || []);
     } catch (error) {
       console.error('Search error:', error);
@@ -241,6 +243,9 @@ const Search = () => {
             {posts.length === 0 && searchQuery ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">No posts found for "{searchQuery}"</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Try searching for different keywords or check if there are posts with text content.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
