@@ -41,7 +41,7 @@ const Index = () => {
           {/* Welcome Section */}
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">
-              Welcome back!
+              Your creativity, your community, your income.
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready For Amazing Content?</p>
             
@@ -114,7 +114,7 @@ const Index = () => {
       <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
-            Create. Connect. Earn.
+            Your creativity, your community, your income.
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
             The ultimate platform for content creators to build their community and monetize their passion through subscriptions and exclusive content.
