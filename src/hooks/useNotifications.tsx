@@ -323,67 +323,81 @@ export const useNotifications = () => {
     if (!user) return;
 
     console.log('Setting up real-time notifications for user:', user.id);
+    let reconnectTimeout: NodeJS.Timeout;
 
-    const channel = supabase
-      .channel(`notifications_realtime_${user.id}`, {
-        config: {
-          broadcast: { self: true },
-          presence: { key: user.id }
-        }
-      })
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        (payload) => {
-          console.log('New notification received via realtime:', payload);
-          fetchNotifications();
-          
-          const newNotification = payload.new;
-          showNotification(newNotification.title, newNotification.message);
-          toast.success(`New notification: ${newNotification.title}`);
-        }
-      )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Notification updated via realtime:', payload);
-          const updatedNotification = payload.new;
-          setNotifications(prev => 
-            prev.map(notif => 
-              notif.id === updatedNotification.id 
-                ? { ...notif, is_read: updatedNotification.is_read }
-                : notif
-            )
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log('Notification channel subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to real-time notifications');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to notifications channel');
-        } else if (status === 'TIMED_OUT') {
-          console.warn('Notification subscription timed out, attempting to reconnect...');
-          // Attempt to reconnect after a delay
-          setTimeout(() => {
-            console.log('Reconnecting to notifications...');
+    const setupChannel = () => {
+      const channel = supabase
+        .channel(`notifications_${user.id}`)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          (payload) => {
+            console.log('New notification received via realtime:', payload);
             fetchNotifications();
-          }, 5000);
-        }
-      });
+            
+            const newNotification = payload.new;
+            showNotification(newNotification.title, newNotification.message);
+            toast.success(`New notification: ${newNotification.title}`);
+          }
+        )
+        .on('postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Notification updated via realtime:', payload);
+            const updatedNotification = payload.new;
+            setNotifications(prev => 
+              prev.map(notif => 
+                notif.id === updatedNotification.id 
+                  ? { ...notif, is_read: updatedNotification.is_read }
+                  : notif
+              )
+            );
+          }
+        )
+        .subscribe((status) => {
+          console.log('Notification channel subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to real-time notifications');
+            // Clear any existing reconnect timeout
+            if (reconnectTimeout) {
+              clearTimeout(reconnectTimeout);
+            }
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Error subscribing to notifications channel');
+            // Attempt to reconnect after 5 seconds
+            reconnectTimeout = setTimeout(() => {
+              console.log('Attempting to reconnect notifications...');
+              setupChannel();
+            }, 5000);
+          } else if (status === 'TIMED_OUT') {
+            console.warn('Notification subscription timed out, attempting to reconnect...');
+            // Attempt to reconnect after 3 seconds
+            reconnectTimeout = setTimeout(() => {
+              console.log('Reconnecting notifications after timeout...');
+              setupChannel();
+            }, 3000);
+          }
+        });
+
+      return channel;
+    };
+
+    const channel = setupChannel();
 
     return () => {
       console.log('Cleaning up notification channel');
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
       supabase.removeChannel(channel);
     };
   }, [user, showNotification]);
@@ -396,6 +410,6 @@ export const useNotifications = () => {
     deleteNotification,
     handleNotificationClick,
     refetch: fetchNotifications,
-    createTestNotification // Add this for debugging
+    createTestNotification
   };
 };

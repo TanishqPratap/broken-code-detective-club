@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,6 +51,37 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
   const [commentText, setCommentText] = useState("");
   const [commentsCount, setCommentsCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Check if user has already liked this post on component mount
+  useEffect(() => {
+    if (user && post.id) {
+      checkLikeStatus();
+    }
+  }, [user, post.id]);
+
+  const checkLikeStatus = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('posts_interactions')
+        .select('id')
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+        .eq('interaction_type', 'like')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking like status:', error);
+        return;
+      }
+
+      setIsLiked(!!data);
+      console.log('Like status checked:', !!data);
+    } catch (error) {
+      console.error('Error in checkLikeStatus:', error);
+    }
+  };
 
   // Fetch comments when component loads or when showComments changes
   useEffect(() => {
@@ -150,7 +180,10 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
           .eq('user_id', user.id)
           .eq('interaction_type', 'like');
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error unliking post:', error);
+          throw error;
+        }
         setIsLiked(false);
         setLikesCount(prev => prev - 1);
         console.log('Post unliked successfully');
@@ -165,10 +198,33 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
           })
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error liking post:', error);
+          throw error;
+        }
         setIsLiked(true);
         setLikesCount(prev => prev + 1);
-        console.log('Post liked successfully, trigger should fire:', data);
+        console.log('Post liked successfully, data:', data);
+        
+        // Manual trigger for notification (fallback if database trigger fails)
+        if (post.user_id !== user.id) {
+          console.log('Triggering like notification manually as fallback');
+          try {
+            await supabase.rpc('create_notification', {
+              p_user_id: post.user_id,
+              p_type: 'like',
+              p_title: 'New Like',
+              p_message: 'Someone liked your post',
+              p_related_user_id: user.id,
+              p_related_content_id: post.id,
+              p_related_content_type: 'post',
+              p_metadata: {}
+            });
+            console.log('Manual like notification created');
+          } catch (notifError) {
+            console.error('Error creating manual like notification:', notifError);
+          }
+        }
       }
     } catch (error) {
       console.error('Error handling like:', error);
@@ -197,7 +253,10 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding comment:', error);
+        throw error;
+      }
 
       setCommentText("");
       setCommentsCount(prev => prev + 1);
@@ -207,7 +266,28 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         fetchComments();
       }
       
-      console.log('Comment added successfully, trigger should fire:', data);
+      console.log('Comment added successfully, data:', data);
+      
+      // Manual trigger for notification (fallback if database trigger fails)
+      if (post.user_id !== user.id) {
+        console.log('Triggering comment notification manually as fallback');
+        try {
+          await supabase.rpc('create_notification', {
+            p_user_id: post.user_id,
+            p_type: 'comment',
+            p_title: 'New Comment',
+            p_message: 'Someone commented on your post',
+            p_related_user_id: user.id,
+            p_related_content_id: post.id,
+            p_related_content_type: 'post',
+            p_metadata: { comment_text: commentText.trim() }
+          });
+          console.log('Manual comment notification created');
+        } catch (notifError) {
+          console.error('Error creating manual comment notification:', notifError);
+        }
+      }
+      
       toast.success("Comment added!");
     } catch (error) {
       console.error('Error adding comment:', error);
