@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Settings, TestTube } from "lucide-react";
+import { Heart, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import Navbar from "@/components/Navbar";
@@ -22,8 +22,7 @@ const Notifications = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    handleNotificationClick,
-    createTestNotification
+    handleNotificationClick
   } = useNotifications();
 
   const filteredNotifications = activeTab === 'unread' 
@@ -95,11 +94,6 @@ const Notifications = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
             <div className="flex items-center gap-3">
-              {/* Test notification button for debugging */}
-              <Button variant="outline" size="sm" onClick={createTestNotification}>
-                <TestTube className="w-4 h-4 mr-2" />
-                Test
-              </Button>
               {unreadCount > 0 && (
                 <Button variant="outline" size="sm" onClick={markAllAsRead}>
                   Mark all as read
@@ -201,16 +195,12 @@ const Notifications = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 {activeTab === 'unread' ? 'No unread notifications' : 'No notifications yet'}
               </h3>
-              <p className="text-gray-500 mb-4">
+              <p className="text-gray-500">
                 {activeTab === 'unread' 
                   ? 'You\'re all caught up!' 
                   : 'When people interact with your content, subscribe, follow you, or go live, you\'ll see notifications here.'
                 }
               </p>
-              <Button variant="outline" onClick={createTestNotification}>
-                <TestTube className="w-4 h-4 mr-2" />
-                Create Test Notification
-              </Button>
             </div>
           )}
         </div>

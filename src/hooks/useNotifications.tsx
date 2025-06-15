@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -259,42 +260,6 @@ export const useNotifications = () => {
     }
   };
 
-  const createTestNotification = async () => {
-    if (!user) return;
-
-    try {
-      console.log('Creating test notification for user:', user.id);
-      
-      const { data, error } = await supabase.rpc('create_notification', {
-        p_user_id: user.id,
-        p_type: 'like',
-        p_title: 'Test Notification',
-        p_message: 'This is a test notification to verify the system is working',
-        p_related_user_id: user.id,
-        p_metadata: { test: true }
-      });
-
-      if (error) {
-        console.error('Error creating test notification:', error);
-        throw error;
-      }
-
-      console.log('Test notification created successfully:', data);
-      toast.success('Test notification created!');
-      
-      // Force refresh notifications immediately
-      setTimeout(() => {
-        console.log('Force refreshing notifications after test creation');
-        fetchNotifications();
-        dispatchNotificationUpdate();
-      }, 500);
-      
-    } catch (error) {
-      console.error('Error in createTestNotification:', error);
-      toast.error('Failed to create test notification');
-    }
-  };
-
   const handleNotificationClick = (notification: NotificationData) => {
     console.log('Notification clicked:', notification);
 
@@ -303,7 +268,15 @@ export const useNotifications = () => {
       markAsRead(notification.id);
     }
 
-    // Extract data
+    // First priority: Use the canonical URL from metadata (same as social sharing)
+    const canonicalUrl = notification.metadata?.canonical_url;
+    if (canonicalUrl) {
+      console.log('Using canonical URL from metadata:', canonicalUrl);
+      window.location.href = canonicalUrl;
+      return;
+    }
+
+    // Fallback: Extract data and build URL
     const type = notification.type;
     const meta = notification.metadata || {};
     const contentType =
@@ -454,7 +427,6 @@ export const useNotifications = () => {
     markAllAsRead,
     deleteNotification,
     handleNotificationClick,
-    refetch: fetchNotifications,
-    createTestNotification
+    refetch: fetchNotifications
   };
 };
