@@ -1,6 +1,6 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import Index from "@/pages/Index";
 import Profile from "@/pages/Profile";
 import CreatorProfile from "@/pages/CreatorProfile";
@@ -67,4 +67,12 @@ const AppContent = () => {
   );
 };
 
-export default AppContent;
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};
+
+export default App;
