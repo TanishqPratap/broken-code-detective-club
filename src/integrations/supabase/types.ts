@@ -457,6 +457,7 @@ export type Database = {
           created_at: string
           id: string
           interaction_type: string
+          parent_comment_id: string | null
           post_id: string
           user_id: string
         }
@@ -465,6 +466,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type: string
+          parent_comment_id?: string | null
           post_id: string
           user_id: string
         }
@@ -473,10 +475,18 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_type?: string
+          parent_comment_id?: string | null
           post_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_interactions_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "posts_interactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_interactions_post_id_fkey"
             columns: ["post_id"]

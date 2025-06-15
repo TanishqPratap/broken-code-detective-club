@@ -19,7 +19,7 @@ interface Comment {
     display_name: string;
     avatar_url: string;
   } | null;
-  replies?: Comment[];
+  replies: Comment[];
   likes_count: number;
   user_liked: boolean;
 }
@@ -43,10 +43,10 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     try {
       setLoading(true);
       
-      // First, try to get comments using a simpler query without parent_comment_id
+      // Fetch all comments for this vibe
       const { data: interactionsData, error: interactionsError } = await supabase
         .from('posts_interactions')
-        .select('id, comment_text, created_at, user_id, interaction_type')
+        .select('id, comment_text, created_at, user_id, interaction_type, parent_comment_id')
         .eq('post_id', vibeId)
         .eq('interaction_type', 'comment')
         .order('created_at', { ascending: true });
@@ -75,20 +75,37 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           profilesData?.map(profile => [profile.id, profile]) || []
         );
 
-        // Process comments with profiles
-        const processedComments: Comment[] = interactionsData.map(comment => ({
+        // Process comments and organize them hierarchically
+        const allComments: Comment[] = interactionsData.map(comment => ({
           id: comment.id,
           comment_text: comment.comment_text || '',
           created_at: comment.created_at,
           user_id: comment.user_id,
-          parent_comment_id: null, // For now, all comments are top-level
+          parent_comment_id: comment.parent_comment_id,
           profiles: profilesMap.get(comment.user_id) || null,
           replies: [],
           likes_count: 0,
           user_liked: false
         }));
 
-        setComments(processedComments);
+        // Organize comments into hierarchy
+        const topLevelComments: Comment[] = [];
+        const commentsMap = new Map(allComments.map(comment => [comment.id, comment]));
+
+        allComments.forEach(comment => {
+          if (comment.parent_comment_id) {
+            // This is a reply
+            const parentComment = commentsMap.get(comment.parent_comment_id);
+            if (parentComment) {
+              parentComment.replies.push(comment);
+            }
+          } else {
+            // This is a top-level comment
+            topLevelComments.push(comment);
+          }
+        });
+
+        setComments(topLevelComments);
       } else {
         setComments([]);
       }
@@ -113,14 +130,21 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
 
     try {
       setSubmitting(true);
+      
+      const insertData: any = {
+        post_id: vibeId,
+        user_id: user.id,
+        interaction_type: 'comment',
+        comment_text: text.trim()
+      };
+
+      if (parentId) {
+        insertData.parent_comment_id = parentId;
+      }
+
       const { error } = await supabase
         .from('posts_interactions')
-        .insert({
-          post_id: vibeId,
-          user_id: user.id,
-          interaction_type: 'comment',
-          comment_text: text.trim()
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -183,8 +207,8 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     return `${Math.floor(diffInSeconds / 86400)}d`;
   };
 
-  const renderComment = (comment: Comment): JSX.Element => (
-    <div key={comment.id}>
+  const renderComment = (comment: Comment, isReply = false): JSX.Element => (
+    <div key={comment.id} className={isReply ? "ml-8 mt-3" : ""}>
       <div className="flex space-x-3 mb-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={comment.profiles?.avatar_url || ""} />
@@ -230,9 +254,10 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           {replyingTo === comment.id && (
             <div className="mt-3 flex items-center space-x-2">
               <Avatar className="w-6 h-6 flex-shrink-0">
-                <AvatarImage src="" />
+                <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                 <AvatarFallback className="bg-gray-600 text-white text-xs">
-                  U
+                  {user?.user_metadata?.display_name?.[0]?.toUpperCase() || 
+                   user?.email?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 flex items-center space-x-2">
@@ -273,6 +298,13 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           )}
         </div>
       </div>
+      
+      {/* Render replies */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="space-y-2">
+          {comment.replies.map(reply => renderComment(reply, true))}
+        </div>
+      )}
     </div>
   );
 
@@ -324,9 +356,10 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           {user ? (
             <div className="flex items-center space-x-3">
               <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage src="" />
+                <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                 <AvatarFallback className="bg-gray-600 text-white text-xs">
-                  U
+                  {user?.user_metadata?.display_name?.[0]?.toUpperCase() || 
+                   user?.email?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 flex items-center space-x-2">
