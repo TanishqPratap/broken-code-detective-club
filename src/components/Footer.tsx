@@ -3,8 +3,8 @@ import { Heart, Github, Twitter, Mail } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="bg-black text-white py-8 sm:py-12 mt-12 sm:mt-20">
-      <div className="container mx-auto px-4">
+    <footer className="bg-black text-white py-8 sm:py-12 mt-12 sm:mt-20 w-full">
+      <div className="container mx-auto px-4 max-w-7xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand */}
           <div className="lg:col-span-1 text-center sm:text-left">
@@ -46,9 +46,6 @@ const Footer = () => {
                   Security
                 </a>
               </li>
-              <li>
-                
-              </li>
             </ul>
           </div>
 
@@ -70,9 +67,6 @@ const Footer = () => {
                 <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Contact Us
                 </a>
-              </li>
-              <li>
-                
               </li>
             </ul>
           </div>
