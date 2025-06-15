@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,7 @@ import { usePushNotifications } from "./usePushNotifications";
 
 export interface NotificationData {
   id: string;
-  type: 'subscription' | 'comment' | 'like' | 'follow' | 'live_stream' | 'tip' | 'message' | 'story_like';
+  type: 'subscription' | 'comment' | 'comment_reply' | 'like' | 'follow' | 'live_stream' | 'tip' | 'message' | 'story_like';
   title: string;
   message: string;
   user: {
