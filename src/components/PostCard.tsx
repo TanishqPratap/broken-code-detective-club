@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,7 @@ interface Comment {
 interface Post {
   id: string;
   user_id: string;
-  content_type: 'text' | 'image' | 'video';
+  content_type: 'text' | 'image' | 'video' | 'vibe';
   text_content: string | null;
   media_url: string | null;
   media_type: string | null;
@@ -210,9 +209,16 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         console.log('Post liked successfully');
         
         // Create notification manually if not liking own post
+        // Note: The database triggers will now handle this automatically for vibes,
+        // but we keep this for regular posts and as a fallback
         if (post.user_id !== user.id) {
           console.log('Creating like notification manually');
           try {
+            // Determine the canonical URL based on content type
+            const canonicalUrl = post.content_type === 'vibe' 
+              ? `https://b78fb01f-e4ac-4dbe-be8b-a4f52948d703.lovableproject.com/vibes/${post.id}`
+              : `https://b78fb01f-e4ac-4dbe-be8b-a4f52948d703.lovableproject.com/posts/${post.id}`;
+            
             const { data: notificationData, error: notifError } = await supabase.rpc('create_notification', {
               p_user_id: post.user_id,
               p_type: 'like',
@@ -220,8 +226,10 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
               p_message: 'Someone liked your post',
               p_related_user_id: user.id,
               p_related_content_id: post.id,
-              p_related_content_type: 'post',
-              p_metadata: {}
+              p_related_content_type: post.content_type === 'vibe' ? 'vibe' : 'post',
+              p_metadata: {
+                canonical_url: canonicalUrl
+              }
             });
             
             if (notifError) {
@@ -278,9 +286,16 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
       console.log('Comment added successfully');
       
       // Create notification manually if not commenting on own post
+      // Note: The database triggers will now handle this automatically for vibes,
+      // but we keep this for regular posts and as a fallback
       if (post.user_id !== user.id) {
         console.log('Creating comment notification manually');
         try {
+          // Determine the canonical URL based on content type
+          const canonicalUrl = post.content_type === 'vibe' 
+            ? `https://b78fb01f-e4ac-4dbe-be8b-a4f52948d703.lovableproject.com/vibes/${post.id}`
+            : `https://b78fb01f-e4ac-4dbe-be8b-a4f52948d703.lovableproject.com/posts/${post.id}`;
+            
           const { data: notificationData, error: notifError } = await supabase.rpc('create_notification', {
             p_user_id: post.user_id,
             p_type: 'comment',
@@ -288,8 +303,11 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
             p_message: 'Someone commented on your post',
             p_related_user_id: user.id,
             p_related_content_id: post.id,
-            p_related_content_type: 'post',
-            p_metadata: { comment_text: commentText.trim() }
+            p_related_content_type: post.content_type === 'vibe' ? 'vibe' : 'post',
+            p_metadata: { 
+              comment_text: commentText.trim(),
+              canonical_url: canonicalUrl
+            }
           });
           
           if (notifError) {
