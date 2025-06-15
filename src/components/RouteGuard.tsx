@@ -22,6 +22,7 @@ const RouteGuard = ({ children, requireAuth = false, redirectTo = "/" }: RouteGu
   }
 
   if (requireAuth && !user) {
+    console.log('RouteGuard: Redirecting unauthenticated user from', location.pathname, 'to', redirectTo);
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 

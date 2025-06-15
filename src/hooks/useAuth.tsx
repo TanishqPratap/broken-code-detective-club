@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Get initial session
@@ -42,17 +44,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Clear any cached data
           setSession(null);
           setUser(null);
+          // Use navigate instead of window.location.href
           setTimeout(() => {
-            if (window.location.pathname !== '/') {
-              window.location.href = '/';
-            }
+            navigate('/', { replace: true });
           }, 100);
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const signOut = async () => {
     try {
@@ -60,10 +61,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Starting sign out process...');
       
       // Clear local state immediately
+      console.log('Clearing local state...');
       setUser(null);
       setSession(null);
       
-      // Always attempt to sign out from Supabase with proper scope
+      // Sign out from Supabase
       console.log('Attempting to sign out from Supabase...');
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       
@@ -73,30 +75,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error.message.includes('Session not found')) {
           console.log('Session was already invalid, proceeding with local cleanup');
         } else {
-          // For other errors, still proceed but log them
           console.warn('Sign out error, but proceeding with local cleanup:', error.message);
         }
       } else {
         console.log('Successfully signed out from Supabase');
       }
       
-      // Clear any remaining session data
-      await supabase.auth.getSession().then(() => {
-        console.log('Session cleared');
-      });
-      
-      // Always show success message
+      // Show success message
       toast({
         title: "Signed out successfully",
         description: "You have been signed out.",
         variant: "default"
       });
 
-      // Force navigation to home page
+      // Navigate to home page using React Router
       console.log('Navigating to home page...');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 200);
+      navigate('/', { replace: true });
       
     } catch (error) {
       console.error('Unexpected sign out error:', error);
@@ -112,9 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       // Force navigation
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 200);
+      navigate('/', { replace: true });
     } finally {
       setLoading(false);
     }
