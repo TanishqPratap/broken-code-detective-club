@@ -3,7 +3,6 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: User | null;
@@ -19,7 +18,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Get initial session
@@ -44,16 +42,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Clear any cached data
           setSession(null);
           setUser(null);
-          // Use navigate instead of window.location.href
+          // Use window.location since we're outside Router context
           setTimeout(() => {
-            navigate('/', { replace: true });
+            window.location.href = '/';
           }, 100);
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   const signOut = async () => {
     try {
@@ -88,9 +86,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         variant: "default"
       });
 
-      // Navigate to home page using React Router
+      // Navigate to home page using window.location since we're outside Router context
       console.log('Navigating to home page...');
-      navigate('/', { replace: true });
+      window.location.href = '/';
       
     } catch (error) {
       console.error('Unexpected sign out error:', error);
@@ -106,7 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       // Force navigation
-      navigate('/', { replace: true });
+      window.location.href = '/';
     } finally {
       setLoading(false);
     }
