@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +22,7 @@ import TrailerView from "@/pages/TrailerView";
 import Watch from "@/pages/Watch";
 import StreamPaymentSuccess from "@/pages/StreamPaymentSuccess";
 import NotFound from "@/pages/NotFound";
+import ContentView from "@/pages/ContentView";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +52,7 @@ function App() {
                   <Route path="trailer/:trailerId" element={<TrailerView />} />
                   <Route path="watch/:streamId" element={<Watch />} />
                   <Route path="stream-payment-success" element={<StreamPaymentSuccess />} />
+                  <Route path="content/:contentId" element={<ContentView />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>

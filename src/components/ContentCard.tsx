@@ -1,9 +1,10 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Eye, FileText, Image, Video } from "lucide-react";
+import { DollarSign, Eye, FileText, Image, Video, Share2 } from "lucide-react";
 import ContentInteractions from "./ContentInteractions";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Content {
   id: string;
@@ -31,6 +32,8 @@ interface ContentCardProps {
 }
 
 const ContentCard = ({ content }: ContentCardProps) => {
+  const navigate = useNavigate();
+
   const getContentIcon = () => {
     switch (content.content_type) {
       case 'image':
@@ -39,6 +42,27 @@ const ContentCard = ({ content }: ContentCardProps) => {
         return <Video className="w-5 h-5" />;
       default:
         return <FileText className="w-5 h-5" />;
+    }
+  };
+
+  const handleShare = async () => {
+    const contentUrl = `${window.location.origin}/content/${content.id}`;
+    const shareData = {
+      title: content.title,
+      text: content.description || "Check this out!",
+      url: contentUrl,
+    };
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+        toast.success("Content shared!");
+      } else {
+        await navigator.clipboard.writeText(contentUrl);
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (error) {
+      await navigator.clipboard.writeText(contentUrl);
+      toast.success("Link copied to clipboard!");
     }
   };
 
@@ -114,6 +138,15 @@ const ContentCard = ({ content }: ContentCardProps) => {
                 <Eye className="w-4 h-4" />
                 <span>View</span>
               </div>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition"
+                aria-label="Share"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
 
