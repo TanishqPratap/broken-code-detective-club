@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, BarChart3, Users, DollarSign, Video, Film } from "lucide-react";
+import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
@@ -20,6 +19,7 @@ interface AnalyticsData {
   totalViews: number;
   totalLikes: number;
   totalFollowers: number;
+  totalSubscribers: number;
   totalEarnings: number;
 }
 
@@ -33,6 +33,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
     totalViews: 0,
     totalLikes: 0,
     totalFollowers: 0,
+    totalSubscribers: 0,
     totalEarnings: 0
   });
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,17 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
 
       if (followersError) {
         console.error('Error fetching followers:', followersError);
+      }
+
+      // Fetch subscribers count
+      const { count: subscribersCount, error: subscribersError } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', user.id)
+        .eq('status', 'active');
+
+      if (subscribersError) {
+        console.error('Error fetching subscribers:', subscribersError);
       }
 
       // Fetch total likes from posts interactions
@@ -196,6 +208,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
         totalViews: approximateViews,
         totalLikes: totalLikes,
         totalFollowers: followersCount || 0,
+        totalSubscribers: subscribersCount || 0,
         totalEarnings: totalEarnings
       });
 
@@ -273,7 +286,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Views</CardTitle>
@@ -315,6 +328,21 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {loading ? "Loading..." : "People following you"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : analyticsData.totalSubscribers.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Active paid subscribers"}
                 </p>
               </CardContent>
             </Card>
