@@ -313,23 +313,16 @@ export const useNotifications = () => {
     const contentType = notification.metadata?.related_content_type || notification.metadata?.content_type || notification.metadata?.contentCategory;
     const contentId = notification.related_id;
 
-    // Handle content route
-    if (
-      type === 'content' ||
-      contentType === 'content'
-    ) {
+    // Handle content route only by contentType
+    if (contentType === 'content') {
       if (contentId) {
         window.open(`/content/${contentId}`, '_blank');
       }
       return;
     }
 
-    // Handle vibe route
-    if (
-      type === 'vibe' ||
-      contentType === 'vibe'
-    ) {
-      // If you have /vibes/:vibeId use that, else fallback to /vibes
+    // Handle vibe route only by contentType
+    if (contentType === 'vibe') {
       if (contentId) {
         window.open(`/vibes/${contentId}`, '_blank');
       } else {

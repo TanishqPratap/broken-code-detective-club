@@ -75,7 +75,7 @@ const ContentView = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar />
+        <Navbar onAuthClick={() => {}} />
         <div className="container mx-auto px-4 py-8 max-w-2xl">
           <div className="text-center">Loading content...</div>
         </div>
@@ -86,7 +86,7 @@ const ContentView = () => {
   if (!content) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar />
+        <Navbar onAuthClick={() => {}} />
         <div className="container mx-auto px-4 py-8 max-w-2xl">
           <div className="text-center">Content not found</div>
         </div>
@@ -96,7 +96,7 @@ const ContentView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar />
+      <Navbar onAuthClick={() => {}} />
       <div className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
         <div className="mb-6">
           <Button
