@@ -53,7 +53,7 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-white">
       {/* Cover Photo */}
       <div className="h-40 sm:h-48 md:h-64 bg-gradient-to-r from-primary/30 to-primary/50 relative">
         {creator.coverImage && (
@@ -65,7 +65,7 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
         )}
       </div>
 
-      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-white">
         {/* Profile Header */}
         <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8">
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-end sm:gap-6">
