@@ -664,6 +664,7 @@ export type Database = {
           comment: string
           created_at: string
           id: string
+          parent_comment_id: string | null
           stream_id: string
           user_id: string
         }
@@ -671,6 +672,7 @@ export type Database = {
           comment: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           stream_id: string
           user_id: string
         }
@@ -678,10 +680,18 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           stream_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stream_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "stream_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stream_comments_stream_id_fkey"
             columns: ["stream_id"]

@@ -4,12 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Upload, Trash2, Edit, Eye, DollarSign, FileText, Image, Video } from "lucide-react";
+import { Upload, Trash2, Edit, DollarSign, FileText, Image, Video, Tv } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ContentUploadModal from "./ContentUploadModal";
 import ContentEditModal from "./ContentEditModal";
 
@@ -26,6 +23,7 @@ interface Content {
 
 const ContentManagement = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -81,6 +79,10 @@ const ContentManagement = () => {
     }
   };
 
+  const handleGoLive = () => {
+    navigate("/creator");
+  };
+
   const getContentIcon = (contentType: string) => {
     switch (contentType) {
       case 'text':
@@ -115,10 +117,16 @@ const ContentManagement = () => {
                 Upload and manage your premium content
               </CardDescription>
             </div>
-            <Button onClick={() => setShowUploadModal(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Content
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowUploadModal(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Content
+              </Button>
+              <Button onClick={handleGoLive} variant="outline">
+                <Tv className="w-4 h-4 mr-2" />
+                Go Live
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -127,12 +135,18 @@ const ContentManagement = () => {
               <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold mb-2">No content yet</h3>
               <p className="text-gray-600 mb-4">
-                Start by uploading your first piece of content
+                Start by uploading your first piece of content or going live
               </p>
-              <Button onClick={() => setShowUploadModal(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Your First Content
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => setShowUploadModal(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Content
+                </Button>
+                <Button onClick={handleGoLive} variant="outline">
+                  <Tv className="w-4 h-4 mr-2" />
+                  Go Live
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="grid gap-4">
