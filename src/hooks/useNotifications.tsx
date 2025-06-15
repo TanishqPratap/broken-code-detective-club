@@ -328,14 +328,16 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time notifications listener
+  // Set up real-time notifications listener with unique channel name
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up real-time notifications for user:', user.id);
+    // Create a unique channel name with timestamp to avoid conflicts
+    const channelName = `notifications_${user.id}_${Date.now()}`;
+    console.log('Setting up real-time notifications channel:', channelName);
     
     const channel = supabase
-      .channel(`notifications_${user.id}`)
+      .channel(channelName)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -381,7 +383,7 @@ export const useNotifications = () => {
       });
 
     return () => {
-      console.log('Cleaning up notification channel');
+      console.log('Cleaning up notification channel:', channelName);
       supabase.removeChannel(channel);
     };
   }, [user, showNotification]);

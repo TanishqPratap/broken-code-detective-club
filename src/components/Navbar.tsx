@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,12 +51,13 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 
     fetchUnreadCount();
 
-    // Set up real-time subscription for unread count updates
+    // Set up real-time subscription for unread count updates with unique channel name
     if (user) {
-      console.log('Setting up real-time unread count subscription for user:', user.id);
+      const channelName = `unread_count_${user.id}_${Date.now()}`;
+      console.log('Setting up real-time unread count subscription:', channelName);
       
       const channel = supabase
-        .channel(`unread_count_${user.id}`, {
+        .channel(channelName, {
           config: {
             broadcast: { self: true },
             presence: { key: user.id }
@@ -82,7 +84,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
         });
 
       return () => {
-        console.log('Cleaning up unread count subscription');
+        console.log('Cleaning up unread count subscription:', channelName);
         supabase.removeChannel(channel);
       };
     }

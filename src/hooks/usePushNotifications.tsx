@@ -62,12 +62,16 @@ export const usePushNotifications = () => {
     loadSettings();
   }, [user]);
 
-  // Listen for new notifications from the database
+  // Listen for new notifications from the database with unique channel name
   useEffect(() => {
     if (!user || !settings.pushEnabled) return;
 
+    // Create a unique channel name with timestamp to avoid conflicts
+    const channelName = `push-notifications-${user.id}-${Date.now()}`;
+    console.log('Setting up push notifications channel:', channelName);
+
     const channel = supabase
-      .channel('push-notifications')
+      .channel(channelName)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -87,9 +91,12 @@ export const usePushNotifications = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Push notification channel subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up push notification channel:', channelName);
       supabase.removeChannel(channel);
     };
   }, [user, settings]);
