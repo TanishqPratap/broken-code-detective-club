@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Check } from "lucide-react";
@@ -43,8 +43,10 @@ const PaidDMModal = ({
   useEffect(() => {
     if (open) {
       loadRazorpayScript();
+      // Pre-fetch exchange rate when modal opens
+      fetchPaymentInfo();
     }
-  }, [open]);
+  }, [open, chatRate]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -58,6 +60,29 @@ const PaidDMModal = ({
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
+  };
+
+  const fetchPaymentInfo = async () => {
+    try {
+      // Create a payment order to get exchange rate info
+      const { data, error } = await supabase.functions.invoke('create-tip-payment', {
+        body: {
+          recipientId: creatorId,
+          amount: chatRate,
+          message: `Paid DM session with ${creatorName}`
+        }
+      });
+
+      if (error) throw error;
+
+      setPaymentInfo({
+        amountUSD: data.amount_usd,
+        amountINR: data.amount_inr,
+        exchangeRate: data.exchange_rate
+      });
+    } catch (error) {
+      console.error('Error fetching payment info:', error);
+    }
   };
 
   const handleStartSession = async () => {
@@ -77,7 +102,7 @@ const PaidDMModal = ({
 
       console.log('DM payment order created:', data);
 
-      // Store payment info for display
+      // Update payment info for display
       setPaymentInfo({
         amountUSD: data.amount_usd,
         amountINR: data.amount_inr,
@@ -108,7 +133,9 @@ const PaidDMModal = ({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                recipientId: creatorId
+                recipientId: creatorId,
+                amount: chatRate,
+                message: `Paid DM session with ${creatorName}`
               }
             });
 
@@ -183,17 +210,17 @@ const PaidDMModal = ({
             <div className="text-2xl font-bold flex items-center justify-center gap-1">
               <DollarSign className="w-6 h-6" />
               {chatRate} USD
-              {paymentInfo && (
-                <div className="text-sm font-normal text-muted-foreground ml-2">
-                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
-                </div>
-              )}
               <span className="text-sm font-normal text-muted-foreground">/hour</span>
             </div>
             {paymentInfo && (
-              <p className="text-xs text-muted-foreground">
-                Exchange rate: 1 USD = ₹{paymentInfo.exchangeRate.toFixed(2)} INR
-              </p>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-muted-foreground">
+                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Exchange rate: 1 USD = ₹{paymentInfo.exchangeRate.toFixed(2)} INR
+                </p>
+              </div>
             )}
           </CardHeader>
           

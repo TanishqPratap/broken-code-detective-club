@@ -26,6 +26,11 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    amountUSD: number;
+    amountINR: number;
+    exchangeRate: number;
+  } | null>(null);
   const { toast } = useToast();
 
   const loadRazorpayScript = () => {
@@ -71,6 +76,13 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
 
       console.log('Payment order created:', orderData);
 
+      // Store payment info for display
+      setPaymentInfo({
+        amountUSD: orderData.amount_usd,
+        amountINR: orderData.amount_inr,
+        exchangeRate: orderData.exchange_rate
+      });
+
       // Get current user for payment
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
@@ -104,7 +116,7 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
             
             toast({
               title: "Tip Sent!",
-              description: `Successfully sent $${tipAmount} tip`,
+              description: `Successfully sent $${tipAmount} tip (₹${paymentInfo?.amountINR.toFixed(2)} INR)`,
             });
             
             // Call the callback to show tip in chat
@@ -114,6 +126,7 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
             onClose();
             setAmount("");
             setMessage("");
+            setPaymentInfo(null);
             
           } catch (verifyError: any) {
             console.error('Payment verification failed:', verifyError);
@@ -134,6 +147,7 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
           ondismiss: function() {
             console.log('Razorpay payment cancelled');
             setLoading(false);
+            setPaymentInfo(null);
           }
         }
       };
@@ -149,6 +163,7 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
         variant: "destructive",
       });
       setLoading(false);
+      setPaymentInfo(null);
     }
   };
 
@@ -175,6 +190,11 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
               onChange={(e) => setAmount(e.target.value)}
               disabled={loading}
             />
+            {paymentInfo && (
+              <p className="text-sm text-muted-foreground mt-1">
+                ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR (Rate: {paymentInfo.exchangeRate.toFixed(2)})
+              </p>
+            )}
           </div>
           
           <div>
@@ -194,7 +214,7 @@ const TipModal = ({ isOpen, onClose, recipientId, onTipSent }: TipModalProps) =>
               Cancel
             </Button>
             <Button onClick={handleTip} className="flex-1" disabled={loading || !amount}>
-              {loading ? "Processing..." : `Send $${amount || "0"} Tip`}
+              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)}` : `Send $${amount || "0"} Tip`}
             </Button>
           </div>
         </div>
