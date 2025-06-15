@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,7 +79,7 @@ export const useNotifications = () => {
             avatar_url: relatedUser?.avatar_url,
             is_verified: relatedUser?.is_verified || false
           },
-          content: notification.metadata?.comment_text || notification.metadata?.message,
+          content: notification.metadata?.comment_text || notification.metadata?.message || notification.metadata?.message_preview,
           post_preview: notification.related_content_type === 'post' ? 
             'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=60&h=60&fit=crop' : undefined,
           timestamp: timeAgo,
@@ -213,6 +214,10 @@ export const useNotifications = () => {
         break;
       case 'message':
         window.location.href = `/dm`;
+        break;
+      case 'story_like':
+        // Could navigate to stories or profile
+        window.location.href = `/creator/${notification.user.id}`;
         break;
       default:
         break;

@@ -19,6 +19,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: Not
     switch (type) {
       case 'like':
         return <Heart className={`${iconClass} text-red-500 fill-current`} />;
+      case 'story_like':
+        return <Heart className={`${iconClass} text-pink-500 fill-current`} />;
       case 'comment':
         return <MessageCircle className={`${iconClass} text-blue-500`} />;
       case 'follow':

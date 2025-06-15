@@ -53,10 +53,28 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     return () => clearInterval(interval);
   }, [currentIndex, currentStory, duration, stories.length, onClose]);
 
-  // Reset like state when story changes
+  // Check if current story is liked when story changes
   useEffect(() => {
-    setIsLiked(false);
-  }, [currentIndex]);
+    const checkIfLiked = async () => {
+      if (!user || !currentStory) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('story_likes')
+          .select('id')
+          .eq('story_id', currentStory.id)
+          .eq('user_id', user.id)
+          .single();
+
+        setIsLiked(!!data);
+      } catch (error) {
+        // No like found, story is not liked
+        setIsLiked(false);
+      }
+    };
+
+    checkIfLiked();
+  }, [currentIndex, user, currentStory]);
 
   // Prevent body scroll when story viewer is open
   useEffect(() => {
@@ -88,20 +106,36 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     try {
       setIsLiking(true);
       
-      // For now, we'll just show a visual feedback
-      // In a real app, you'd save this to a story_likes table
-      setIsLiked(!isLiked);
-      
-      if (!isLiked) {
-        toast.success("Story liked!");
-      } else {
+      if (isLiked) {
+        // Unlike the story
+        const { error } = await supabase
+          .from('story_likes')
+          .delete()
+          .eq('story_id', currentStory.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        
+        setIsLiked(false);
         toast.success("Story unliked!");
+      } else {
+        // Like the story
+        const { error } = await supabase
+          .from('story_likes')
+          .insert({
+            story_id: currentStory.id,
+            user_id: user.id
+          });
+
+        if (error) throw error;
+        
+        setIsLiked(true);
+        toast.success("Story liked!");
       }
       
-      console.log(`${isLiked ? 'Unliked' : 'Liked'} story:`, currentStory.id);
     } catch (error) {
-      console.error('Error liking story:', error);
-      toast.error("Failed to like story");
+      console.error('Error liking/unliking story:', error);
+      toast.error("Failed to update like");
     } finally {
       setIsLiking(false);
     }
