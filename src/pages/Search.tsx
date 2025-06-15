@@ -36,7 +36,7 @@ interface Post {
     username: string;
     display_name: string | null;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 const Search = () => {
@@ -249,15 +249,15 @@ const Search = () => {
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={post.profiles.avatar_url || ''} />
+                          <AvatarImage src={post.profiles?.avatar_url || ''} />
                           <AvatarFallback>
-                            {post.profiles.display_name?.[0] || post.profiles.username?.[0] || "U"}
+                            {post.profiles?.display_name?.[0] || post.profiles?.username?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-sm">
-                              {post.profiles.display_name || post.profiles.username}
+                              {post.profiles?.display_name || post.profiles?.username || "Unknown User"}
                             </span>
                             <span className="text-xs text-gray-500">
                               {formatTimeAgo(post.created_at)}
