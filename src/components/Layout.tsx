@@ -2,7 +2,7 @@
 import { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
-import { AuthModal } from "@/components/auth/AuthModal";
+import AuthModal from "@/components/auth/AuthModal";
 
 const Layout = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
