@@ -41,9 +41,13 @@ const App = () => (
               <Route path="/watch/:streamId" element={<Watch />} />
               <Route path="/dm" element={<PaidDM />} />
               <Route path="/stream-payment-success" element={<StreamPaymentSuccess />} />
-              {/* Handle legacy routes */}
+              {/* Redirect legacy routes */}
+              <Route path="/messages" element={<Navigate to="/dm" replace />} />
               <Route path="/creators/:creatorId" element={<Navigate to="/creator/:creatorId" replace />} />
               <Route path="/user/:userId" element={<Navigate to="/creator/:userId" replace />} />
+              {/* Add missing routes that might be needed */}
+              <Route path="/search" element={<Navigate to="/discover" replace />} />
+              <Route path="/notifications" element={<Navigate to="/" replace />} />
               {/* Catch all 404s */}
               <Route path="*" element={<NotFound />} />
             </Routes>
