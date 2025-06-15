@@ -310,8 +310,8 @@ export const useNotifications = () => {
       case 'comment':
       case 'comment_reply':
         if (notification.related_id) {
-          // Navigate to the specific post - corrected route
-          window.open(`/post/${notification.related_id}`, '_blank');
+          // Navigate to the specific post using the correct route
+          window.open(`/posts/${notification.related_id}`, '_blank');
         }
         break;
       case 'follow':
