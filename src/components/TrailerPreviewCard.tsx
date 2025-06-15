@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Play, Star, UserPlus, Eye, Heart, MessageCircle, Share, Send } from "lucide-react";
+import { Play, Star, Eye, Heart, MessageCircle, Share, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -398,14 +398,8 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
             </Button>
           </div>
           
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              {formatTimeAgo(trailer.created_at)}
-            </div>
-            <Button size="sm" onClick={handleCreatorClick}>
-              <UserPlus className="w-4 h-4 mr-1" />
-              View Profile
-            </Button>
+          <div className="text-sm text-muted-foreground">
+            {formatTimeAgo(trailer.created_at)}
           </div>
         </div>
 
