@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,21 +64,24 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
     if (!user) return;
 
     try {
+      console.log('Checking like status for post:', post.id, 'user:', user.id);
+      
       const { data, error } = await supabase
         .from('posts_interactions')
         .select('id')
         .eq('post_id', post.id)
         .eq('user_id', user.id)
         .eq('interaction_type', 'like')
-        .maybeSingle();
+        .limit(1);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error checking like status:', error);
         return;
       }
 
-      setIsLiked(!!data);
-      console.log('Like status checked:', !!data);
+      const liked = data && data.length > 0;
+      setIsLiked(liked);
+      console.log('Like status checked:', liked);
     } catch (error) {
       console.error('Error in checkLikeStatus:', error);
     }
@@ -189,14 +193,13 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         console.log('Post unliked successfully');
       } else {
         // Like
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('posts_interactions')
           .insert({
             post_id: post.id,
             user_id: user.id,
             interaction_type: 'like'
-          })
-          .select();
+          });
 
         if (error) {
           console.error('Error liking post:', error);
@@ -204,13 +207,13 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         }
         setIsLiked(true);
         setLikesCount(prev => prev + 1);
-        console.log('Post liked successfully, data:', data);
+        console.log('Post liked successfully');
         
-        // Manual trigger for notification (fallback if database trigger fails)
+        // Create notification if not liking own post
         if (post.user_id !== user.id) {
-          console.log('Triggering like notification manually as fallback');
+          console.log('Creating like notification');
           try {
-            await supabase.rpc('create_notification', {
+            const { error: notifError } = await supabase.rpc('create_notification', {
               p_user_id: post.user_id,
               p_type: 'like',
               p_title: 'New Like',
@@ -220,9 +223,14 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
               p_related_content_type: 'post',
               p_metadata: {}
             });
-            console.log('Manual like notification created');
+            
+            if (notifError) {
+              console.error('Error creating like notification:', notifError);
+            } else {
+              console.log('Like notification created successfully');
+            }
           } catch (notifError) {
-            console.error('Error creating manual like notification:', notifError);
+            console.error('Error in notification creation:', notifError);
           }
         }
       }
@@ -243,15 +251,14 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
     try {
       console.log('Comment action triggered for post:', post.id, 'by user:', user.id);
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('posts_interactions')
         .insert({
           post_id: post.id,
           user_id: user.id,
           interaction_type: 'comment',
           comment_text: commentText.trim()
-        })
-        .select();
+        });
 
       if (error) {
         console.error('Error adding comment:', error);
@@ -266,13 +273,13 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
         fetchComments();
       }
       
-      console.log('Comment added successfully, data:', data);
+      console.log('Comment added successfully');
       
-      // Manual trigger for notification (fallback if database trigger fails)
+      // Create notification if not commenting on own post
       if (post.user_id !== user.id) {
-        console.log('Triggering comment notification manually as fallback');
+        console.log('Creating comment notification');
         try {
-          await supabase.rpc('create_notification', {
+          const { error: notifError } = await supabase.rpc('create_notification', {
             p_user_id: post.user_id,
             p_type: 'comment',
             p_title: 'New Comment',
@@ -282,9 +289,14 @@ const PostCard = ({ post, onDelete }: PostCardProps) => {
             p_related_content_type: 'post',
             p_metadata: { comment_text: commentText.trim() }
           });
-          console.log('Manual comment notification created');
+          
+          if (notifError) {
+            console.error('Error creating comment notification:', notifError);
+          } else {
+            console.log('Comment notification created successfully');
+          }
         } catch (notifError) {
-          console.error('Error creating manual comment notification:', notifError);
+          console.error('Error in comment notification creation:', notifError);
         }
       }
       
