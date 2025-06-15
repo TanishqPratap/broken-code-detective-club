@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, Heart, Star, Zap, Trophy, Calendar, Globe } from "lucide-react";
+import { Users, MessageSquare, Heart, Star, Zap, Trophy, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Community = () => {
@@ -34,27 +33,6 @@ const Community = () => {
       icon: Calendar,
       title: "Virtual Events",
       description: "Join live webinars, workshops, and networking events to learn and connect with others."
-    }
-  ];
-
-  const upcomingEvents = [
-    {
-      title: "Creator Masterclass: Building Your First 1K Subscribers",
-      date: "June 20, 2024",
-      time: "2:00 PM EST",
-      type: "Webinar"
-    },
-    {
-      title: "Community Networking Hour",
-      date: "June 22, 2024",
-      time: "7:00 PM EST",
-      type: "Networking"
-    },
-    {
-      title: "Q&A with Top Creators",
-      date: "June 25, 2024",
-      time: "3:00 PM EST",
-      type: "Q&A Session"
     }
   ];
 
@@ -126,43 +104,6 @@ const Community = () => {
                   {feature.description}
                 </CardDescription>
               </CardHeader>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Upcoming Events */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">
-          Upcoming Events
-        </h2>
-        <div className="max-w-4xl mx-auto space-y-6">
-          {upcomingEvents.map((event, index) => (
-            <Card key={index} className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-xs text-brand-cyan font-medium px-2 py-1 bg-brand-cyan/10 rounded-full">
-                        {event.type}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {event.title}
-                    </h3>
-                    <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-400">
-                      <span className="flex items-center space-x-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{event.date}</span>
-                      </span>
-                      <span>{event.time}</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 md:mt-0">
-                    <Button variant="outline">Register</Button>
-                  </div>
-                </div>
-              </CardContent>
             </Card>
           ))}
         </div>
