@@ -11,7 +11,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const StoryUpload = () => {
+interface StoryUploadProps {
+  onStoryUploaded?: () => void;
+}
+
+const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -69,7 +73,7 @@ const StoryUpload = () => {
 
       // Save story to database
       const { error: dbError } = await supabase
-        .from('stories')
+        .from('stories' as any)
         .insert({
           creator_id: user.id,
           media_url: publicUrl,
@@ -85,6 +89,11 @@ const StoryUpload = () => {
       setFile(null);
       setTextOverlay("");
       setPreview(null);
+      
+      // Call the callback to refresh stories
+      if (onStoryUploaded) {
+        onStoryUploaded();
+      }
     } catch (error) {
       console.error('Error uploading story:', error);
       toast.error("Failed to upload story");
@@ -96,9 +105,12 @@ const StoryUpload = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Story
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full p-0 bg-blue-600 border-2 border-white text-white hover:bg-blue-700"
+        >
+          <Plus className="w-3 h-3" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

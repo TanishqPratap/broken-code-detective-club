@@ -265,6 +265,53 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          content_interactions: boolean
+          created_at: string
+          id: string
+          live_streams: boolean
+          new_followers: boolean
+          new_messages: boolean
+          push_enabled: boolean
+          tips_received: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_interactions?: boolean
+          created_at?: string
+          id?: string
+          live_streams?: boolean
+          new_followers?: boolean
+          new_messages?: boolean
+          push_enabled?: boolean
+          tips_received?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_interactions?: boolean
+          created_at?: string
+          id?: string
+          live_streams?: boolean
+          new_followers?: boolean
+          new_messages?: boolean
+          push_enabled?: boolean
+          tips_received?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content_type: string
@@ -380,6 +427,88 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      scheduled_posts: {
+        Row: {
+          content: string
+          created_at: string
+          creator_id: string
+          id: string
+          media_url: string | null
+          scheduled_for: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          creator_id: string
+          id?: string
+          media_url?: string | null
+          scheduled_for: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          creator_id?: string
+          id?: string
+          media_url?: string | null
+          scheduled_for?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          content_type: string
+          created_at: string
+          creator_id: string
+          expires_at: string
+          id: string
+          media_url: string
+          text_overlay: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          creator_id: string
+          expires_at?: string
+          id?: string
+          media_url: string
+          text_overlay?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          creator_id?: string
+          expires_at?: string
+          id?: string
+          media_url?: string
+          text_overlay?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stream_comments: {
         Row: {

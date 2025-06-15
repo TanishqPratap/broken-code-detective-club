@@ -47,7 +47,7 @@ const ContentScheduler = () => {
 
     try {
       const { data, error } = await supabase
-        .from('scheduled_posts')
+        .from('scheduled_posts' as any)
         .select('*')
         .eq('creator_id', user.id)
         .order('scheduled_for', { ascending: true });
@@ -105,7 +105,7 @@ const ContentScheduler = () => {
 
       // Save scheduled post
       const { error } = await supabase
-        .from('scheduled_posts')
+        .from('scheduled_posts' as any)
         .insert({
           creator_id: user.id,
           title,
@@ -132,7 +132,7 @@ const ContentScheduler = () => {
   const deleteScheduledPost = async (postId: string) => {
     try {
       const { error } = await supabase
-        .from('scheduled_posts')
+        .from('scheduled_posts' as any)
         .delete()
         .eq('id', postId);
 

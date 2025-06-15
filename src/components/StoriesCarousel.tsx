@@ -45,7 +45,7 @@ const StoriesCarousel = () => {
     try {
       // Fetch stories from followed creators and own stories
       const { data: stories, error } = await supabase
-        .from('stories')
+        .from('stories' as any)
         .select(`
           *,
           profiles:creator_id (
@@ -126,7 +126,7 @@ const StoriesCarousel = () => {
               <AvatarImage src={user?.user_metadata?.avatar_url} />
               <AvatarFallback>You</AvatarFallback>
             </Avatar>
-            <StoryUpload />
+            <StoryUpload onStoryUploaded={fetchStories} />
           </div>
           <span className="text-xs text-center w-16 truncate">Your Story</span>
         </div>
