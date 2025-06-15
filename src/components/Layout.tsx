@@ -9,10 +9,10 @@ interface LayoutProps {
 
 const Layout = ({ children, onAuthClick }: LayoutProps) => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       <Navbar onAuthClick={onAuthClick} />
-      <main className="ml-64 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+      <main className="flex-1 ml-64">
+        <div className="w-full min-h-screen px-4 py-6">
           {children}
         </div>
       </main>

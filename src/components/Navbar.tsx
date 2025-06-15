@@ -28,15 +28,16 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     { path: "/search", label: "Search", icon: Search },
     { path: "/discover", label: "Explore", icon: Compass },
     { path: "/posts", label: "Reels", icon: Film },
-    { path: "/messages", label: "Messages", icon: MessageSquare },
+    { path: "/dm", label: "Messages", icon: MessageSquare },
     { path: "/notifications", label: "Notifications", icon: Bell },
     { path: "/creator", label: "Create", icon: PlusSquare },
+    { path: "/watch", label: "Live", icon: Video },
   ];
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-40 flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <Link to="/" className="flex items-center space-x-3">
           <Heart className="w-8 h-8 text-primary" />
           <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -46,7 +47,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-4 py-6">
+      <nav className="flex-1 px-4 py-6 overflow-y-auto">
         <div className="space-y-2">
           {navItems.map(({ path, label, icon: Icon }) => (
             <Link key={path} to={path}>
@@ -66,7 +67,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
       </nav>
 
       {/* User Section */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="space-y-4">
           <ThemeToggle />
           
