@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +15,7 @@ type Post = Tables<"posts"> & {
   likes_count: number;
   user_liked: boolean;
   comments_count: number;
+  user_subscribed: boolean;
 };
 
 const Vibes = () => {
@@ -73,10 +73,25 @@ const Vibes = () => {
 
         if (commentsError) throw commentsError;
 
+        // Check subscriptions if user is logged in
+        let subscriptionsData: any[] = [];
+        if (user) {
+          const { data: subsData, error: subsError } = await supabase
+            .from('subscriptions')
+            .select('creator_id')
+            .eq('subscriber_id', user.id)
+            .eq('status', 'active')
+            .in('creator_id', userIds);
+
+          if (subsError) throw subsError;
+          subscriptionsData = subsData || [];
+        }
+
         const processedVibes: Post[] = vibesData.map(vibe => {
           const profile = profilesMap.get(vibe.user_id);
           const vibeLikes = likesData?.filter(like => like.post_id === vibe.id) || [];
           const vibeComments = commentsData?.filter(comment => comment.post_id === vibe.id) || [];
+          const isSubscribed = subscriptionsData.some(sub => sub.creator_id === vibe.user_id);
           
           return {
             ...vibe,
@@ -85,7 +100,8 @@ const Vibes = () => {
             creator_username: profile?.username || 'unknown',
             likes_count: vibeLikes.length,
             user_liked: user ? vibeLikes.some(like => like.user_id === user.id) : false,
-            comments_count: vibeComments.length
+            comments_count: vibeComments.length,
+            user_subscribed: isSubscribed
           };
         });
 
@@ -199,6 +215,49 @@ const Vibes = () => {
     } catch (error) {
       console.error('Error liking vibe:', error);
       toast.error('Failed to like vibe');
+    }
+  };
+
+  const handleSubscribe = async (creatorId: string, currentlySubscribed: boolean) => {
+    if (!user) {
+      toast.error('Please sign in to subscribe');
+      return;
+    }
+
+    try {
+      if (currentlySubscribed) {
+        // Unsubscribe
+        await supabase
+          .from('subscriptions')
+          .delete()
+          .eq('creator_id', creatorId)
+          .eq('subscriber_id', user.id);
+        
+        toast.success('Unsubscribed successfully');
+      } else {
+        // Subscribe
+        await supabase
+          .from('subscriptions')
+          .insert({
+            creator_id: creatorId,
+            subscriber_id: user.id,
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          });
+        
+        toast.success('Subscribed successfully');
+      }
+
+      // Update the local state
+      setVibes(prev => prev.map(vibe => 
+        vibe.user_id === creatorId 
+          ? { ...vibe, user_subscribed: !currentlySubscribed }
+          : vibe
+      ));
+    } catch (error) {
+      console.error('Error handling subscription:', error);
+      toast.error('Failed to update subscription');
     }
   };
 
@@ -316,9 +375,14 @@ const Vibes = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-white text-white hover:bg-white hover:text-black bg-transparent text-xs px-2 py-1 h-6"
+                        onClick={() => handleSubscribe(vibe.user_id, vibe.user_subscribed)}
+                        className={`text-xs px-2 py-1 h-6 ${
+                          vibe.user_subscribed 
+                            ? 'border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-white bg-transparent' 
+                            : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
+                        }`}
                       >
-                        Subscribe
+                        {vibe.user_subscribed ? 'Subscribed' : 'Subscribe'}
                       </Button>
                     </div>
                   </div>

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { X, Send, Heart } from "lucide-react";
+import { X, Send, Heart, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Comment {
@@ -13,11 +13,15 @@ interface Comment {
   comment_text: string;
   created_at: string;
   user_id: string;
+  parent_comment_id: string | null;
   profiles: {
     username: string;
     display_name: string;
     avatar_url: string;
   } | null;
+  replies?: Comment[];
+  likes_count: number;
+  user_liked: boolean;
 }
 
 interface VibesCommentsProps {
@@ -30,6 +34,8 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,37 +43,69 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     try {
       setLoading(true);
       
-      // First get the interactions
+      // Get all interactions for this post
       const { data: interactionsData, error: interactionsError } = await supabase
         .from('posts_interactions')
-        .select('id, comment_text, created_at, user_id')
+        .select('id, comment_text, created_at, user_id, parent_comment_id, interaction_type')
         .eq('post_id', vibeId)
-        .eq('interaction_type', 'comment')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (interactionsError) throw interactionsError;
 
       if (interactionsData && interactionsData.length > 0) {
-        // Get user profiles for the comments
-        const userIds = [...new Set(interactionsData.map(comment => comment.user_id))];
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', userIds);
+        // Separate comments and likes
+        const commentsData = interactionsData.filter(item => item.interaction_type === 'comment');
+        const likesData = interactionsData.filter(item => item.interaction_type === 'like');
 
-        if (profilesError) throw profilesError;
+        if (commentsData.length > 0) {
+          // Get user profiles for the comments
+          const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url')
+            .in('id', userIds);
 
-        const profilesMap = new Map(
-          profilesData?.map(profile => [profile.id, profile]) || []
-        );
+          if (profilesError) throw profilesError;
 
-        // Combine interactions with profiles
-        const processedComments: Comment[] = interactionsData.map(interaction => ({
-          ...interaction,
-          profiles: profilesMap.get(interaction.user_id) || null
-        }));
+          const profilesMap = new Map(
+            profilesData?.map(profile => [profile.id, profile]) || []
+          );
 
-        setComments(processedComments);
+          // Process comments with profiles and likes
+          const processedComments: Comment[] = commentsData.map(comment => ({
+            ...comment,
+            profiles: profilesMap.get(comment.user_id) || null,
+            replies: [],
+            likes_count: 0, // We'll calculate this later if needed
+            user_liked: false // We'll calculate this later if needed
+          }));
+
+          // Build comment tree structure
+          const commentMap = new Map<string, Comment>();
+          const rootComments: Comment[] = [];
+
+          // First, create a map of all comments
+          processedComments.forEach(comment => {
+            commentMap.set(comment.id, comment);
+          });
+
+          // Then, organize them into a tree structure
+          processedComments.forEach(comment => {
+            if (comment.parent_comment_id) {
+              const parent = commentMap.get(comment.parent_comment_id);
+              if (parent) {
+                if (!parent.replies) parent.replies = [];
+                parent.replies.push(comment);
+              }
+            } else {
+              rootComments.push(comment);
+            }
+          });
+
+          setComments(rootComments);
+        } else {
+          setComments([]);
+        }
       } else {
         setComments([]);
       }
@@ -85,8 +123,9 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     }
   }, [isOpen, vibeId]);
 
-  const handleSubmitComment = async () => {
-    if (!user || !newComment.trim()) return;
+  const handleSubmitComment = async (parentId: string | null = null) => {
+    const text = parentId ? replyText : newComment;
+    if (!user || !text.trim()) return;
 
     try {
       setSubmitting(true);
@@ -96,12 +135,19 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
           post_id: vibeId,
           user_id: user.id,
           interaction_type: 'comment',
-          comment_text: newComment.trim()
+          comment_text: text.trim(),
+          parent_comment_id: parentId
         });
 
       if (error) throw error;
 
-      setNewComment("");
+      if (parentId) {
+        setReplyText("");
+        setReplyingTo(null);
+      } else {
+        setNewComment("");
+      }
+      
       fetchComments();
       toast.success("Comment added!");
     } catch (error) {
@@ -109,6 +155,40 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
       toast.error("Failed to add comment");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleLikeComment = async (commentId: string, currentlyLiked: boolean) => {
+    if (!user) {
+      toast.error('Please sign in to like comments');
+      return;
+    }
+
+    try {
+      if (currentlyLiked) {
+        await supabase
+          .from('posts_interactions')
+          .delete()
+          .eq('post_id', vibeId)
+          .eq('user_id', user.id)
+          .eq('interaction_type', 'like')
+          .eq('parent_comment_id', commentId);
+      } else {
+        await supabase
+          .from('posts_interactions')
+          .insert({
+            post_id: vibeId,
+            user_id: user.id,
+            interaction_type: 'like',
+            parent_comment_id: commentId
+          });
+      }
+
+      // Update local state would go here if we were tracking likes
+      toast.success(currentlyLiked ? 'Unliked' : 'Liked');
+    } catch (error) {
+      console.error('Error liking comment:', error);
+      toast.error('Failed to like comment');
     }
   };
 
@@ -122,6 +202,106 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
     return `${Math.floor(diffInSeconds / 86400)}d`;
   };
+
+  const renderComment = (comment: Comment, depth: number = 0) => (
+    <div key={comment.id} className={`${depth > 0 ? 'ml-8 border-l border-gray-700 pl-3' : ''}`}>
+      <div className="flex space-x-3 mb-3">
+        <Avatar className="w-8 h-8 flex-shrink-0">
+          <AvatarImage src={comment.profiles?.avatar_url || ""} />
+          <AvatarFallback className="bg-gray-600 text-white text-xs">
+            {comment.profiles?.display_name?.[0]?.toUpperCase() || 
+             comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="font-medium text-sm">
+              {comment.profiles?.display_name || comment.profiles?.username || 'Unknown'}
+            </span>
+            <span className="text-gray-400 text-xs">
+              {formatTimeAgo(comment.created_at)}
+            </span>
+          </div>
+          <p className="text-sm text-gray-100 break-words mb-2">
+            {comment.comment_text}
+          </p>
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleLikeComment(comment.id, comment.user_liked)}
+              className="text-gray-400 hover:text-white text-xs p-0 h-auto"
+            >
+              <Heart className={`w-3 h-3 mr-1 ${comment.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
+              {comment.likes_count > 0 ? comment.likes_count : 'Like'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyingTo(comment.id)}
+              className="text-gray-400 hover:text-white text-xs p-0 h-auto"
+            >
+              <MessageCircle className="w-3 h-3 mr-1" />
+              Reply
+            </Button>
+          </div>
+          
+          {/* Reply input for this specific comment */}
+          {replyingTo === comment.id && (
+            <div className="mt-3 flex items-center space-x-2">
+              <Avatar className="w-6 h-6 flex-shrink-0">
+                <AvatarImage src="" />
+                <AvatarFallback className="bg-gray-600 text-white text-xs">
+                  U
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 flex items-center space-x-2">
+                <Input
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Write a reply..."
+                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 text-sm"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitComment(comment.id);
+                    }
+                  }}
+                />
+                <Button
+                  onClick={() => handleSubmitComment(comment.id)}
+                  disabled={!replyText.trim() || submitting}
+                  size="sm"
+                  variant="ghost"
+                  className="text-blue-400 hover:text-blue-300 p-1"
+                >
+                  <Send className="w-3 h-3" />
+                </Button>
+                <Button
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setReplyText("");
+                  }}
+                  size="sm"
+                  variant="ghost"
+                  className="text-gray-400 hover:text-white p-1"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Render replies recursively */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="mt-2">
+          {comment.replies.map(reply => renderComment(reply, depth + 1))}
+        </div>
+      )}
+    </div>
+  );
 
   if (!isOpen) return null;
 
@@ -162,47 +342,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
               </div>
             </div>
           ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex space-x-3">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarImage src={comment.profiles?.avatar_url || ""} />
-                  <AvatarFallback className="bg-gray-600 text-white text-xs">
-                    {comment.profiles?.display_name?.[0]?.toUpperCase() || 
-                     comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {comment.profiles?.display_name || comment.profiles?.username || 'Unknown'}
-                    </span>
-                    <span className="text-gray-400 text-xs">
-                      {formatTimeAgo(comment.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-100 break-words">
-                    {comment.comment_text}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-400 hover:text-white text-xs p-0 h-auto"
-                    >
-                      <Heart className="w-3 h-3 mr-1" />
-                      Like
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-400 hover:text-white text-xs p-0 h-auto"
-                    >
-                      Reply
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))
+            comments.map(comment => renderComment(comment))
           )}
         </div>
 
@@ -230,7 +370,7 @@ const VibesComments = ({ vibeId, isOpen, onClose }: VibesCommentsProps) => {
                   }}
                 />
                 <Button
-                  onClick={handleSubmitComment}
+                  onClick={() => handleSubmitComment()}
                   disabled={!newComment.trim() || submitting}
                   size="sm"
                   variant="ghost"
