@@ -11,7 +11,7 @@ const Shop = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Creator Merchandise</h1>
           <p className="text-lg text-gray-600 max-w-2xl">
@@ -20,11 +20,11 @@ const Shop = () => {
           </p>
         </div>
 
-        <Card className="mb-8">
+        <Card className="mb-8 shadow-lg">
           <CardHeader>
-            <CardTitle>Featured Products</CardTitle>
+            <CardTitle className="text-2xl">Featured Products</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <MerchandiseList />
           </CardContent>
         </Card>
