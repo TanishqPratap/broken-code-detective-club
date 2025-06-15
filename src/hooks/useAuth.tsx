@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id || 'No session');
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -27,9 +28,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+        console.log('Auth state changed:', event, session?.user?.id || 'No session');
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // If the event is SIGNED_OUT, ensure we're on the home page
+        if (event === 'SIGNED_OUT') {
+          console.log('User signed out, redirecting to home...');
+          setTimeout(() => {
+            if (window.location.pathname !== '/') {
+              window.location.href = '/';
+            }
+          }, 100);
+        }
       }
     );
 
@@ -41,47 +52,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       console.log('Starting sign out process...');
       
-      // Clear local state first
+      // Clear local state immediately
       setUser(null);
       
-      // Check if we have a current session before trying to sign out
-      const { data: { session } } = await supabase.auth.getSession();
+      // Always attempt to sign out from Supabase
+      console.log('Attempting to sign out from Supabase...');
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       
-      if (session) {
-        console.log('Session found, signing out from Supabase...');
-        const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-          console.error('Supabase sign out error:', error);
-          // Don't show error for "session not found" as user is already signed out
-          if (!error.message.includes('Session not found')) {
-            toast({
-              title: "Sign out error",
-              description: "There was an issue signing out, but you've been logged out locally.",
-              variant: "destructive"
-            });
-          }
+      if (error) {
+        console.error('Supabase sign out error:', error);
+        // Even if there's an error, we've cleared local state
+        if (error.message.includes('Session not found')) {
+          console.log('Session was already invalid, proceeding with local cleanup');
+        } else {
+          // For other errors, still proceed but log them
+          console.warn('Sign out error, but proceeding with local cleanup:', error.message);
         }
       } else {
-        console.log('No session found, user already signed out');
+        console.log('Successfully signed out from Supabase');
       }
       
-      // Always show success message and redirect
+      // Always show success message
       toast({
         title: "Signed out successfully",
         description: "You have been signed out.",
         variant: "default"
       });
 
-      // Navigate to home page
+      // Force navigation to home page
+      console.log('Navigating to home page...');
       setTimeout(() => {
         window.location.href = '/';
-      }, 500);
+      }, 200);
       
     } catch (error) {
       console.error('Unexpected sign out error:', error);
       
-      // Still clear local state and redirect even on error
+      // Even on unexpected errors, clear state and redirect
       setUser(null);
       
       toast({
@@ -90,10 +97,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         variant: "default"
       });
       
-      // Navigate to home page
+      // Force navigation
       setTimeout(() => {
         window.location.href = '/';
-      }, 500);
+      }, 200);
     } finally {
       setLoading(false);
     }
