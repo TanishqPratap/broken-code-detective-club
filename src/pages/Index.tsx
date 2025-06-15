@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +9,13 @@ import Footer from "@/components/Footer";
 import StoriesCarousel from "@/components/StoriesCarousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-
 const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-
   const handleGetStarted = () => {
     if (user) {
       navigate("/creator");
@@ -23,22 +23,18 @@ const Index = () => {
       setShowAuthModal(true);
     }
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+    return <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // Show feed for authenticated users
   if (user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+    return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
         <Navbar onAuthClick={() => setShowAuthModal(true)} />
         
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
@@ -47,7 +43,7 @@ const Index = () => {
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent px-2">
               Welcome back!
             </h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready to create amazing content?</p>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready For Amazing Content?</p>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Button size="lg" onClick={() => navigate("/creator")} className="w-full sm:w-auto">
@@ -107,13 +103,11 @@ const Index = () => {
 
         <Footer />
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-      </div>
-    );
+      </div>;
   }
 
   // Clean marketing page for non-authenticated users
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+  return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       {/* Hero Section */}
@@ -209,8 +203,6 @@ const Index = () => {
 
       <Footer />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
