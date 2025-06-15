@@ -103,7 +103,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
       {/* Progress bars */}
-      <div className="absolute top-4 left-4 right-4 flex gap-1 z-10 max-w-md mx-auto">
+      <div className="absolute top-4 left-4 right-4 flex gap-1 z-20">
         {stories.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded">
             <div
@@ -117,7 +117,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       </div>
 
       {/* Header */}
-      <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-10 max-w-md mx-auto">
+      <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
           <Avatar className="w-8 h-8">
             <AvatarImage src={currentStory.creator_avatar} />
@@ -133,56 +133,52 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         </Button>
       </div>
 
-      {/* Navigation areas */}
+      {/* Navigation areas - invisible touch areas for mobile */}
       <div className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToPrevious} />
       <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content container - mobile-first design */}
-      <div className="relative w-full h-full max-w-sm mx-auto bg-black flex flex-col justify-center items-center px-4">
-        <div className="relative w-full aspect-[9/16] max-h-[calc(100vh-120px)] bg-black rounded-lg overflow-hidden">
-          {currentStory.content_type === 'image' ? (
-            <img
-              src={currentStory.media_url}
-              alt="Story"
-              className="w-full h-full object-cover"
-              style={{ objectPosition: 'center' }}
-            />
-          ) : (
-            <video
-              src={currentStory.media_url}
-              className="w-full h-full object-cover"
-              style={{ objectPosition: 'center' }}
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          )}
+      {/* Story content - full screen */}
+      <div className="relative w-full h-full flex items-center justify-center">
+        {currentStory.content_type === 'image' ? (
+          <img
+            src={currentStory.media_url}
+            alt="Story"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <video
+            src={currentStory.media_url}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        )}
 
-          {/* Text overlay */}
-          {currentStory.text_overlay && (
-            <div className="absolute bottom-20 left-4 right-4">
-              <p className="text-white text-base font-medium text-center drop-shadow-lg px-4 py-2 bg-black/30 rounded-lg backdrop-blur-sm">
-                {currentStory.text_overlay}
-              </p>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={`text-white hover:bg-white/20 transition-colors p-3 rounded-full ${isLiked ? 'text-red-500' : ''}`}
-              onClick={handleLike}
-              disabled={isLiking}
-            >
-              <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-3 rounded-full">
-              <MessageCircle className="w-6 h-6" />
-            </Button>
+        {/* Text overlay */}
+        {currentStory.text_overlay && (
+          <div className="absolute bottom-24 left-4 right-4 z-10">
+            <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
+              {currentStory.text_overlay}
+            </p>
           </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
+          <Button 
+            variant="ghost" 
+            size="lg" 
+            className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
+            onClick={handleLike}
+            disabled={isLiking}
+          >
+            <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
+          </Button>
+          <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
+            <MessageCircle className="w-7 h-7" />
+          </Button>
         </div>
       </div>
 
@@ -191,7 +187,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         <Button
           variant="ghost"
           size="sm"
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex"
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-20"
           onClick={goToPrevious}
         >
           <ChevronLeft className="w-6 h-6" />
@@ -201,7 +197,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         <Button
           variant="ghost"
           size="sm"
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex"
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-20"
           onClick={goToNext}
         >
           <ChevronRight className="w-6 h-6" />
