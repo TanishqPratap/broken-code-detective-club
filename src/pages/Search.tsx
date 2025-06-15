@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search as SearchIcon, Users, FileText, Star } from "lucide-react";
+import { Search as SearchIcon, Users, FileText, Star, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Creator {
@@ -41,6 +41,23 @@ interface Post {
   } | null;
 }
 
+interface Content {
+  id: string;
+  creator_id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  media_url: string | null;
+  is_premium: boolean;
+  price: number | null;
+  created_at: string;
+  profiles: {
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
 const Search = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +66,7 @@ const Search = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [creators, setCreators] = useState<Creator[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('creators');
 
@@ -118,6 +136,34 @@ const Search = () => {
 
       console.log('Posts search results:', postsData);
       setPosts(postsData || []);
+
+      // Search content by title and description
+      const { data: contentsData, error: contentsError } = await supabase
+        .from('content')
+        .select(`
+          id,
+          creator_id,
+          title,
+          description,
+          content_type,
+          media_url,
+          is_premium,
+          price,
+          created_at,
+          profiles (
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (contentsError) throw contentsError;
+
+      console.log('Content search results:', contentsData);
+      setContents(contentsData || []);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
@@ -159,7 +205,7 @@ const Search = () => {
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Search creators, post titles, descriptions, content..."
+                placeholder="Search creators, posts, content titles, descriptions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -180,7 +226,7 @@ const Search = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="creators" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Creators ({creators.length})
@@ -188,6 +234,10 @@ const Search = () => {
             <TabsTrigger value="posts" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Posts ({posts.length})
+            </TabsTrigger>
+            <TabsTrigger value="content" className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Content ({contents.length})
             </TabsTrigger>
           </TabsList>
 
@@ -247,7 +297,7 @@ const Search = () => {
               <div className="text-center py-8">
                 <p className="text-gray-600">No posts found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Try searching for different keywords in titles, descriptions, or content types.
+                  Try searching for different keywords in titles, descriptions, or content.
                 </p>
               </div>
             ) : (
@@ -313,13 +363,90 @@ const Search = () => {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="content" className="space-y-4 mt-6">
+            {contents.length === 0 && searchQuery ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No content found for "{searchQuery}"</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Try searching for different keywords in content titles or descriptions.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {contents.map((content) => (
+                  <Card key={content.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={content.profiles?.avatar_url || ''} />
+                          <AvatarFallback>
+                            {content.profiles?.display_name?.[0] || content.profiles?.username?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">
+                              {content.profiles?.display_name || content.profiles?.username || "Unknown Creator"}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {content.content_type}
+                            </Badge>
+                            {content.is_premium && (
+                              <Badge variant="secondary" className="text-xs">
+                                Premium
+                              </Badge>
+                            )}
+                            <span className="text-xs text-gray-500">
+                              {formatTimeAgo(content.created_at)}
+                            </span>
+                          </div>
+                          <h4 className="font-semibold text-sm mb-1">{content.title}</h4>
+                          {content.description && (
+                            <p className="text-sm text-gray-600 mb-2">{content.description}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            {content.is_premium && content.price && (
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="w-3 h-3 text-green-600" />
+                                <span className="text-sm font-medium text-green-600">
+                                  ${content.price}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {content.media_url && (
+                            <div className="mt-2">
+                              {content.content_type === 'image' ? (
+                                <img 
+                                  src={content.media_url} 
+                                  alt="Content media"
+                                  className="max-w-full h-32 object-cover rounded"
+                                />
+                              ) : content.content_type === 'video' ? (
+                                <video 
+                                  src={content.media_url}
+                                  className="max-w-full h-32 object-cover rounded"
+                                  controls={false}
+                                />
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {!searchQuery && (
           <div className="text-center py-16">
             <SearchIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Search for creators and posts</h3>
-            <p className="text-gray-600">Enter a search term to find creators by username, display name, or posts by title, description, and content</p>
+            <h3 className="text-lg font-semibold mb-2">Search for creators, posts, and content</h3>
+            <p className="text-gray-600">Enter a search term to find creators by name, posts by title and description, or premium content by title and description</p>
           </div>
         )}
       </div>
