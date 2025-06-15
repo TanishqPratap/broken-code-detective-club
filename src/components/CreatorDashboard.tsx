@@ -1,205 +1,161 @@
+
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Users, Eye, TrendingUp, Plus, Video, MessageSquare, PlayCircle, Clock } from "lucide-react";
-import LivestreamDashboard from "./LivestreamDashboard";
-import PaidDMPricing from "./PaidDMPricing";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, BarChart3, Users, DollarSign, Video, Film } from "lucide-react";
 import ContentManagement from "./ContentManagement";
-import CreatorSettings from "./CreatorSettings";
-import TrailerUpload from "./TrailerUpload";
-import StoriesCarousel from "./StoriesCarousel";
 import ContentScheduler from "./ContentScheduler";
-import NotificationSystem from "./NotificationSystem";
+import VibesUpload from "./VibesUpload";
+import { useAuth } from "@/hooks/useAuth";
 
 const CreatorDashboard = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  
-  const stats = {
-    totalEarnings: 2847.50,
-    subscribers: 1234,
-    views: 45678,
-    growthRate: 12.5
+  const [showVibesUpload, setShowVibesUpload] = useState(false);
+
+  // Mock analytics data
+  const analyticsData = {
+    totalViews: 12500,
+    totalLikes: 890,
+    totalFollowers: 456,
+    totalEarnings: 1250.75
   };
 
+  if (showVibesUpload) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Create New Vibe</h1>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowVibesUpload(false)}
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+        <VibesUpload 
+          onUploadComplete={() => setShowVibesUpload(false)}
+          onClose={() => setShowVibesUpload(false)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Creator Dashboard</h1>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Post
-        </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Creator Dashboard</h1>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowVibesUpload(true)}>
+            <Film className="w-4 h-4 mr-2" />
+            Create Vibe
+          </Button>
+          <Button variant="outline">
+            <PlusCircle className="w-4 h-4 mr-2" />
+            New Content
+          </Button>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="stories">
-            <PlayCircle className="w-4 h-4 mr-2" />
-            Stories
-          </TabsTrigger>
-          <TabsTrigger value="scheduler">
-            <Clock className="w-4 h-4 mr-2" />
-            Scheduler
-          </TabsTrigger>
-          <TabsTrigger value="trailers">
-            <PlayCircle className="w-4 h-4 mr-2" />
-            Trailers
-          </TabsTrigger>
-          <TabsTrigger value="livestream">
-            <Video className="w-4 h-4 mr-2" />
-            Livestream
-          </TabsTrigger>
-          <TabsTrigger value="paid-dm">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Paid DM
-          </TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-8">
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${stats.totalEarnings.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">+12% from last month</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.subscribers.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+{stats.growthRate}% this week</p>
-              </CardContent>
-            </Card>
-
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-                <Eye className="h-4 w-4 text-muted-foreground" />
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.views.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+8% from last week</p>
+                <div className="text-2xl font-bold">{analyticsData.totalViews.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">+20.1% from last month</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.growthRate}%</div>
-                <p className="text-xs text-muted-foreground">Monthly subscriber growth</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Post</CardTitle>
-                <CardDescription>Share something with your subscribers</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="post-content">Content</Label>
-                  <textarea 
-                    id="post-content"
-                    className="w-full p-3 border rounded-md resize-none"
-                    rows={4}
-                    placeholder="What's on your mind?"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <Button variant="outline">Add Media</Button>
-                  <Button>Post</Button>
-                </div>
+                <div className="text-2xl font-bold">{analyticsData.totalLikes.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">+15.3% from last month</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Subscription Settings</CardTitle>
-                <CardDescription>Manage your subscription tiers</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="price">Monthly Subscription Price</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md">
-                      $
-                    </span>
-                    <Input 
-                      id="price"
-                      type="number" 
-                      placeholder="9.99"
-                      className="rounded-l-none"
-                    />
-                  </div>
-                </div>
-                <Button className="w-full">Update Pricing</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stories">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Story Management</CardTitle>
-                <CardDescription>
-                  Manage your 24-hour stories and see how they're performing
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Followers</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <StoriesCarousel />
+                <div className="text-2xl font-bold">{analyticsData.totalFollowers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">+8.7% from last month</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Earnings</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${analyticsData.totalEarnings.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">+12.5% from last month</p>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        <TabsContent value="scheduler">
-          <ContentScheduler />
-        </TabsContent>
-
-        <TabsContent value="trailers">
-          <TrailerUpload />
-        </TabsContent>
-
-        <TabsContent value="livestream">
-          <LivestreamDashboard />
-        </TabsContent>
-
-        <TabsContent value="paid-dm">
-          <PaidDMPricing />
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button 
+                  className="h-20 flex flex-col gap-2"
+                  onClick={() => setShowVibesUpload(true)}
+                >
+                  <Film className="w-6 h-6" />
+                  Create Vibe
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Video className="w-6 h-6" />
+                  Go Live
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <PlusCircle className="w-6 h-6" />
+                  Upload Content
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="content">
           <ContentManagement />
         </TabsContent>
 
-        <TabsContent value="settings">
-          <div className="space-y-6">
-            <CreatorSettings />
-            <NotificationSystem />
-          </div>
+        <TabsContent value="scheduler">
+          <ContentScheduler />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Detailed analytics coming soon...</p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

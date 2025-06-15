@@ -400,9 +400,11 @@ export type Database = {
           content_type: string
           created_at: string
           description: string | null
+          duration: number | null
           id: string
           media_type: string | null
           media_url: string | null
+          metadata: Json | null
           text_content: string | null
           thumbnail_url: string | null
           title: string | null
@@ -413,9 +415,11 @@ export type Database = {
           content_type: string
           created_at?: string
           description?: string | null
+          duration?: number | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          metadata?: Json | null
           text_content?: string | null
           thumbnail_url?: string | null
           title?: string | null
@@ -426,9 +430,11 @@ export type Database = {
           content_type?: string
           created_at?: string
           description?: string | null
+          duration?: number | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          metadata?: Json | null
           text_content?: string | null
           thumbnail_url?: string | null
           title?: string | null

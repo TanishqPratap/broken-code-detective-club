@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -95,7 +94,7 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     { path: "/", label: "Home", icon: Home },
     { path: "/search", label: "Search", icon: Search },
     { path: "/discover", label: "Explore", icon: Compass },
-    { path: "/posts", label: "Reels", icon: Film },
+    { path: "/vibes", label: "Vibes", icon: Film },
     { path: "/dm", label: "Messages", icon: MessageSquare },
     { 
       path: "/notifications", 
