@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,9 +67,9 @@ const CreatorProfile = ({ creator, onSubscribe, onStartPaidDM }: CreatorProfileP
 
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-white">
         {/* Profile Header */}
-        <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8 bg-white">
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-end sm:gap-6">
-            <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-background mx-auto sm:mx-0">
+        <div className="relative -mt-12 sm:-mt-16 mb-6 sm:mb-8 bg-white rounded-t-lg">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-end sm:gap-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+            <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-white mx-auto sm:mx-0">
               <AvatarImage src={creator.avatar} />
               <AvatarFallback className="text-xl sm:text-2xl">{creator.displayName[0]}</AvatarFallback>
             </Avatar>
