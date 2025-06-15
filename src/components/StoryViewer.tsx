@@ -137,48 +137,50 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       <div className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToPrevious} />
       <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content - full screen */}
-      <div className="relative w-full h-full flex items-center justify-center">
-        {currentStory.content_type === 'image' ? (
-          <img
-            src={currentStory.media_url}
-            alt="Story"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <video
-            src={currentStory.media_url}
-            className="w-full h-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        )}
+      {/* Story content container - Vertical phone aspect ratio */}
+      <div className="relative w-full max-w-md h-full flex items-center justify-center">
+        <div className="relative w-full h-full max-h-screen bg-black overflow-hidden">
+          {currentStory.content_type === 'image' ? (
+            <img
+              src={currentStory.media_url}
+              alt="Story"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <video
+              src={currentStory.media_url}
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          )}
 
-        {/* Text overlay */}
-        {currentStory.text_overlay && (
-          <div className="absolute bottom-24 left-4 right-4 z-10">
-            <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
-              {currentStory.text_overlay}
-            </p>
+          {/* Text overlay */}
+          {currentStory.text_overlay && (
+            <div className="absolute bottom-24 left-4 right-4 z-10">
+              <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
+                {currentStory.text_overlay}
+              </p>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
+            <Button 
+              variant="ghost" 
+              size="lg" 
+              className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
+              onClick={handleLike}
+              disabled={isLiking}
+            >
+              <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
+            </Button>
+            <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
+              <MessageCircle className="w-7 h-7" />
+            </Button>
           </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
-          <Button 
-            variant="ghost" 
-            size="lg" 
-            className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
-            onClick={handleLike}
-            disabled={isLiking}
-          >
-            <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
-          </Button>
-          <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
-            <MessageCircle className="w-7 h-7" />
-          </Button>
         </div>
       </div>
 
