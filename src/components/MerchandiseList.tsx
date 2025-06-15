@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -133,7 +132,7 @@ const MerchandiseList = () => {
         }
       },
       prefill: {
-        name: user.display_name || user.username,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
         email: user.email,
       },
       theme: {
