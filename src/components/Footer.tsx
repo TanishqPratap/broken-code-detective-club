@@ -26,7 +26,7 @@ const Footer = () => {
 
           {/* Platform */}
           <div className="text-center sm:text-left">
-            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-brand-light-cyan">Platform</h4>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-brand-light-cyan text-zinc-950">Platform</h4>
             <ul className="space-y-2">
               <li>
                 <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
@@ -44,9 +44,7 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
-                  API
-                </a>
+                
               </li>
             </ul>
           </div>
@@ -71,9 +69,7 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
-                  Status
-                </a>
+                
               </li>
             </ul>
           </div>
