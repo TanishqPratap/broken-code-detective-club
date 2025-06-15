@@ -90,7 +90,7 @@ const Search = () => {
 
       setCreators(creatorsWithCounts);
 
-      // Search posts - improved query to search text_content more effectively
+      // Search posts - expanded to include all types of posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -106,8 +106,7 @@ const Search = () => {
             avatar_url
           )
         `)
-        .not('text_content', 'is', null)
-        .ilike('text_content', `%${query}%`)
+        .or(`text_content.ilike.%${query}%,content_type.ilike.%${query}%`)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -156,7 +155,7 @@ const Search = () => {
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Search creators, posts..."
+                placeholder="Search creators, posts, content types..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -244,7 +243,7 @@ const Search = () => {
               <div className="text-center py-8">
                 <p className="text-gray-600">No posts found for "{searchQuery}"</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Try searching for different keywords or check if there are posts with text content.
+                  Try searching for different keywords, content types (image, video, text), or creator names.
                 </p>
               </div>
             ) : (
@@ -264,6 +263,9 @@ const Search = () => {
                             <span className="font-medium text-sm">
                               {post.profiles?.display_name || post.profiles?.username || "Unknown User"}
                             </span>
+                            <Badge variant="outline" className="text-xs">
+                              {post.content_type}
+                            </Badge>
                             <span className="text-xs text-gray-500">
                               {formatTimeAgo(post.created_at)}
                             </span>
@@ -288,6 +290,11 @@ const Search = () => {
                               ) : null}
                             </div>
                           )}
+                          {!post.text_content && !post.media_url && (
+                            <p className="text-sm text-gray-500 italic">
+                              {post.content_type} content
+                            </p>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -302,7 +309,7 @@ const Search = () => {
           <div className="text-center py-16">
             <SearchIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Search for creators and posts</h3>
-            <p className="text-gray-600">Enter a search term to find creators by username, display name, or posts</p>
+            <p className="text-gray-600">Enter a search term to find creators by username, display name, or posts by content</p>
           </div>
         )}
       </div>
