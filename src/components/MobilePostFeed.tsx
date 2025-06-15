@@ -6,12 +6,13 @@ import CreatePost from "./CreatePost";
 import TrailerPreviewCard from "./TrailerPreviewCard";
 import ContentCard from "./ContentCard";
 import MobileStoriesCarousel from "./MobileStoriesCarousel";
+import MobilePostCard from "./MobilePostCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Post {
   id: string;
   user_id: string;
-  content_type: 'text' | 'image' | 'video';
+  content_type: 'text' | 'image' | 'video' | 'vibe';
   text_content: string | null;
   media_url: string | null;
   media_type: string | null;
@@ -182,6 +183,7 @@ const MobilePostFeed = () => {
         const filteredContent = allContent?.filter(content => {
           const isOwnContent = content.creator_id === user.id;
           const isSubscribed = subscribedCreatorIds.includes(content.creator_id);
+          const creatorProfile = creatorProfilesMap.get(content.creator_id);
           const isFreeContent = !content.is_premium || content.price === null || content.price === 0;
           
           console.log(`Content ${content.id}: own=${isOwnContent}, subscribed=${isSubscribed}, free=${isFreeContent}, creator=${creatorProfile?.username}`);
@@ -231,7 +233,7 @@ const MobilePostFeed = () => {
 
               return {
                 ...post,
-                content_type: post.content_type as 'text' | 'image' | 'video',
+                content_type: post.content_type as 'text' | 'image' | 'video' | 'vibe',
                 profiles: profile || {
                   display_name: null,
                   username: 'Unknown User',
@@ -384,7 +386,7 @@ const MobilePostFeed = () => {
 
               return {
                 ...post,
-                content_type: post.content_type as 'text' | 'image' | 'video',
+                content_type: post.content_type as 'text' | 'image' | 'video' | 'vibe',
                 profiles: profile || {
                   display_name: null,
                   username: 'Unknown User',
@@ -455,11 +457,17 @@ const MobilePostFeed = () => {
           {feedItems.map((item, index) => (
             <div key={`${item.type}-${item.data.id}-${index}`} className={isMobile ? "border-b border-gray-200 dark:border-gray-800 last:border-b-0" : "mb-6"}>
               {item.type === 'post' ? (
-                <PostCard 
-                  post={item.data as Post} 
-                  onDelete={handlePostDeleted}
-                  isMobile={isMobile}
-                />
+                isMobile ? (
+                  <MobilePostCard 
+                    post={item.data as Post} 
+                    onDelete={handlePostDeleted}
+                  />
+                ) : (
+                  <PostCard 
+                    post={item.data as Post} 
+                    onDelete={handlePostDeleted}
+                  />
+                )
               ) : item.type === 'trailer' ? (
                 <TrailerPreviewCard trailer={item.data as TrailerContent} />
               ) : (

@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface Post {
   id: string;
   user_id: string;
-  content_type: 'text' | 'image' | 'video';
+  content_type: 'text' | 'image' | 'video' | 'vibe';
   text_content: string | null;
   media_url: string | null;
   media_type: string | null;

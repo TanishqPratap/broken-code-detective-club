@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 interface Story {
   id: string;
   creator_id: string;
-  thumbnail_url: string | null;
+  media_url: string;
   created_at: string;
   creator: {
     username: string;
@@ -35,7 +35,7 @@ const MobileStoriesCarousel = () => {
         .select(`
           id,
           creator_id,
-          thumbnail_url,
+          media_url,
           created_at,
           profiles:creator_id (
             username,
@@ -49,8 +49,15 @@ const MobileStoriesCarousel = () => {
       if (error) throw error;
 
       const storiesWithCreator = data?.map(story => ({
-        ...story,
-        creator: story.profiles as any
+        id: story.id,
+        creator_id: story.creator_id,
+        media_url: story.media_url,
+        created_at: story.created_at,
+        creator: {
+          username: story.profiles?.username || 'Unknown',
+          display_name: story.profiles?.display_name || null,
+          avatar_url: story.profiles?.avatar_url || null
+        }
       })) || [];
 
       setStories(storiesWithCreator);
