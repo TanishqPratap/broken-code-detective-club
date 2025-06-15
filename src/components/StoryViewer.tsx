@@ -57,6 +57,14 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     setIsLiked(false);
   }, [currentIndex]);
 
+  // Prevent body scroll when story viewer is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   const goToPrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -101,9 +109,19 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   if (!currentStory) return null;
 
   return (
-    <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
+    <div 
+      className="fixed top-0 left-0 w-screen h-screen bg-black z-[99999] overflow-hidden"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999
+      }}
+    >
       {/* Progress bars */}
-      <div className="absolute top-4 left-4 right-4 flex gap-1 z-20">
+      <div className="absolute top-4 left-4 right-4 flex gap-1 z-30">
         {stories.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded">
             <div
@@ -117,7 +135,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       </div>
 
       {/* Header */}
-      <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-20">
+      <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-30">
         <div className="flex items-center gap-3">
           <Avatar className="w-8 h-8">
             <AvatarImage src={currentStory.creator_avatar} />
@@ -134,53 +152,53 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       </div>
 
       {/* Navigation areas - invisible touch areas for mobile */}
-      <div className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToPrevious} />
-      <div className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer" onClick={goToNext} />
+      <div className="absolute left-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToPrevious} />
+      <div className="absolute right-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content - Full viewport */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full h-full">
-          {currentStory.content_type === 'image' ? (
-            <img
-              src={currentStory.media_url}
-              alt="Story"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <video
-              src={currentStory.media_url}
-              className="w-full h-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          )}
+      {/* Story content - Full screen */}
+      <div className="absolute inset-0 w-full h-full">
+        {currentStory.content_type === 'image' ? (
+          <img
+            src={currentStory.media_url}
+            alt="Story"
+            className="w-full h-full object-cover"
+            style={{ objectFit: 'cover' }}
+          />
+        ) : (
+          <video
+            src={currentStory.media_url}
+            className="w-full h-full object-cover"
+            style={{ objectFit: 'cover' }}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        )}
 
-          {/* Text overlay */}
-          {currentStory.text_overlay && (
-            <div className="absolute bottom-24 left-4 right-4 z-10">
-              <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
-                {currentStory.text_overlay}
-              </p>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-10">
-            <Button 
-              variant="ghost" 
-              size="lg" 
-              className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
-              onClick={handleLike}
-              disabled={isLiking}
-            >
-              <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
-            </Button>
-            <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
-              <MessageCircle className="w-7 h-7" />
-            </Button>
+        {/* Text overlay */}
+        {currentStory.text_overlay && (
+          <div className="absolute bottom-24 left-4 right-4 z-20">
+            <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
+              {currentStory.text_overlay}
+            </p>
           </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-20">
+          <Button 
+            variant="ghost" 
+            size="lg" 
+            className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
+            onClick={handleLike}
+            disabled={isLiking}
+          >
+            <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
+          </Button>
+          <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
+            <MessageCircle className="w-7 h-7" />
+          </Button>
         </div>
       </div>
 
@@ -189,7 +207,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         <Button
           variant="ghost"
           size="sm"
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-20"
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-30"
           onClick={goToPrevious}
         >
           <ChevronLeft className="w-6 h-6" />
@@ -199,7 +217,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         <Button
           variant="ghost"
           size="sm"
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-20"
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-30"
           onClick={goToNext}
         >
           <ChevronRight className="w-6 h-6" />
