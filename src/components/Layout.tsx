@@ -1,21 +1,31 @@
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import { AuthModal } from "@/components/auth/AuthModal";
 
-interface LayoutProps {
-  children: ReactNode;
-  onAuthClick: () => void;
-}
+const Layout = () => {
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-const Layout = ({ children, onAuthClick }: LayoutProps) => {
+  const handleAuthClick = () => {
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      <Navbar onAuthClick={onAuthClick} />
+      <Navbar onAuthClick={handleAuthClick} />
       <main className="flex-1 ml-64">
         <div className="w-full min-h-screen px-4 py-6">
-          {children}
+          <Outlet />
         </div>
       </main>
+      
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)} 
+        />
+      )}
     </div>
   );
 };
