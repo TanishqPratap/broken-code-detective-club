@@ -6,6 +6,7 @@ import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck } from
 import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
+import CreatorMerchandise from "./CreatorMerchandise";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -37,10 +38,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
     totalEarnings: 0
   });
   const [loading, setLoading] = useState(true);
+  const [salesStats, setSalesStats] = useState<{ totalSales: number, totalRevenue: number }>({ totalSales: 0, totalRevenue: 0 });
 
   useEffect(() => {
     if (user) {
       fetchAnalyticsData();
+      fetchSalesStats();
     }
   }, [user]);
 
@@ -224,6 +227,27 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
     }
   };
 
+  const fetchSalesStats = async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("price, quantity, status, merchandise_id")
+      .in("merchandise_id",
+        await supabase
+          .from("merchandise")
+          .select("id")
+          .eq("creator_id", user.id)
+          .then(r => r.data?.map(m => m.id) || [])
+      );
+    if (error || !data) {
+      setSalesStats({ totalSales: 0, totalRevenue: 0 });
+    } else {
+      const completed = data.filter((o: any) => o.status === "paid" || o.status === "shipped");
+      const totalSales = completed.reduce((sum: number, o: any) => sum + (o.quantity ?? 0), 0);
+      const totalRevenue = completed.reduce((sum: number, o: any) => sum + ((parseFloat(o.price) || 0) * (o.quantity ?? 1)), 0);
+      setSalesStats({ totalSales, totalRevenue });
+    }
+  };
+
   const handleGoLive = () => {
     if (onNavigateToLivestream) {
       onNavigateToLivestream();
@@ -278,15 +302,16 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="merchandise">Merchandise</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Views</CardTitle>
@@ -361,6 +386,21 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 </p>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Product Sales</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {salesStats.totalSales} sold
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Revenue: ${salesStats.totalRevenue.toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
@@ -409,6 +449,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
               <p className="text-muted-foreground">Detailed analytics coming soon...</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="merchandise">
+          <CreatorMerchandise />
         </TabsContent>
       </Tabs>
     </div>

@@ -448,6 +448,60 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          digital_delivery_url: string | null
+          id: string
+          merchandise_id: string
+          price: number
+          quantity: number
+          shipping_address: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          digital_delivery_url?: string | null
+          id?: string
+          merchandise_id: string
+          price: number
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          digital_delivery_url?: string | null
+          id?: string
+          merchandise_id?: string
+          price?: number
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_merchandise_id_fkey"
+            columns: ["merchandise_id"]
+            isOneToOne: false
+            referencedRelation: "merchandise"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content_type: string
