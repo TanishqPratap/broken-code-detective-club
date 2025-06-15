@@ -1,6 +1,9 @@
+
 import { Heart, Github, Twitter, Mail } from "lucide-react";
+
 const Footer = () => {
-  return <footer className="bg-gradient-to-r from-brand-navy to-brand-blue text-white py-8 sm:py-12 mt-12 sm:mt-20 bg-slate-50">
+  return (
+    <footer className="bg-black text-white py-8 sm:py-12 mt-12 sm:mt-20">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand */}
@@ -8,7 +11,7 @@ const Footer = () => {
             <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-brand-light-cyan to-brand-cyan bg-clip-text text-transparent">
               CreatorHub
             </h3>
-            <p className="text-brand-light-cyan mb-4 text-sm sm:text-base">
+            <p className="text-white mb-4 text-sm sm:text-base">
               Empowering creators to build communities and monetize their passion.
             </p>
             <div className="flex justify-center sm:justify-start space-x-4">
@@ -26,20 +29,20 @@ const Footer = () => {
 
           {/* Platform */}
           <div className="text-center sm:text-left">
-            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-brand-light-cyan text-zinc-950">Platform</h4>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Platform</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Features
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Pricing
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Security
                 </a>
               </li>
@@ -51,20 +54,20 @@ const Footer = () => {
 
           {/* Support */}
           <div className="text-center sm:text-left">
-            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-brand-light-cyan">Support</h4>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Support</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Help Center
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Community
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Contact Us
                 </a>
               </li>
@@ -76,25 +79,25 @@ const Footer = () => {
 
           {/* Legal */}
           <div className="text-center sm:text-left">
-            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-brand-light-cyan">Legal</h4>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Terms of Service
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   Cookie Policy
                 </a>
               </li>
               <li>
-                <a href="#" className="text-brand-cyan hover:text-white transition-colors text-sm sm:text-base">
+                <a href="#" className="text-white hover:text-brand-cyan transition-colors text-sm sm:text-base">
                   DMCA
                 </a>
               </li>
@@ -103,17 +106,19 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-brand-dark-blue mt-6 sm:mt-8 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <p className="text-brand-cyan text-xs sm:text-sm text-center md:text-left">
+        <div className="border-t border-gray-600 mt-6 sm:mt-8 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <p className="text-white text-xs sm:text-sm text-center md:text-left">
             © 2024 CreatorHub. All rights reserved.
           </p>
-          <div className="flex items-center text-brand-cyan text-xs sm:text-sm">
-            <span className="text-zinc-950">Made with</span>
+          <div className="flex items-center text-white text-xs sm:text-sm">
+            <span>Made with</span>
             <Heart className="w-4 h-4 mx-1 text-brand-light-blue fill-current" />
-            <span className="text-zinc-950">for creators worldwide</span>
+            <span>for creators worldwide</span>
           </div>
         </div>
       </div>
-    </footer>;
+    </footer>
+  );
 };
+
 export default Footer;
