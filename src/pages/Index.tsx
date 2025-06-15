@@ -113,9 +113,7 @@ const Index = () => {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
-            Your creativity, your community, your income.
-          </h1>
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight lg:text-5xl">Your Creativity, Your Community, Your Income</h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
             The ultimate platform for content creators to build their community and monetize their passion through subscriptions and exclusive content.
           </p>
