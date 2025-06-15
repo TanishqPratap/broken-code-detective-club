@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -403,11 +402,6 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
             <div className="text-sm text-muted-foreground">
               {formatTimeAgo(trailer.created_at)}
             </div>
-            {trailer.creator.subscription_price && (
-              <span className="text-sm font-medium text-green-600">
-                ${trailer.creator.subscription_price}/month
-              </span>
-            )}
             <Button size="sm" onClick={handleCreatorClick}>
               <UserPlus className="w-4 h-4 mr-1" />
               View Profile
