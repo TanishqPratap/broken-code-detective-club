@@ -38,10 +38,15 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { recipientId, amount, message } = await req.json();
+    const { streamId, amount, message, recipientId } = await req.json();
 
-    if (!recipientId || !amount) {
-      throw new Error("Missing required parameters");
+    // Support both stream tips and DM tips
+    if (!streamId && !recipientId) {
+      throw new Error("Either streamId or recipientId is required");
+    }
+
+    if (!amount) {
+      throw new Error("Amount is required");
     }
 
     const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID");
@@ -51,12 +56,37 @@ serve(async (req) => {
       throw new Error("Razorpay credentials not configured");
     }
 
-    // Get recipient details
-    const { data: recipientData } = await supabaseClient
-      .from('profiles')
-      .select('display_name, username')
-      .eq('id', recipientId)
-      .single();
+    let recipientData = null;
+    let tipType = 'dm_tip';
+    
+    if (streamId) {
+      // Stream tip - get creator from stream
+      const { data: streamData } = await supabaseClient
+        .from('live_streams')
+        .select('creator_id')
+        .eq('id', streamId)
+        .single();
+      
+      if (streamData) {
+        const { data: creatorData } = await supabaseClient
+          .from('profiles')
+          .select('display_name, username')
+          .eq('id', streamData.creator_id)
+          .single();
+        
+        recipientData = creatorData;
+        tipType = 'stream_tip';
+      }
+    } else if (recipientId) {
+      // DM tip - get recipient details
+      const { data: creatorData } = await supabaseClient
+        .from('profiles')
+        .select('display_name, username')
+        .eq('id', recipientId)
+        .single();
+      
+      recipientData = creatorData;
+    }
 
     // Get current USD to INR exchange rate
     const exchangeRate = await getUSDToINRRate();
@@ -68,8 +98,8 @@ serve(async (req) => {
 
     // Create a shorter receipt (max 40 chars)
     const timestamp = Date.now().toString().slice(-8);
-    const recipientIdShort = recipientId.slice(0, 8);
-    const receipt = `dmtip_${recipientIdShort}_${timestamp}`;
+    const idShort = (streamId || recipientId).slice(0, 8);
+    const receipt = `${tipType}_${idShort}_${timestamp}`;
 
     // Create Razorpay order
     const orderData = {
@@ -77,18 +107,19 @@ serve(async (req) => {
       currency: "INR",
       receipt: receipt,
       notes: {
-        recipientId,
+        streamId: streamId || '',
+        recipientId: recipientId || '',
         userId: user.id,
         recipientName: recipientData?.display_name || recipientData?.username || 'Unknown',
         originalAmountUSD: amount,
         exchangeRate: exchangeRate,
         amountINR: amountInINR,
         message: message || '',
-        type: 'dm_tip'
+        type: tipType
       }
     };
 
-    console.log('Creating Razorpay order for DM tip:', orderData);
+    console.log(`Creating Razorpay order for ${tipType}:`, orderData);
 
     const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
     
@@ -125,7 +156,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    console.error('Error creating DM tip payment:', error);
+    console.error('Error creating tip payment:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

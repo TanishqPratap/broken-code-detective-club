@@ -46,10 +46,14 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, recipientId, amount, message } = await req.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, streamId, recipientId, amount, message } = await req.json();
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !recipientId || !amount) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
       throw new Error("Missing required payment verification parameters");
+    }
+
+    if (!streamId && !recipientId) {
+      throw new Error("Either streamId or recipientId is required");
     }
 
     const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
@@ -61,33 +65,68 @@ serve(async (req) => {
     const verificationMessage = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = await createSignature(verificationMessage, razorpayKeySecret);
 
-    console.log('Verifying DM tip payment signature:', { verificationMessage, expectedSignature, receivedSignature: razorpay_signature });
+    console.log('Verifying tip payment signature:', { verificationMessage, expectedSignature, receivedSignature: razorpay_signature });
 
     if (expectedSignature !== razorpay_signature) {
       throw new Error("Payment verification failed - invalid signature");
     }
 
-    console.log('DM tip payment signature verified successfully');
+    console.log('Tip payment signature verified successfully');
 
-    // Insert the tip into the tips table (for DMs)
-    const { data: tipData, error: tipError } = await supabaseClient
-      .from('tips')
-      .insert({
-        tipper_id: user.id,
-        creator_id: recipientId,
-        amount: amount,
-        message: message || null,
-        stripe_payment_intent_id: razorpay_payment_id
-      })
-      .select()
-      .single();
+    let tipData;
 
-    if (tipError) {
-      console.error('Database insert error:', tipError);
-      throw new Error(`Failed to save tip: ${tipError.message}`);
+    if (streamId) {
+      // Stream tip
+      const { data: streamData } = await supabaseClient
+        .from('live_streams')
+        .select('creator_id')
+        .eq('id', streamId)
+        .single();
+
+      if (!streamData) {
+        throw new Error("Stream not found");
+      }
+
+      const { data: insertedTip, error: tipError } = await supabaseClient
+        .from('stream_tips')
+        .insert({
+          tipper_id: user.id,
+          stream_id: streamId,
+          amount: amount,
+          message: message || null
+        })
+        .select()
+        .single();
+
+      if (tipError) {
+        console.error('Database insert error:', tipError);
+        throw new Error(`Failed to save stream tip: ${tipError.message}`);
+      }
+
+      tipData = insertedTip;
+      console.log('Stream tip saved successfully:', tipData);
+    } else {
+      // DM tip
+      const { data: insertedTip, error: tipError } = await supabaseClient
+        .from('tips')
+        .insert({
+          tipper_id: user.id,
+          creator_id: recipientId,
+          amount: amount,
+          message: message || null,
+          stripe_payment_intent_id: razorpay_payment_id
+        })
+        .select()
+        .single();
+
+      if (tipError) {
+        console.error('Database insert error:', tipError);
+        throw new Error(`Failed to save DM tip: ${tipError.message}`);
+      }
+
+      tipData = insertedTip;
+      console.log('DM tip saved successfully:', tipData);
     }
-
-    console.log('DM tip saved successfully:', tipData);
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -98,7 +137,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    console.error('Error verifying DM tip payment:', error);
+    console.error('Error verifying tip payment:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
