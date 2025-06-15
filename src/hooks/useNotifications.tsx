@@ -34,9 +34,14 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Fetching notifications for user:', user.id);
+      
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -49,22 +54,47 @@ export const useNotifications = () => {
           related_content_id,
           related_content_type,
           metadata,
-          related_user:related_user_id(
-            id,
-            username,
-            display_name,
-            avatar_url,
-            is_verified
-          )
+          related_user_id
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        throw error;
+      }
+
+      console.log('Raw notifications data:', data);
+
+      if (!data || data.length === 0) {
+        console.log('No notifications found');
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user details for each notification
+      const userIds = data
+        .map(n => n.related_user_id)
+        .filter(Boolean)
+        .filter((id, index, self) => self.indexOf(id) === index); // Remove duplicates
+
+      console.log('Fetching user profiles for:', userIds);
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, is_verified')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      console.log('Profiles data:', profiles);
 
       const transformedNotifications: NotificationData[] = data.map((notification: any) => {
-        const relatedUser = notification.related_user;
+        const relatedUser = profiles?.find(p => p.id === notification.related_user_id);
         const timeAgo = getTimeAgo(notification.created_at);
         
         return {
@@ -73,13 +103,15 @@ export const useNotifications = () => {
           title: notification.title,
           message: notification.message,
           user: {
-            id: relatedUser?.id || '',
-            username: relatedUser?.username || 'Unknown',
+            id: relatedUser?.id || notification.related_user_id || '',
+            username: relatedUser?.username || 'Unknown User',
             display_name: relatedUser?.display_name,
             avatar_url: relatedUser?.avatar_url,
             is_verified: relatedUser?.is_verified || false
           },
-          content: notification.metadata?.comment_text || notification.metadata?.message || notification.metadata?.message_preview,
+          content: notification.metadata?.comment_text || 
+                  notification.metadata?.message || 
+                  notification.metadata?.message_preview,
           post_preview: notification.related_content_type === 'post' ? 
             'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=60&h=60&fit=crop' : undefined,
           timestamp: timeAgo,
@@ -91,9 +123,10 @@ export const useNotifications = () => {
         };
       });
 
+      console.log('Transformed notifications:', transformedNotifications);
       setNotifications(transformedNotifications);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Error in fetchNotifications:', error);
       toast.error('Failed to load notifications');
     } finally {
       setLoading(false);
@@ -119,13 +152,21 @@ export const useNotifications = () => {
   };
 
   const markAsRead = async (notificationId: string) => {
+    if (!user) return;
+
     try {
+      console.log('Marking notification as read:', notificationId);
+      
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('id', notificationId);
+        .eq('id', notificationId)
+        .eq('user_id', user.id); // Add user_id check for security
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+      }
 
       setNotifications(prev => 
         prev.map(notif => 
@@ -136,20 +177,27 @@ export const useNotifications = () => {
       );
       
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error in markAsRead:', error);
       toast.error('Failed to mark notification as read');
     }
   };
 
   const markAllAsRead = async () => {
+    if (!user) return;
+
     try {
+      console.log('Marking all notifications as read for user:', user.id);
+      
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('is_read', false);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        throw error;
+      }
 
       setNotifications(prev => 
         prev.map(notif => ({ ...notif, is_read: true }))
@@ -158,19 +206,27 @@ export const useNotifications = () => {
       toast.success("All notifications marked as read");
       
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Error in markAllAsRead:', error);
       toast.error('Failed to mark all notifications as read');
     }
   };
 
   const deleteNotification = async (notificationId: string) => {
+    if (!user) return;
+
     try {
+      console.log('Deleting notification:', notificationId);
+      
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .eq('id', notificationId);
+        .eq('id', notificationId)
+        .eq('user_id', user.id); // Add user_id check for security
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting notification:', error);
+        throw error;
+      }
 
       setNotifications(prev => 
         prev.filter(notif => notif.id !== notificationId)
@@ -179,12 +235,14 @@ export const useNotifications = () => {
       toast.success("Notification deleted");
       
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error('Error in deleteNotification:', error);
       toast.error('Failed to delete notification');
     }
   };
 
   const handleNotificationClick = (notification: NotificationData) => {
+    console.log('Notification clicked:', notification);
+    
     // Mark as read when clicked
     if (!notification.is_read) {
       markAsRead(notification.id);
@@ -216,24 +274,27 @@ export const useNotifications = () => {
         window.location.href = `/dm`;
         break;
       case 'story_like':
-        // Could navigate to stories or profile
         window.location.href = `/creator/${notification.user.id}`;
         break;
       default:
+        console.log('Unknown notification type:', notification.type);
         break;
     }
   };
 
   useEffect(() => {
+    console.log('useNotifications: User changed, fetching notifications');
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time notifications listener with push notifications
+  // Set up real-time notifications listener
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up real-time notifications for user:', user.id);
+
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications_${user.id}`)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -242,7 +303,7 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`
         }, 
         (payload) => {
-          console.log('New notification received:', payload);
+          console.log('New notification received via realtime:', payload);
           // Refetch notifications to get the complete data with relations
           fetchNotifications();
           
@@ -261,7 +322,7 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Notification updated:', payload);
+          console.log('Notification updated via realtime:', payload);
           // Update the specific notification in state
           const updatedNotification = payload.new;
           setNotifications(prev => 
@@ -273,9 +334,12 @@ export const useNotifications = () => {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notification channel subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up notification channel');
       supabase.removeChannel(channel);
     };
   }, [user, showNotification]);

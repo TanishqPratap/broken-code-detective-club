@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart, MessageCircle, UserPlus, Video, Star, Gift, X, MoreHorizontal, DollarSign, Users } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Video, Star, DollarSign, Users, MoreHorizontal } from "lucide-react";
 import { NotificationData } from "@/hooks/useNotifications";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -14,6 +14,8 @@ interface NotificationItemProps {
 }
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: NotificationItemProps) => {
+  console.log('Rendering notification item:', notification);
+
   const getNotificationIcon = (type: string) => {
     const iconClass = "w-4 h-4";
     switch (type) {
@@ -70,7 +72,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClick }: Not
             <Avatar className="w-10 h-10">
               <AvatarImage src={notification.user.avatar_url || ''} />
               <AvatarFallback>
-                {(notification.user.display_name || notification.user.username)[0]?.toUpperCase()}
+                {(notification.user.display_name || notification.user.username || 'U')[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1">

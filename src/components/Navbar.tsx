@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Heart, User, Video, Search, Plus, MessageSquare, Home, Compass, Film, Bell, PlusSquare, Menu } from "lucide-react";
+import { Heart, User, Video, Search, MessageSquare, Home, Compass, Film, Bell, PlusSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -24,16 +24,23 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
     const fetchUnreadCount = async () => {
       if (user) {
         try {
+          console.log('Fetching unread count for user:', user.id);
+          
           const { count, error } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
             .eq('is_read', false);
 
-          if (error) throw error;
+          if (error) {
+            console.error('Error fetching unread count:', error);
+            throw error;
+          }
+          
+          console.log('Unread notification count:', count);
           setUnreadCount(count || 0);
         } catch (error) {
-          console.error('Error fetching unread count:', error);
+          console.error('Error in fetchUnreadCount:', error);
           setUnreadCount(0);
         }
       } else {
@@ -45,8 +52,10 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
 
     // Set up real-time subscription for unread count updates
     if (user) {
+      console.log('Setting up real-time unread count subscription for user:', user.id);
+      
       const channel = supabase
-        .channel('unread-notifications')
+        .channel(`unread_count_${user.id}`)
         .on('postgres_changes', 
           { 
             event: '*', 
@@ -54,14 +63,18 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           }, 
-          () => {
+          (payload) => {
+            console.log('Notification change detected, refetching unread count:', payload);
             // Refetch count when notifications change
             fetchUnreadCount();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Unread count subscription status:', status);
+        });
 
       return () => {
+        console.log('Cleaning up unread count subscription');
         supabase.removeChannel(channel);
       };
     }
