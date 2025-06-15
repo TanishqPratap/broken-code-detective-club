@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 interface ContentInteractionsProps {
   contentId: string;
@@ -23,8 +24,11 @@ interface Interaction {
     username: string;
     display_name: string | null;
     avatar_url: string | null;
+    is_verified?: boolean;
+    role?: string;
   };
   replies?: Interaction[];
+  reply_count?: number;
 }
 
 const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteractionsProps) => {
@@ -37,6 +41,7 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
   const [loading, setLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
   const fetchInteractions = async () => {
     try {
@@ -60,7 +65,7 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
         const userIds = [...new Set(interactionsData.map(i => i.user_id))];
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url')
+          .select('id, username, display_name, avatar_url, is_verified, role')
           .in('id', userIds);
 
         if (profilesError) throw profilesError;
@@ -79,22 +84,31 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
           }
         }));
 
-        // Organize comments into threaded structure
-        const topLevelComments = processedInteractions.filter(i => 
-          i.interaction_type === 'comment' && !i.parent_comment_id
-        );
-        
-        const replies = processedInteractions.filter(i => 
-          i.interaction_type === 'comment' && i.parent_comment_id
-        );
+        // Build threaded comment structure
+        const commentsMap = new Map();
+        const topLevelComments: Interaction[] = [];
 
-        // Attach replies to their parent comments
-        const commentsWithReplies = topLevelComments.map(comment => ({
-          ...comment,
-          replies: replies.filter(reply => reply.parent_comment_id === comment.id)
-        }));
+        // First pass: organize comments
+        processedInteractions.forEach(interaction => {
+          if (interaction.interaction_type === 'comment') {
+            commentsMap.set(interaction.id, { ...interaction, replies: [] });
+            if (!interaction.parent_comment_id) {
+              topLevelComments.push(commentsMap.get(interaction.id));
+            }
+          }
+        });
 
-        setInteractions(commentsWithReplies);
+        // Second pass: build reply tree
+        processedInteractions.forEach(interaction => {
+          if (interaction.interaction_type === 'comment' && interaction.parent_comment_id) {
+            const parentComment = commentsMap.get(interaction.parent_comment_id);
+            if (parentComment) {
+              parentComment.replies.push(commentsMap.get(interaction.id));
+            }
+          }
+        });
+
+        setInteractions(topLevelComments);
         
         // Count likes and check if user liked
         const likes = processedInteractions.filter(i => i.interaction_type === 'like');
@@ -123,7 +137,6 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
     setLoading(true);
     try {
       if (userLiked) {
-        // Remove like
         const { error } = await supabase
           .from('content_interactions')
           .delete()
@@ -136,7 +149,6 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
         setUserLiked(false);
         setLikesCount(prev => prev - 1);
       } else {
-        // Add like
         const { error } = await supabase
           .from('content_interactions')
           .insert({
@@ -205,17 +217,32 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
   };
 
   const getTotalCommentsCount = () => {
-    return interactions.reduce((total, comment) => {
-      return total + 1 + (comment.replies?.length || 0);
-    }, 0);
+    const countReplies = (comments: Interaction[]): number => {
+      return comments.reduce((total, comment) => {
+        return total + 1 + (comment.replies ? countReplies(comment.replies) : 0);
+      }, 0);
+    };
+    return countReplies(interactions);
   };
 
   const handleReplyTextChange = (commentId: string, value: string) => {
     setReplyTexts(prev => ({ ...prev, [commentId]: value }));
   };
 
-  const renderComment = (comment: Interaction, isReply = false) => (
-    <div key={comment.id} className={`${isReply ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''}`}>
+  const toggleReplies = (commentId: string) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
+  const renderComment = (comment: Interaction, depth = 0, isReply = false) => (
+    <div key={comment.id} className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''}`}>
       <div className="flex gap-3 p-3 bg-gray-50 rounded-lg">
         <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium">
           {comment.user.display_name?.[0] || comment.user.username[0] || 'U'}
@@ -225,23 +252,42 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
             <span className="font-medium text-sm">
               {comment.user.display_name || comment.user.username}
             </span>
+            {comment.user.is_verified && (
+              <Badge variant="secondary" className="text-xs">Verified</Badge>
+            )}
+            {comment.user.role === 'creator' && (
+              <Badge variant="default" className="text-xs bg-purple-600">Creator</Badge>
+            )}
             <span className="text-xs text-gray-500">
               {new Date(comment.created_at).toLocaleDateString()}
             </span>
           </div>
           <p className="text-sm text-gray-700 mb-2">{comment.comment_text}</p>
           
-          {!isReply && user && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-              className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto"
-            >
-              <Reply className="w-3 h-3 mr-1" />
-              Reply
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto"
+              >
+                <Reply className="w-3 h-3 mr-1" />
+                Reply
+              </Button>
+            )}
+            
+            {comment.replies && comment.replies.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleReplies(comment.id)}
+                className="text-xs text-blue-600 hover:text-blue-700 p-0 h-auto"
+              >
+                {expandedComments.has(comment.id) ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+              </Button>
+            )}
+          </div>
           
           {replyingTo === comment.id && (
             <div className="mt-2 flex gap-2">
@@ -276,10 +322,10 @@ const ContentInteractions = ({ contentId, onInteractionChange }: ContentInteract
         </div>
       </div>
       
-      {/* Render replies */}
-      {comment.replies && comment.replies.length > 0 && (
+      {/* Render replies if expanded */}
+      {comment.replies && comment.replies.length > 0 && expandedComments.has(comment.id) && (
         <div className="mt-2 space-y-2">
-          {comment.replies.map(reply => renderComment(reply, true))}
+          {comment.replies.map(reply => renderComment(reply, depth + 1, true))}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, X, Heart, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,15 +21,41 @@ interface StoryViewerProps {
   onClose: () => void;
 }
 
+interface StoryElement {
+  id: string;
+  type: 'sticker' | 'text' | 'gif' | 'music';
+  content: string;
+  position: { x: number; y: number };
+  style?: any;
+}
+
+interface StoryMetadata {
+  elements?: StoryElement[];
+  textOverlay?: string;
+  hasDrawing?: boolean;
+}
+
 const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const { user } = useAuth();
 
   const currentStory = stories[currentIndex];
-  const duration = currentStory?.content_type === 'video' ? 15000 : 5000; // 15s for video, 5s for image
+  const duration = currentStory?.content_type === 'video' ? 15000 : 5000;
+
+  // Parse story metadata
+  const getStoryMetadata = (story: Story): StoryMetadata => {
+    try {
+      return story.text_overlay ? JSON.parse(story.text_overlay) : {};
+    } catch {
+      return { textOverlay: story.text_overlay };
+    }
+  };
+
+  const storyMetadata = currentStory ? getStoryMetadata(currentStory) : {};
 
   useEffect(() => {
     if (!currentStory) return;
@@ -68,7 +94,6 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
         setIsLiked(!!data);
       } catch (error) {
-        // No like found, story is not liked
         setIsLiked(false);
       }
     };
@@ -107,7 +132,6 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       setIsLiking(true);
       
       if (isLiked) {
-        // Unlike the story
         const { error } = await supabase
           .from('story_likes')
           .delete()
@@ -119,7 +143,6 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         setIsLiked(false);
         toast.success("Story unliked!");
       } else {
-        // Like the story
         const { error } = await supabase
           .from('story_likes')
           .insert({
@@ -143,7 +166,6 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
   if (!currentStory) return null;
 
-  // Render the story viewer using React Portal to ensure it's outside any container constraints
   return createPortal(
     <div 
       className="fixed inset-0 w-full h-full bg-black z-[9999] flex items-center justify-center"
@@ -185,16 +207,28 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             {new Date(currentStory.created_at).toLocaleDateString()}
           </span>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/20">
-          <X className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {storyMetadata.elements?.some(e => e.type === 'music') && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsMuted(!isMuted)} 
+              className="text-white hover:bg-white/20"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/20">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Navigation areas - invisible touch areas for mobile */}
+      {/* Navigation areas */}
       <div className="absolute left-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToPrevious} />
       <div className="absolute right-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToNext} />
 
-      {/* Story content - Centered and responsive */}
+      {/* Story content */}
       <div className="relative w-full h-full max-w-md mx-auto flex items-center justify-center">
         {currentStory.content_type === 'image' ? (
           <img
@@ -209,17 +243,66 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             className="w-full h-full object-cover"
             style={{ objectFit: 'cover' }}
             autoPlay
-            muted
+            muted={isMuted}
             loop
             playsInline
           />
         )}
 
-        {/* Text overlay */}
-        {currentStory.text_overlay && (
+        {/* Render story elements */}
+        {storyMetadata.elements?.map(element => (
+          <div
+            key={element.id}
+            className="absolute z-10"
+            style={{
+              left: element.position.x,
+              top: element.position.y,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {element.type === 'sticker' && (
+              <span className="text-4xl drop-shadow-lg animate-bounce">
+                {element.content}
+              </span>
+            )}
+            {element.type === 'text' && (
+              <span 
+                style={{
+                  color: element.style?.color || '#ffffff',
+                  fontSize: (element.style?.fontSize || 16) + 'px',
+                  fontWeight: element.style?.fontWeight || 'normal',
+                  backgroundColor: element.style?.backgroundColor || 'transparent'
+                }}
+                className="px-3 py-2 rounded drop-shadow-lg font-bold"
+              >
+                {element.content}
+              </span>
+            )}
+            {element.type === 'gif' && (
+              <img 
+                src={element.content} 
+                alt="GIF" 
+                className="w-20 h-20 object-cover rounded drop-shadow-lg" 
+              />
+            )}
+          </div>
+        ))}
+
+        {/* Music indicator */}
+        {storyMetadata.elements?.some(e => e.type === 'music') && (
+          <div className="absolute top-20 right-4 z-10">
+            <div className="bg-black/50 text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 backdrop-blur-sm">
+              <Music className="w-4 h-4 animate-pulse" />
+              <span>♪ Music</span>
+            </div>
+          </div>
+        )}
+
+        {/* Caption/Text overlay */}
+        {storyMetadata.textOverlay && (
           <div className="absolute bottom-24 left-4 right-4 z-20">
             <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
-              {currentStory.text_overlay}
+              {storyMetadata.textOverlay}
             </p>
           </div>
         )}
@@ -241,7 +324,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         </div>
       </div>
 
-      {/* Navigation arrows - only show on larger screens */}
+      {/* Navigation arrows */}
       {currentIndex > 0 && (
         <Button
           variant="ghost"
