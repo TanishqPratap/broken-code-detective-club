@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import PostCard from "./PostCard";
 import CreatePost from "./CreatePost";
 import TrailerPreviewCard from "./TrailerPreviewCard";
+import ContentCard from "./ContentCard";
 
 interface Post {
   id: string;
