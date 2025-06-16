@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck } from "lucide-react";
+import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck, Eye } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
+import TrailerUpload from "./TrailerUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -278,9 +280,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="trailers">Trailers</TabsTrigger>
           <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -368,7 +371,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Button 
                   className="h-20 flex flex-col gap-2"
                   onClick={() => setShowVibesUpload(true)}
@@ -384,6 +387,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                   <PlusCircle className="w-6 h-6" />
                   Upload Content
                 </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => setActiveTab("trailers")}>
+                  <Eye className="w-6 h-6" />
+                  Manage Trailers
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -394,6 +401,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
             onUploadClick={() => setShowContentUpload(true)}
             onGoLiveClick={handleGoLive}
           />
+        </TabsContent>
+
+        <TabsContent value="trailers">
+          <TrailerUpload />
         </TabsContent>
 
         <TabsContent value="scheduler">
