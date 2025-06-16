@@ -249,6 +249,59 @@ export type Database = {
           },
         ]
       }
+      merchandise: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          digital_download_url: string | null
+          id: string
+          image_url: string | null
+          inventory: number | null
+          is_digital: boolean
+          is_published: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          digital_download_url?: string | null
+          id?: string
+          image_url?: string | null
+          inventory?: number | null
+          is_digital?: boolean
+          is_published?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          digital_download_url?: string | null
+          id?: string
+          image_url?: string | null
+          inventory?: number | null
+          is_digital?: boolean
+          is_published?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchandise_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -394,6 +447,60 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      orders: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          digital_delivery_url: string | null
+          id: string
+          merchandise_id: string
+          price: number
+          quantity: number
+          shipping_address: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          digital_delivery_url?: string | null
+          id?: string
+          merchandise_id: string
+          price: number
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          digital_delivery_url?: string | null
+          id?: string
+          merchandise_id?: string
+          price?: number
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_merchandise_id_fkey"
+            columns: ["merchandise_id"]
+            isOneToOne: false
+            referencedRelation: "merchandise"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posts: {
         Row: {

@@ -1,16 +1,25 @@
 
 import { ReactNode, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import Navbar from "./Navbar";
+import MobileLayout from "./MobileLayout";
 import AuthModal from "@/components/auth/AuthModal";
 
 const Layout = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleAuthClick = () => {
     setShowAuthModal(true);
   };
 
+  // Use mobile layout for mobile devices
+  if (isMobile) {
+    return <MobileLayout />;
+  }
+
+  // Desktop layout
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       <Navbar onAuthClick={handleAuthClick} />

@@ -1,21 +1,22 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, Users, TrendingUp, Shield, Compass, Video, Play } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import PostFeed from "@/components/PostFeed";
 import Footer from "@/components/Footer";
 import StoriesCarousel from "@/components/StoriesCarousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 const Index = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const {
-    user,
-    loading
-  } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
   const handleGetStarted = () => {
     if (user) {
       navigate("/creator");
@@ -23,21 +24,23 @@ const Index = () => {
       setShowAuthModal(true);
     }
   };
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
 
   // Show feed for authenticated users
   if (user) {
-    return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        
-        <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+        <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-4xl ${isMobile ? 'mt-0' : ''}`}>
           {/* Welcome Section */}
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">Welcome</h1>
@@ -101,15 +104,15 @@ const Index = () => {
 
         <Footer />
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-      </div>;
+      </div>
+    );
   }
 
   // Clean marketing page for non-authenticated users
-  return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-      <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center">
+      <section className={`container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center ${isMobile ? 'pt-6' : ''}`}>
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight lg:text-5xl">Your Creativity, Your Community, Your Income</h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
@@ -199,6 +202,8 @@ const Index = () => {
 
       <Footer />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
