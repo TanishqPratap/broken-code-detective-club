@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +43,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
   const [metadata, setMetadata] = useState<any>({});
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,14 +60,40 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
     }
   };
 
-  const togglePlayPause = () => {
-    if (videoRef.current) {
+  const syncAudioWithVideo = () => {
+    if (videoRef.current && audioRef.current && selectedMusic?.preview_url) {
+      const video = videoRef.current;
+      const audio = audioRef.current;
+      
+      // Sync audio currentTime with video
+      audio.currentTime = video.currentTime;
+      
       if (isPlaying) {
-        videoRef.current.pause();
+        audio.play().catch(console.error);
+        video.play().catch(console.error);
       } else {
-        videoRef.current.play();
+        audio.pause();
+        video.pause();
       }
-      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
+    
+    if (videoRef.current) {
+      if (!isPlaying) {
+        videoRef.current.play().catch(console.error);
+        if (selectedMusic?.preview_url && audioRef.current) {
+          audioRef.current.currentTime = videoRef.current.currentTime;
+          audioRef.current.play().catch(console.error);
+        }
+      } else {
+        videoRef.current.pause();
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+      }
     }
   };
 
@@ -123,6 +149,25 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       ...prev,
       music: track
     }));
+    
+    // Create new audio element for the selected track
+    if (track.preview_url) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audio = new Audio(track.preview_url);
+      audio.volume = 0.7; // Set volume to 70%
+      audio.loop = true; // Loop the preview
+      audioRef.current = audio;
+      
+      // Sync with video if playing
+      if (isPlaying && videoRef.current) {
+        audio.currentTime = videoRef.current.currentTime;
+        audio.play().catch(console.error);
+      }
+    }
+    
     toast.success(`"${track.name}" by ${track.artist} added to your vibe!`);
   };
 
@@ -261,6 +306,12 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       setShowEnhancements(false);
       setShowMusicSelector(false);
       
+      // Clean up audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
       // Call callbacks
       onUploadComplete?.();
       onClose?.();
@@ -298,11 +349,13 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
                     src={videoPreview}
                     className="w-full max-w-xs mx-auto rounded-lg"
                     controls={false}
+                    muted
                     onLoadedMetadata={() => {
                       if (videoRef.current) {
                         videoRef.current.currentTime = 0;
                       }
                     }}
+                    onTimeUpdate={syncAudioWithVideo}
                     onError={(e) => {
                       console.error('Video error:', e);
                       toast.error('Error loading video preview');
