@@ -10,10 +10,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import StoryEnhancementPanel from "./StoryEnhancementPanel";
+import SpotifyMusicSelector from "./SpotifyMusicSelector";
 
 interface VibesUploadProps {
   onUploadComplete?: () => void;
   onClose?: () => void;
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  preview_url: string | null;
+  external_url: string;
+  duration_ms: number;
+  image: string;
 }
 
 const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
@@ -25,7 +37,8 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showEnhancements, setShowEnhancements] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<SpotifyTrack | null>(null);
   const [textOverlays, setTextOverlays] = useState<any[]>([]);
   const [stickers, setStickers] = useState<any[]>([]);
   const [metadata, setMetadata] = useState<any>({});
@@ -104,13 +117,13 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
     toast.success('GIF added!');
   };
 
-  const handleMusicSelect = (music: string) => {
-    setSelectedMusic(music);
+  const handleMusicSelect = (track: SpotifyTrack) => {
+    setSelectedMusic(track);
     setMetadata(prev => ({
       ...prev,
-      music: music
+      music: track
     }));
-    toast.success("Music added to vibe!");
+    toast.success(`"${track.name}" by ${track.artist} added to your vibe!`);
   };
 
   const handleDrawingToggle = () => {
@@ -246,6 +259,7 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       setMetadata({});
       setIsPlaying(false);
       setShowEnhancements(false);
+      setShowMusicSelector(false);
       
       // Call callbacks
       onUploadComplete?.();
@@ -403,10 +417,19 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
               <Palette className="w-4 h-4 mr-2" />
               Effects
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMusicSelector(!showMusicSelector)}
+              disabled={uploading}
+            >
+              <Music className="w-4 h-4 mr-2" />
+              Add Music
+            </Button>
             {selectedMusic && (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <Music className="w-4 h-4" />
-                Music added
+                {selectedMusic.name} - {selectedMusic.artist}
               </div>
             )}
             {textOverlays.length > 0 && (
@@ -435,13 +458,25 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
         </CardContent>
       </Card>
 
+      {/* Music Selector */}
+      {showMusicSelector && (
+        <Card>
+          <CardContent className="p-6">
+            <SpotifyMusicSelector
+              onTrackSelect={handleMusicSelect}
+              selectedTrack={selectedMusic}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Enhancement Panel */}
       {showEnhancements && (
         <StoryEnhancementPanel
           onStickerSelect={handleStickerSelect}
           onTextAdd={handleTextAdd}
           onGifSelect={handleGifSelect}
-          onMusicSelect={handleMusicSelect}
+          onMusicSelect={() => {}} // We handle music through SpotifyMusicSelector now
           onDrawingToggle={handleDrawingToggle}
         />
       )}

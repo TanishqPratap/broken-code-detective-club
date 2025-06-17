@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Play, Pause } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Play, Pause, Music } from "lucide-react";
 import { toast } from "sonner";
 import VibesComments from "@/components/VibesComments";
 import type { Tables } from "@/integrations/supabase/types";
@@ -320,13 +320,20 @@ const Vibes = () => {
                         </span>)}
                     </div>}
 
-                  {/* Music info if available */}
-                  {vibe.metadata && typeof vibe.metadata === 'object' && 'effects' in vibe.metadata && (vibe.metadata.effects as any)?.music && <div className="flex items-center gap-1 text-white text-xs opacity-90 bg-black/30 backdrop-blur-sm rounded-full px-2 py-1 w-fit">
-                      <span>♪</span>
-                      <span className="truncate max-w-32">
-                        {String((vibe.metadata.effects as any).music)}
-                      </span>
-                    </div>}
+                  {/* Music info if available from Spotify */}
+                  {vibe.metadata && typeof vibe.metadata === 'object' && 'effects' in vibe.metadata && (vibe.metadata.effects as any)?.music && (
+                    <div className="flex items-center gap-2 text-white text-xs opacity-90 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 w-fit mb-2">
+                      <Music className="w-3 h-3" />
+                      <div className="flex flex-col">
+                        <span className="font-medium truncate max-w-40">
+                          {(vibe.metadata.effects as any).music.name}
+                        </span>
+                        <span className="text-gray-300 truncate max-w-40">
+                          {(vibe.metadata.effects as any).music.artist}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons - Instagram Reels style on the right */}
