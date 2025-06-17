@@ -105,19 +105,12 @@ const Vibes = () => {
 
         setVibes(processedVibes);
         
-        // Initialize audio elements for vibes with music
-        processedVibes.forEach((vibe, index) => {
-          if (vibe.metadata && typeof vibe.metadata === 'object' && 'effects' in vibe.metadata) {
-            const effects = vibe.metadata.effects as any;
-            if (effects?.music?.preview_url) {
-              const audio = new Audio(effects.music.preview_url);
-              audio.volume = 0.7;
-              audio.loop = true;
-              audio.muted = isMuted;
-              audioRefs.current[index] = audio;
-            }
-          }
-        });
+        // Setup audio for each vibe
+        setTimeout(() => {
+          processedVibes.forEach((vibe, index) => {
+            setupAudioForVibe(vibe, index);
+          });
+        }, 100);
       } else {
         setVibes([]);
       }
@@ -126,6 +119,39 @@ const Vibes = () => {
       toast.error('Failed to load vibes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setupAudioForVibe = (vibe: Post, index: number) => {
+    // Clean up existing audio
+    if (audioRefs.current[index]) {
+      audioRefs.current[index]!.pause();
+      audioRefs.current[index] = null;
+    }
+
+    // Check if vibe has music with preview URL
+    if (vibe.metadata && 
+        typeof vibe.metadata === 'object' && 
+        'effects' in vibe.metadata) {
+      const effects = vibe.metadata.effects as any;
+      if (effects?.music?.preview_url) {
+        console.log(`Setting up audio for vibe ${index}:`, effects.music.name);
+        const audio = new Audio(effects.music.preview_url);
+        audio.volume = 0.7;
+        audio.loop = true;
+        audio.muted = isMuted;
+        
+        // Handle audio events
+        audio.addEventListener('canplay', () => {
+          console.log(`Audio ready for vibe ${index}`);
+        });
+        
+        audio.addEventListener('error', (e) => {
+          console.error(`Audio error for vibe ${index}:`, e);
+        });
+
+        audioRefs.current[index] = audio;
+      }
     }
   };
 
@@ -142,10 +168,14 @@ const Vibes = () => {
         if (video) {
           if (index === currentIndex && isPlaying) {
             video.play().catch(console.error);
-            // Play audio if available
+            // Play audio if available and sync with video
             if (audioRefs.current[index]) {
-              audioRefs.current[index]!.currentTime = video.currentTime;
-              audioRefs.current[index]!.play().catch(console.error);
+              const audio = audioRefs.current[index];
+              if (audio) {
+                audio.currentTime = video.currentTime;
+                audio.muted = isMuted;
+                audio.play().catch(console.error);
+              }
             }
           } else {
             video.pause();
@@ -160,13 +190,13 @@ const Vibes = () => {
   }, [currentIndex, isPlaying]);
 
   useEffect(() => {
-    videoRefs.current.forEach(video => {
+    videoRefs.current.forEach((video, index) => {
       if (video) {
         video.muted = isMuted;
       }
     });
     
-    audioRefs.current.forEach(audio => {
+    audioRefs.current.forEach((audio, index) => {
       if (audio) {
         audio.muted = isMuted;
       }
@@ -335,8 +365,12 @@ const Vibes = () => {
     const video = videoRefs.current[videoIndex];
     const audio = audioRefs.current[videoIndex];
     
-    if (video && audio && videoIndex === currentIndex) {
-      audio.currentTime = video.currentTime;
+    if (video && audio && videoIndex === currentIndex && isPlaying) {
+      // Keep audio in sync with video
+      const timeDiff = Math.abs(audio.currentTime - video.currentTime);
+      if (timeDiff > 0.1) { // Only sync if difference is significant
+        audio.currentTime = video.currentTime;
+      }
     }
   };
 
@@ -393,7 +427,15 @@ const Vibes = () => {
                 {/* Video */}
                 {vibe.media_url && (
                   <video
-                    ref={el => videoRefs.current[index] = el}
+                    ref={el => {
+                      videoRefs.current[index] = el;
+                      if (el) {
+                        el.addEventListener('loadeddata', () => {
+                          // Setup audio when video is loaded
+                          setupAudioForVibe(vibe, index);
+                        });
+                      }
+                    }}
                     src={vibe.media_url}
                     className="w-full h-full object-cover"
                     loop
@@ -402,6 +444,20 @@ const Vibes = () => {
                     preload="metadata"
                     onClick={togglePlayPause}
                     onTimeUpdate={() => syncAudioWithVideo(index)}
+                    onPlay={() => {
+                      if (index === currentIndex && audioRefs.current[index]) {
+                        const audio = audioRefs.current[index];
+                        if (audio) {
+                          audio.currentTime = videoRefs.current[index]?.currentTime || 0;
+                          audio.play().catch(console.error);
+                        }
+                      }
+                    }}
+                    onPause={() => {
+                      if (audioRefs.current[index]) {
+                        audioRefs.current[index]!.pause();
+                      }
+                    }}
                   />
                 )}
 
