@@ -160,7 +160,7 @@ const TermsOfService = () => {
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">
-                  <strong>Address:</strong> Near Acharya Institutes, New Delhi Mart, Soladevanahalli, Bangalore, Karnataka, 560107
+                  <strong>Address:</strong> Janapriya Apartments, Hesarghatta Rd, Geleyara Balaga Layout, Chikkabanavara, Bengaluru, Guddahalli, Karnataka 560090
                 </p>
               </div>
               <div className="pt-4">
