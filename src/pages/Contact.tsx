@@ -83,13 +83,13 @@ const Contact = () => {
     {
       icon: Phone,
       title: "Phone Support",
-      value: "+1 (555) 123-4567",
+      value: "+916363224190",
       description: "Call us Monday to Friday, 9 AM - 6 PM EST"
     },
     {
       icon: MapPin,
       title: "Office Address",
-      value: "Near Acharya Institutes, New Delhi Mart, Soladevanahalli, Bangalore, Karnataka, 560107",
+      value: "Janapriya Apartments, Hesarghatta Rd, Geleyara Balaga Layout, Chikkabanavara, Bengaluru, Guddahalli, Karnataka 560090",
       description: "Visit our headquarters"
     }
   ];
