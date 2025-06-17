@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,16 +35,13 @@ const Index = () => {
     );
   }
 
-  // Show feed for authenticated users
   if (user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
         <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-4xl ${isMobile ? 'mt-0' : ''}`}>
-          {/* Welcome Section */}
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">Welcome</h1>
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready For Amazing Content?</p>
-            
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Button size="lg" onClick={() => navigate("/creator")} className="w-full sm:w-auto">
                 <Video className="w-5 h-5 mr-2" />
@@ -57,8 +53,6 @@ const Index = () => {
               </Button>
             </div>
           </div>
-
-          {/* Stories Section */}
           <div className="mb-8 sm:mb-12">
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900 dark:text-gray-100">Stories</h2>
             <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
@@ -67,14 +61,10 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Feed Content */}
           <div className="mb-8 sm:mb-12">
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900 dark:text-gray-100">Latest Posts</h2>
             <PostFeed />
           </div>
-
-          {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12 px-2">
             <Card className="text-center bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardContent className="pt-6">
@@ -83,7 +73,6 @@ const Index = () => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Connect with your audience</p>
               </CardContent>
             </Card>
-            
             <Card className="text-center bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -91,7 +80,6 @@ const Index = () => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Multiple revenue streams</p>
               </CardContent>
             </Card>
-            
             <Card className="text-center sm:col-span-2 lg:col-span-1 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -101,24 +89,20 @@ const Index = () => {
             </Card>
           </div>
         </div>
-
         <Footer />
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
   }
 
-  // Clean marketing page for non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-      {/* Hero Section */}
       <section className={`container mx-auto px-4 py-12 sm:py-16 lg:py-20 text-center ${isMobile ? 'pt-6' : ''}`}>
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight lg:text-5xl">Your Creativity, Your Community, Your Income</h1>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
             The ultimate platform for content creators to build their community and monetize their passion through subscriptions and exclusive content.
           </p>
-          
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-12 sm:mb-16 px-4">
             <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto" onClick={handleGetStarted}>
               <Play className="w-5 h-5 mr-2" />
@@ -129,9 +113,21 @@ const Index = () => {
               Explore Creators
             </Button>
           </div>
-
-          {/* Trust Indicators */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-gray-500 dark:text-gray-400">
+          {/* Product Hunt Card Embed */}
+          <div className="flex justify-center mt-8">
+            <iframe
+              style={{ border: "none" }}
+              src="https://cards.producthunt.com/cards/products/1077047"
+              width="500"
+              height="405"
+              frameBorder="0"
+              scrolling="no"
+              allowFullScreen
+              className="rounded-xl shadow-lg"
+            />
+          </div>
+          {/* End Product Hunt Embed */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-gray-500 dark:text-gray-400 mt-8">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
               <span>Trusted by creators</span>
@@ -147,12 +143,9 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Features Section */}
       <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12 sm:mb-16 text-gray-900 dark:text-gray-100">Everything you need to succeed</h2>
-          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <Card className="text-center border-0 shadow-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardHeader className="pb-4">
@@ -163,7 +156,6 @@ const Index = () => {
                 </CardDescription>
               </CardHeader>
             </Card>
-
             <Card className="text-center border-0 shadow-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <TrendingUp className="w-10 sm:w-12 h-10 sm:h-12 text-primary mx-auto mb-3 sm:mb-4" />
@@ -173,7 +165,6 @@ const Index = () => {
                 </CardDescription>
               </CardHeader>
             </Card>
-
             <Card className="text-center border-0 shadow-lg sm:col-span-2 lg:col-span-1 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <Shield className="w-10 sm:w-12 h-10 sm:h-12 text-primary mx-auto mb-3 sm:mb-4" />
@@ -186,8 +177,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
       <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100">Ready to start your journey?</h2>
@@ -199,7 +188,6 @@ const Index = () => {
           </Button>
         </div>
       </section>
-
       <Footer />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
