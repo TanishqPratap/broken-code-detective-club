@@ -150,15 +150,15 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
       music: track
     }));
     
-    // Create new audio element for the selected track
+    // Create new audio element for the selected track only if preview is available
     if (track.preview_url) {
       if (audioRef.current) {
         audioRef.current.pause();
       }
       
       const audio = new Audio(track.preview_url);
-      audio.volume = 0.7; // Set volume to 70%
-      audio.loop = true; // Loop the preview
+      audio.volume = 0.7;
+      audio.loop = true;
       audioRef.current = audio;
       
       // Sync with video if playing
@@ -166,9 +166,17 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
         audio.currentTime = videoRef.current.currentTime;
         audio.play().catch(console.error);
       }
+      
+      toast.success(`"${track.name}" by ${track.artist} added to your vibe with preview!`);
+    } else {
+      // Clean up any existing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
+      toast.success(`"${track.name}" by ${track.artist} added to your vibe! (Preview not available, but track info will be shown)`);
     }
-    
-    toast.success(`"${track.name}" by ${track.artist} added to your vibe!`);
   };
 
   const handleDrawingToggle = () => {
@@ -482,7 +490,10 @@ const VibesUpload = ({ onUploadComplete, onClose }: VibesUploadProps) => {
             {selectedMusic && (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <Music className="w-4 h-4" />
-                {selectedMusic.name} - {selectedMusic.artist}
+                <span className="truncate max-w-40">
+                  {selectedMusic.name} - {selectedMusic.artist}
+                  {!selectedMusic.preview_url && " (No preview)"}
+                </span>
               </div>
             )}
             {textOverlays.length > 0 && (
