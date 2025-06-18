@@ -87,7 +87,7 @@ const VideoHero = () => {
             <Button 
               variant="outline" 
               size="lg" 
-              className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-black"
+              className="text-lg px-8 py-4 border-white text-black hover:bg-white hover:text-black"
               onClick={() => navigate("/discover")}
             >
               Explore Creators
