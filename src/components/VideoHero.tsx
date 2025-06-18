@@ -71,7 +71,7 @@ const VideoHero = () => {
           </h1>
           
           <p className="text-xl md:text-2xl mb-8 text-gray-200 max-w-2xl mx-auto leading-relaxed">
-            Build your community from your local, personal content creator - start from just $5/week
+            The Stage is Yours.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
