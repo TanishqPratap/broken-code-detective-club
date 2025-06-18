@@ -95,18 +95,18 @@ const VideoHero = () => {
           </div>
 
           <div className="text-sm text-gray-300">
-            Or schedule a one-time content order →
+            
           </div>
         </div>
       </div>
 
       {/* Audio control */}
-      <button
+{/*       <button
         onClick={toggleMute}
         className="absolute top-6 right-6 z-20 p-3 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-      </button>
+      </button> */}
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
