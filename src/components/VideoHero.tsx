@@ -45,7 +45,7 @@ const VideoHero = () => {
         className="absolute inset-0 w-full h-full object-cover"
       >
         <source
-          src="https://assets.mixkit.co/videos/preview/mixkit-chef-cooking-in-a-kitchen-4439-large.mp4"
+          src="/hero.mp4"
           type="video/mp4"
         />
         {/* Fallback for browsers that don't support video */}
@@ -62,7 +62,11 @@ const VideoHero = () => {
             YOUR CREATIVITY
             <br />
             <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-              WITHOUT THE COOKING
+              YOUR COMMUNITY
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              YOUR INCOME
             </span>
           </h1>
           
