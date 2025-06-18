@@ -59,14 +59,14 @@ const VideoHero = () => {
       <div className="relative z-10 flex items-center justify-center h-full">
         <div className="text-center text-white px-4 max-w-4xl">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            YOUR CREATIVITY
+            YOUR <span className="font-quick-writers bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">CREATIVITY</span>
             <br />
             <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-              YOUR COMMUNITY
+              YOUR <span className="font-quick-writers">COMMUNITY</span>
             </span>
             <br />
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              YOUR INCOME
+              YOUR <span className="font-quick-writers">INCOME</span>
             </span>
           </h1>
           
