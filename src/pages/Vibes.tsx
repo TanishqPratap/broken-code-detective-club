@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Play, Pause, Music } from "lucide-react";
 import { toast } from "sonner";
 import VibesComments from "@/components/VibesComments";
+import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Post = Tables<"posts"> & {
@@ -16,6 +17,7 @@ type Post = Tables<"posts"> & {
   user_liked: boolean;
   comments_count: number;
   user_subscribed: boolean;
+  subscription_price: number;
 };
 
 const Vibes = () => {
@@ -27,6 +29,12 @@ const Vibes = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [activeVibeId, setActiveVibeId] = useState<string | null>(null);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [selectedCreator, setSelectedCreator] = useState<{
+    id: string;
+    name: string;
+    price: number;
+  } | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +55,7 @@ const Vibes = () => {
         const userIds = [...new Set(vibesData.map(vibe => vibe.user_id))];
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url')
+          .select('id, username, display_name, avatar_url, subscription_price')
           .in('id', userIds);
 
         if (profilesError) throw profilesError;
@@ -99,7 +107,8 @@ const Vibes = () => {
             likes_count: vibeLikes.length,
             user_liked: user ? vibeLikes.some(like => like.user_id === user.id) : false,
             comments_count: vibeComments.length,
-            user_subscribed: isSubscribed
+            user_subscribed: isSubscribed,
+            subscription_price: profile?.subscription_price || 0
           };
         });
 
@@ -275,46 +284,87 @@ const Vibes = () => {
     }
   };
 
-  const handleSubscribe = async (creatorId: string, currentlySubscribed: boolean) => {
+  const handleSubscribe = async (creatorId: string, creatorName: string, subscriptionPrice: number, currentlySubscribed: boolean) => {
     if (!user) {
       toast.error('Please sign in to subscribe');
       return;
     }
 
-    try {
-      if (currentlySubscribed) {
-        // Unsubscribe
+    if (currentlySubscribed) {
+      // Handle unsubscribe
+      try {
         await supabase
           .from('subscriptions')
-          .delete()
+          .update({ status: 'cancelled' })
           .eq('creator_id', creatorId)
-          .eq('subscriber_id', user.id);
-        toast.success('Unsubscribed successfully');
-      } else {
-        // Subscribe
-        await supabase
-          .from('subscriptions')
-          .insert({
-            creator_id: creatorId,
-            subscriber_id: user.id,
-            status: 'active',
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          });
-        toast.success('Subscribed successfully');
-      }
+          .eq('subscriber_id', user.id)
+          .eq('status', 'active');
 
+        toast.success('Unsubscribed successfully');
+        
+        // Update the local state
+        setVibes(prev => prev.map(vibe => 
+          vibe.user_id === creatorId ? {
+            ...vibe,
+            user_subscribed: false
+          } : vibe
+        ));
+      } catch (error) {
+        console.error('Error unsubscribing:', error);
+        toast.error('Failed to unsubscribe');
+      }
+    } else {
+      // Handle subscribe with payment
+      if (subscriptionPrice > 0) {
+        setSelectedCreator({
+          id: creatorId,
+          name: creatorName,
+          price: subscriptionPrice
+        });
+        setShowSubscriptionModal(true);
+      } else {
+        // Free subscription
+        try {
+          await supabase
+            .from('subscriptions')
+            .insert({
+              creator_id: creatorId,
+              subscriber_id: user.id,
+              status: 'active',
+              current_period_start: new Date().toISOString(),
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            });
+          
+          toast.success('Subscribed successfully');
+          
+          // Update the local state
+          setVibes(prev => prev.map(vibe => 
+            vibe.user_id === creatorId ? {
+              ...vibe,
+              user_subscribed: true
+            } : vibe
+          ));
+        } catch (error) {
+          console.error('Error subscribing:', error);
+          toast.error('Failed to subscribe');
+        }
+      }
+    }
+  };
+
+  const handleSubscriptionSuccess = () => {
+    setShowSubscriptionModal(false);
+    if (selectedCreator) {
       // Update the local state
       setVibes(prev => prev.map(vibe => 
-        vibe.user_id === creatorId ? {
+        vibe.user_id === selectedCreator.id ? {
           ...vibe,
-          user_subscribed: !currentlySubscribed
+          user_subscribed: true
         } : vibe
       ));
-    } catch (error) {
-      console.error('Error handling subscription:', error);
-      toast.error('Failed to update subscription');
+      toast.success(`Successfully subscribed to ${selectedCreator.name}`);
     }
+    setSelectedCreator(null);
   };
 
   const handleShare = async (vibe: Post) => {
@@ -495,14 +545,14 @@ const Vibes = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleSubscribe(vibe.user_id, vibe.user_subscribed)}
+                        onClick={() => handleSubscribe(vibe.user_id, vibe.creator_name, vibe.subscription_price, vibe.user_subscribed)}
                         className={`text-xs px-2 py-1 h-6 ${
                           vibe.user_subscribed
                             ? 'border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-white bg-transparent'
                             : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
                         }`}
                       >
-                        {vibe.user_subscribed ? 'Subscribed' : 'Subscribe'}
+                        {vibe.user_subscribed ? 'Subscribed' : vibe.subscription_price > 0 ? `Subscribe $${vibe.subscription_price}` : 'Subscribe'}
                       </Button>
                     </div>
                   </div>
@@ -621,6 +671,21 @@ const Vibes = () => {
           setActiveVibeId(null);
         }}
       />
+
+      {/* Subscription Payment Modal */}
+      {selectedCreator && (
+        <SubscriptionPaymentModal
+          isOpen={showSubscriptionModal}
+          onClose={() => {
+            setShowSubscriptionModal(false);
+            setSelectedCreator(null);
+          }}
+          creatorId={selectedCreator.id}
+          creatorName={selectedCreator.name}
+          subscriptionPrice={selectedCreator.price}
+          onSubscriptionSuccess={handleSubscriptionSuccess}
+        />
+      )}
     </>
   );
 };
