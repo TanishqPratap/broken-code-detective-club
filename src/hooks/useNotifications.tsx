@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -348,19 +347,15 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Fixed real-time subscription with proper cleanup
+  // Fixed real-time subscription with proper cleanup and channel management
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const channelName = `notifications_realtime_${user.id}`;
     console.log('Setting up real-time notifications channel:', channelName);
     
-    const channel = supabase.channel(channelName, {
-      config: {
-        broadcast: { self: false },
-        presence: { key: user.id }
-      }
-    });
+    // Create a new channel instance
+    const channel = supabase.channel(channelName);
 
     channel
       .on('postgres_changes', 
