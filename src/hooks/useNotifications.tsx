@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -33,6 +32,7 @@ export const useNotifications = () => {
   const { showNotification } = usePushNotifications();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
+  const instanceIdRef = useRef(Math.random().toString(36).substr(2, 9));
 
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -263,6 +263,7 @@ export const useNotifications = () => {
     }
   };
 
+  // ... keep existing code (handleNotificationClick function)
   const handleNotificationClick = (notification: NotificationData) => {
     console.log('Notification clicked:', notification);
 
@@ -348,23 +349,14 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Real-time subscription with proper channel management
+  // Real-time subscription with proper channel management using unique instance ID
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('Setting up real-time notifications subscription for user:', user.id);
+    // Create a truly unique channel name using user ID and instance ID
+    const channelName = `notifications_${user.id}_${instanceIdRef.current}`;
+    console.log('Setting up real-time notifications subscription with channel:', channelName);
     
-    // Use a unique channel name to avoid conflicts
-    const channelName = `notifications_${user.id}`;
-    
-    // Remove any existing channel with the same name first
-    const existingChannels = supabase.getChannels();
-    const existingChannel = existingChannels.find(ch => ch.topic === channelName);
-    if (existingChannel) {
-      console.log('Removing existing channel:', channelName);
-      supabase.removeChannel(existingChannel);
-    }
-
     const channel = supabase.channel(channelName);
 
     // Set up the subscription with proper error handling
@@ -412,9 +404,9 @@ export const useNotifications = () => {
         }
       )
       .subscribe((status) => {
-        console.log('Real-time notification channel subscription status:', status);
+        console.log('Real-time notification channel subscription status:', status, 'for channel:', channelName);
         if (status === 'CHANNEL_ERROR') {
-          console.error('Real-time channel error');
+          console.error('Real-time channel error for channel:', channelName);
         }
       });
 
