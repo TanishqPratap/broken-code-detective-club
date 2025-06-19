@@ -23,15 +23,31 @@ interface Merchandise {
   };
 }
 
+// Declare Razorpay types
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const Marketplace = () => {
   const [merchandise, setMerchandise] = useState<Merchandise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchMerchandise();
+    loadRazorpayScript();
   }, []);
+
+  const loadRazorpayScript = () => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.head.appendChild(script);
+  };
 
   const fetchMerchandise = async () => {
     try {
@@ -56,6 +72,45 @@ const Marketplace = () => {
     }
   };
 
+  const createMerchandiseOrder = async (item: Merchandise) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-merchandise-payment', {
+        body: {
+          merchandiseId: item.id,
+          amount: item.price,
+          quantity: 1
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating merchandise order:', error);
+      throw error;
+    }
+  };
+
+  const verifyMerchandisePayment = async (paymentData: any, item: Merchandise) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-merchandise-payment', {
+        body: {
+          razorpay_order_id: paymentData.razorpay_order_id,
+          razorpay_payment_id: paymentData.razorpay_payment_id,
+          razorpay_signature: paymentData.razorpay_signature,
+          merchandiseId: item.id,
+          amount: item.price,
+          quantity: 1
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error verifying merchandise payment:', error);
+      throw error;
+    }
+  };
+
   const handlePurchase = async (item: Merchandise) => {
     if (!user) {
       toast({
@@ -66,33 +121,74 @@ const Marketplace = () => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .insert({
-          buyer_id: user.id,
-          merchandise_id: item.id,
-          quantity: 1,
-          price: item.price,
-          status: 'pending'
-        });
-
-      if (error) throw error;
-
+    if (!window.Razorpay) {
       toast({
-        title: "Order Placed",
-        description: `Your order for ${item.name} has been placed successfully!`,
-      });
-
-      // Refresh merchandise to update inventory
-      fetchMerchandise();
-    } catch (error: any) {
-      console.error('Error placing order:', error);
-      toast({
-        title: "Order Failed",
-        description: error.message || "Failed to place order",
+        title: "Payment Error",
+        description: "Payment system is not loaded. Please refresh the page.",
         variant: "destructive",
       });
+      return;
+    }
+
+    setProcessingPayment(item.id);
+
+    try {
+      // Create payment order
+      const orderData = await createMerchandiseOrder(item);
+      
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Content Creator Platform',
+        description: `Purchase: ${item.name}`,
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          try {
+            // Verify payment
+            await verifyMerchandisePayment(response, item);
+            
+            toast({
+              title: "Purchase Successful!",
+              description: `You have successfully purchased ${item.name}`,
+            });
+
+            // Refresh merchandise to update inventory
+            fetchMerchandise();
+          } catch (error: any) {
+            console.error('Payment verification failed:', error);
+            toast({
+              title: "Payment Verification Failed",
+              description: error.message || "Please contact support",
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          name: user.user_metadata?.full_name || '',
+          email: user.email || '',
+        },
+        theme: {
+          color: '#3B82F6'
+        },
+        modal: {
+          ondismiss: function() {
+            setProcessingPayment(null);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
+    } catch (error: any) {
+      console.error('Error initiating purchase:', error);
+      toast({
+        title: "Purchase Failed",
+        description: error.message || "Failed to initiate purchase",
+        variant: "destructive",
+      });
+      setProcessingPayment(null);
     }
   };
 
@@ -155,11 +251,11 @@ const Marketplace = () => {
                 
                 <Button 
                   onClick={() => handlePurchase(item)}
-                  disabled={item.inventory === 0}
+                  disabled={item.inventory === 0 || processingPayment === item.id}
                   className="flex items-center gap-2"
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  Buy Now
+                  {processingPayment === item.id ? 'Processing...' : 'Buy Now'}
                 </Button>
               </div>
             </CardContent>
