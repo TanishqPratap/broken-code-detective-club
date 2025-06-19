@@ -43,9 +43,24 @@ const Marketplace = () => {
   }, []);
 
   const loadRazorpayScript = () => {
+    if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+      return; // Script already loaded
+    }
+    
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
+    script.onload = () => {
+      console.log('Razorpay script loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('Failed to load Razorpay script');
+      toast({
+        title: "Payment Error",
+        description: "Failed to load payment system. Please refresh the page.",
+        variant: "destructive",
+      });
+    };
     document.head.appendChild(script);
   };
 
@@ -67,6 +82,11 @@ const Marketplace = () => {
       setMerchandise(data || []);
     } catch (error) {
       console.error('Error fetching merchandise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load merchandise. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -74,6 +94,7 @@ const Marketplace = () => {
 
   const createMerchandiseOrder = async (item: Merchandise) => {
     try {
+      console.log('Creating merchandise order for:', item.name);
       const { data, error } = await supabase.functions.invoke('create-merchandise-payment', {
         body: {
           merchandiseId: item.id,
@@ -82,7 +103,12 @@ const Marketplace = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating merchandise order:', error);
+        throw error;
+      }
+      
+      console.log('Order created successfully:', data);
       return data;
     } catch (error) {
       console.error('Error creating merchandise order:', error);
@@ -92,6 +118,7 @@ const Marketplace = () => {
 
   const verifyMerchandisePayment = async (paymentData: any, item: Merchandise) => {
     try {
+      console.log('Verifying payment for:', item.name, paymentData);
       const { data, error } = await supabase.functions.invoke('verify-merchandise-payment', {
         body: {
           razorpay_order_id: paymentData.razorpay_order_id,
@@ -103,7 +130,12 @@ const Marketplace = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error verifying payment:', error);
+        throw error;
+      }
+      
+      console.log('Payment verified successfully:', data);
       return data;
     } catch (error) {
       console.error('Error verifying merchandise payment:', error);
@@ -134,7 +166,9 @@ const Marketplace = () => {
 
     try {
       // Create payment order
+      console.log('Starting purchase process for:', item.name);
       const orderData = await createMerchandiseOrder(item);
+      console.log('Order data received:', orderData);
       
       const options = {
         key: orderData.key_id,
@@ -145,6 +179,7 @@ const Marketplace = () => {
         order_id: orderData.order_id,
         handler: async function (response: any) {
           try {
+            console.log('Payment successful, verifying...', response);
             // Verify payment
             await verifyMerchandisePayment(response, item);
             
@@ -162,10 +197,12 @@ const Marketplace = () => {
               description: error.message || "Please contact support",
               variant: "destructive",
             });
+          } finally {
+            setProcessingPayment(null);
           }
         },
         prefill: {
-          name: user.user_metadata?.full_name || '',
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
           email: user.email || '',
         },
         theme: {
@@ -173,12 +210,24 @@ const Marketplace = () => {
         },
         modal: {
           ondismiss: function() {
+            console.log('Payment modal dismissed');
             setProcessingPayment(null);
           }
         }
       };
 
+      console.log('Opening Razorpay with options:', options);
       const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', function (response: any) {
+        console.error('Payment failed:', response.error);
+        toast({
+          title: "Payment Failed",
+          description: response.error.description || "Payment could not be processed",
+          variant: "destructive",
+        });
+        setProcessingPayment(null);
+      });
+      
       razorpay.open();
 
     } catch (error: any) {
@@ -193,7 +242,11 @@ const Marketplace = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading marketplace...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Loading marketplace...</div>
+      </div>
+    );
   }
 
   return (
