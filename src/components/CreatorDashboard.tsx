@@ -3,11 +3,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck, Eye } from "lucide-react";
+import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck, Eye, ShoppingBag } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
 import TrailerUpload from "./TrailerUpload";
+import MerchandiseManagement from "./MerchandiseManagement";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -280,10 +281,11 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="trailers">Trailers</TabsTrigger>
+          <TabsTrigger value="merchandise">Merchandise</TabsTrigger>
           <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -371,7 +373,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <Button 
                   className="h-20 flex flex-col gap-2"
                   onClick={() => setShowVibesUpload(true)}
@@ -386,6 +388,14 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
                 >
                   <Eye className="w-6 h-6" />
                   Manage Trailers
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex flex-col gap-2" 
+                  onClick={() => setActiveTab("merchandise")}
+                >
+                  <ShoppingBag className="w-6 h-6" />
+                  Merchandise
                 </Button>
                 <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={handleGoLive}>
                   <Video className="w-6 h-6" />
@@ -409,6 +419,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
 
         <TabsContent value="trailers">
           <TrailerUpload />
+        </TabsContent>
+
+        <TabsContent value="merchandise">
+          <MerchandiseManagement />
         </TabsContent>
 
         <TabsContent value="scheduler">

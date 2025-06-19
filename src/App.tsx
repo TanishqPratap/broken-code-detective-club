@@ -33,6 +33,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import CookiePolicy from "@/pages/CookiePolicy";
 import DMCA from "@/pages/DMCA";
+import Marketplace from "@/pages/Marketplace";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ function App() {
                   <Route path="creator" element={<Creator />} />
                   <Route path="creator/:creatorId" element={<CreatorProfile />} />
                   <Route path="dm" element={<PaidDM />} />
+                  <Route path="marketplace" element={<Marketplace />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="notification-settings" element={<NotificationSettings />} />
                   <Route path="trailer/:trailerId" element={<TrailerView />} />
