@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +32,9 @@ export const useNotifications = () => {
   const { showNotification } = usePushNotifications();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Calculate unread count
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // Dispatch custom event to notify other components of notification updates
   const dispatchNotificationUpdate = () => {
@@ -423,6 +425,7 @@ export const useNotifications = () => {
   return {
     notifications,
     loading,
+    unreadCount,
     markAsRead,
     markAllAsRead,
     deleteNotification,
