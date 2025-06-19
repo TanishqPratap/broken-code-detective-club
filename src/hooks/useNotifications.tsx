@@ -357,8 +357,8 @@ export const useNotifications = () => {
     const channelName = `user_notifications_${user.id}_${Date.now()}`;
     const channel = supabase.channel(channelName);
 
-    // Set up the subscription
-    const subscription = channel
+    // Set up the subscription and call subscribe
+    channel
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -409,7 +409,7 @@ export const useNotifications = () => {
       console.log('Cleaning up real-time notification channel:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, showNotification]); // Only depend on user.id and showNotification to prevent recreation
+  }, [user?.id]); // Only depend on user.id to prevent recreation
 
   return {
     notifications,
