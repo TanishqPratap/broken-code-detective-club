@@ -34,6 +34,9 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Calculate unread count
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
   // Dispatch custom event to notify other components of notification updates
   const dispatchNotificationUpdate = () => {
     window.dispatchEvent(new CustomEvent('notificationUpdate'));
@@ -345,13 +348,12 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Single real-time subscription for all notification events
+  // Fixed real-time subscription with proper cleanup
   useEffect(() => {
     if (!user) return;
 
-    let isSubscribed = false;
     const channelName = `notifications_realtime_${user.id}`;
-    console.log('Setting up SINGLE real-time notifications channel:', channelName);
+    console.log('Setting up real-time notifications channel:', channelName);
     
     const channel = supabase.channel(channelName, {
       config: {
@@ -360,62 +362,55 @@ export const useNotifications = () => {
       }
     });
 
-    // Only subscribe once
-    if (!isSubscribed) {
-      channel
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          }, 
-          (payload) => {
-            console.log('New notification received via realtime:', payload);
-            
-            const newNotification = payload.new;
-            showNotification(newNotification.title, newNotification.message);
-            toast.success(`New notification: ${newNotification.title}`);
-            
-            // Refresh notifications to get the complete data
-            setTimeout(() => {
-              console.log('Refreshing notifications due to realtime event');
-              fetchNotifications();
-              dispatchNotificationUpdate();
-            }, 100);
-          }
-        )
-        .on('postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('Notification updated via realtime:', payload);
-            const updatedNotification = payload.new;
-            setNotifications(prev => 
-              prev.map(notif => 
-                notif.id === updatedNotification.id 
-                  ? { ...notif, is_read: updatedNotification.is_read }
-                  : notif
-              )
-            );
+    channel
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        (payload) => {
+          console.log('New notification received via realtime:', payload);
+          
+          const newNotification = payload.new;
+          showNotification(newNotification.title, newNotification.message);
+          toast.success(`New notification: ${newNotification.title}`);
+          
+          // Refresh notifications to get the complete data
+          setTimeout(() => {
+            console.log('Refreshing notifications due to realtime event');
+            fetchNotifications();
             dispatchNotificationUpdate();
-          }
-        )
-        .subscribe((status) => {
-          console.log('Real-time notification channel subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            isSubscribed = true;
-          }
-        });
-    }
+          }, 100);
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Notification updated via realtime:', payload);
+          const updatedNotification = payload.new;
+          setNotifications(prev => 
+            prev.map(notif => 
+              notif.id === updatedNotification.id 
+                ? { ...notif, is_read: updatedNotification.is_read }
+                : notif
+            )
+          );
+          dispatchNotificationUpdate();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time notification channel subscription status:', status);
+      });
 
     return () => {
       console.log('Cleaning up real-time notification channel:', channelName);
-      isSubscribed = false;
       supabase.removeChannel(channel);
     };
   }, [user?.id]); // Only depend on user.id to prevent recreation
@@ -427,6 +422,7 @@ export const useNotifications = () => {
     markAllAsRead,
     deleteNotification,
     handleNotificationClick,
-    refetch: fetchNotifications
+    refetch: fetchNotifications,
+    unreadCount
   };
 };
