@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,11 +38,11 @@ export const useNotifications = () => {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // Dispatch custom event to notify other components of notification updates
-  const dispatchNotificationUpdate = () => {
+  const dispatchNotificationUpdate = useCallback(() => {
     window.dispatchEvent(new CustomEvent('notificationUpdate'));
-  };
+  }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) {
       console.log('No user, skipping notification fetch');
       setLoading(false);
@@ -144,7 +145,7 @@ export const useNotifications = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const getTimeAgo = (timestamp: string) => {
     const now = new Date();
@@ -345,19 +346,28 @@ export const useNotifications = () => {
   useEffect(() => {
     console.log('useNotifications: User changed, fetching notifications');
     fetchNotifications();
-  }, [user]);
+  }, [fetchNotifications]);
 
-  // Fixed real-time subscription with proper cleanup and channel management
+  // Real-time subscription with proper channel management
   useEffect(() => {
     if (!user?.id) return;
 
     console.log('Setting up real-time notifications subscription for user:', user.id);
     
-    // Use a unique channel name that won't conflict
-    const channelName = `user_notifications_${user.id}_${Date.now()}`;
+    // Use a unique channel name to avoid conflicts
+    const channelName = `notifications_${user.id}`;
+    
+    // Remove any existing channel with the same name first
+    const existingChannels = supabase.getChannels();
+    const existingChannel = existingChannels.find(ch => ch.topic === channelName);
+    if (existingChannel) {
+      console.log('Removing existing channel:', channelName);
+      supabase.removeChannel(existingChannel);
+    }
+
     const channel = supabase.channel(channelName);
 
-    // Set up the subscription and call subscribe
+    // Set up the subscription with proper error handling
     channel
       .on('postgres_changes', 
         { 
@@ -403,13 +413,16 @@ export const useNotifications = () => {
       )
       .subscribe((status) => {
         console.log('Real-time notification channel subscription status:', status);
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Real-time channel error');
+        }
       });
 
     return () => {
       console.log('Cleaning up real-time notification channel:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [user?.id]); // Only depend on user.id to prevent recreation
+  }, [user?.id, showNotification, fetchNotifications, dispatchNotificationUpdate]);
 
   return {
     notifications,
