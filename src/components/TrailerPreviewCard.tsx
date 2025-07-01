@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -281,37 +280,37 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
   };
 
   return (
-    <Card className="overflow-hidden bg-white border border-gray-200">
+    <Card className="overflow-hidden bg-white border border-gray-200 w-full max-w-md mx-auto">
       <CardHeader className="pb-3 bg-white">
         <div className="flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer hover:opacity-80"
             onClick={handleCreatorClick}
           >
-            <Avatar>
+            <Avatar className="w-10 h-10">
               <AvatarImage src={trailer.creator.avatar_url || ''} />
               <AvatarFallback>
                 {trailer.creator.display_name?.[0] || trailer.creator.username?.[0] || "C"}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="font-semibold">
+                <h4 className="font-semibold text-sm truncate">
                   {trailer.creator.display_name || trailer.creator.username}
                 </h4>
                 {trailer.creator.is_verified && (
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">@{trailer.creator.username}</p>
+              <p className="text-xs text-muted-foreground truncate">@{trailer.creator.username}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
               Free Preview
             </Badge>
             {trailer.creator.subscription_price && (
-              <Badge variant="outline" className="flex items-center gap-1">
+              <Badge variant="outline" className="flex items-center gap-1 text-xs">
                 <DollarSign className="w-3 h-3" />
                 ${trailer.creator.subscription_price}/mo
               </Badge>
@@ -320,18 +319,18 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 bg-white">
-        <div className="mb-4">
-          <h3 className="font-medium mb-2">{trailer.title}</h3>
+      <CardContent className="pt-0 bg-white space-y-4">
+        <div>
+          <h3 className="font-medium mb-2 text-sm">{trailer.title}</h3>
           {trailer.description && (
-            <p className="text-sm text-muted-foreground mb-3">{trailer.description}</p>
+            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{trailer.description}</p>
           )}
         </div>
 
         <div className="relative rounded-lg overflow-hidden">
-          <AspectRatio ratio={16/9}>
+          <AspectRatio ratio={9/16} className="bg-muted">
             <div 
-              className="w-full h-full bg-muted cursor-pointer group relative"
+              className="w-full h-full cursor-pointer group relative"
               onClick={handlePreviewClick}
             >
               {trailer.content_type === 'video' ? (
@@ -339,7 +338,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
                   {isPlaying ? (
                     <video
                       src={trailer.media_url}
-                      className="w-full h-full object-contain bg-black"
+                      className="w-full h-full object-cover"
                       controls
                       autoPlay
                     />
@@ -347,7 +346,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
                     <>
                       <video
                         src={trailer.media_url}
-                        className="w-full h-full object-contain bg-black"
+                        className="w-full h-full object-cover"
                         muted
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center group-hover:bg-opacity-40 transition-all">
@@ -363,7 +362,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
                   <img
                     src={trailer.media_url}
                     alt={trailer.title}
-                    className="w-full h-full object-contain bg-black"
+                    className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white bg-opacity-90 rounded-full p-3">
@@ -373,7 +372,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
                 </>
               )}
               
-              <Badge className="absolute top-3 left-3 bg-purple-600">
+              <Badge className="absolute top-3 left-3 bg-purple-600 text-xs">
                 Trailer {trailer.order_position}
               </Badge>
             </div>
@@ -381,12 +380,12 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t mt-4">
-          <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
               size="sm" 
-              className={isLiked ? "text-red-500" : ""}
+              className={`text-xs ${isLiked ? "text-red-500" : ""}`}
               onClick={handleLike}
             >
               <Heart className={`w-4 h-4 mr-1 ${isLiked ? "fill-current" : ""}`} />
@@ -396,18 +395,19 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
             <Button 
               variant="ghost" 
               size="sm" 
+              className="text-xs"
               onClick={() => setShowComments(!showComments)}
             >
               <MessageCircle className="w-4 h-4 mr-1" />
               {commentsCount}
             </Button>
             
-            <Button variant="ghost" size="sm" onClick={handleShare}>
+            <Button variant="ghost" size="sm" onClick={handleShare} className="text-xs">
               <Share className="w-4 h-4" />
             </Button>
           </div>
           
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {formatTimeAgo(trailer.created_at)}
           </div>
         </div>
@@ -426,6 +426,7 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
                       handleComment();
                     }
                   }}
+                  className="text-sm"
                 />
                 <Button 
                   size="sm" 
@@ -437,30 +438,30 @@ const TrailerPreviewCard = ({ trailer }: TrailerPreviewCardProps) => {
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-60 overflow-y-auto">
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading comments...</p>
+                <p className="text-center text-muted-foreground text-sm">Loading comments...</p>
               ) : comments.length === 0 ? (
-                <p className="text-center text-muted-foreground">No comments yet</p>
+                <p className="text-center text-muted-foreground text-sm">No comments yet</p>
               ) : (
                 comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <Avatar className="w-8 h-8">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarImage src={comment.profiles.avatar_url || ""} />
                       <AvatarFallback>
                         {(comment.profiles.display_name || comment.profiles.username)[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                        <span className="font-medium text-sm truncate">
                           {comment.profiles.display_name || comment.profiles.username}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
                           {formatTimeAgo(comment.created_at)}
                         </span>
                       </div>
-                      <p className="text-sm">{comment.comment_text}</p>
+                      <p className="text-sm break-words">{comment.comment_text}</p>
                     </div>
                   </div>
                 ))
