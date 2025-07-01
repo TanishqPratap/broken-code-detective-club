@@ -25,17 +25,13 @@ interface ThemeProviderProps {
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Check localStorage first, then system preference, default to light
+    // Check localStorage first, default to light mode
     const stored = localStorage.getItem('theme') as Theme;
     if (stored && (stored === 'light' || stored === 'dark')) {
       return stored;
     }
     
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    
+    // Default to light mode instead of checking system preference
     return 'light';
   });
 
