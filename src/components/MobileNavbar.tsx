@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MobileNavbarProps {
   onAuthClick: () => void;
@@ -84,7 +85,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
           />
           
           {/* Sidebar */}
-          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out">
+          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <span className="text-lg font-semibold">Menu</span>
               <Button variant="ghost" size="icon" onClick={closeSidebar}>
@@ -92,96 +93,98 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
               </Button>
             </div>
 
-            <nav className="flex-1 p-4">
-              <ul className="space-y-2">
-                {navItems.map((item) => (
-                  <li key={item.path}>
-                    <Link
-                      to={item.path}
-                      onClick={closeSidebar}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      }`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+            <ScrollArea className="flex-1">
+              <nav className="p-4">
+                <ul className="space-y-2">
+                  {navItems.map((item) => (
+                    <li key={item.path}>
+                      <Link
+                        to={item.path}
+                        onClick={closeSidebar}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                          isActive(item.path)
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
 
-              {user && (
-                <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <ul className="space-y-2">
-                    <li>
-                      <Link
-                        to="/creator"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/creator")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <Video className="w-5 h-5" />
-                        Creator Studio
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/dm"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/dm")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                        Paid DMs
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/notifications"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/notifications")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <Bell className="w-5 h-5" />
-                        <span className="flex items-center gap-2">
-                          Notifications
-                          {unreadCount > 0 && (
-                            <Badge variant="destructive" className="text-xs">
-                              {unreadCount}
-                            </Badge>
-                          )}
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/profile"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/profile")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <User className="w-5 h-5" />
-                        Profile
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </nav>
+                {user && (
+                  <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <ul className="space-y-2">
+                      <li>
+                        <Link
+                          to="/creator"
+                          onClick={closeSidebar}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive("/creator")
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <Video className="w-5 h-5" />
+                          Creator Studio
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/dm"
+                          onClick={closeSidebar}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive("/dm")
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <MessageSquare className="w-5 h-5" />
+                          Paid DMs
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/notifications"
+                          onClick={closeSidebar}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive("/notifications")
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <Bell className="w-5 h-5" />
+                          <span className="flex items-center gap-2">
+                            Notifications
+                            {unreadCount > 0 && (
+                              <Badge variant="destructive" className="text-xs">
+                                {unreadCount}
+                              </Badge>
+                            )}
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/profile"
+                          onClick={closeSidebar}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive("/profile")
+                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <User className="w-5 h-5" />
+                          Profile
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </nav>
+            </ScrollArea>
 
             {/* Auth Section */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
