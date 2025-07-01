@@ -1,208 +1,150 @@
 
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Bell, User, Video, Heart, MessageSquare, Menu, X, ShoppingBag } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger 
+} from "@/components/ui/sheet";
+import { 
+  Menu, 
+  Home, 
+  Search, 
+  Compass, 
+  ShoppingBag, 
+  Radio, 
+  User, 
+  Bell,
+  LogOut,
+  LogIn
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Badge } from "@/components/ui/badge";
-import { useNotifications } from "@/hooks/useNotifications";
+import AuthModal from "@/components/auth/AuthModal";
 
-interface MobileNavbarProps {
-  onAuthClick: () => void;
-  isSidebarOpen: boolean;
-  toggleSidebar: () => void;
-  closeSidebar: () => void;
-}
-
-const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar }: MobileNavbarProps) => {
-  const location = useLocation();
-  const navigate = useNavigate();
+const MobileNavbar = () => {
   const { user, signOut } = useAuth();
-  const { unreadCount } = useNotifications();
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/');
-      closeSidebar();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await signOut();
+    setIsOpen(false);
+    navigate('/');
   };
 
   const navItems = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/discover", icon: Search, label: "Discover" },
-    { path: "/posts", icon: Heart, label: "Posts" },
-    { path: "/vibes", icon: Video, label: "Vibes" },
-    { path: "/marketplace", icon: ShoppingBag, label: "Marketplace" },
-    { path: "/live", icon: Video, label: "Live" },
+    { to: "/", icon: Home, label: "Home" },
+    { to: "/discover", icon: Compass, label: "Discover" },
+    { to: "/search", icon: Search, label: "Search" },
+    { to: "/marketplace", icon: ShoppingBag, label: "Marketplace" },
+    { to: "/live", icon: Radio, label: "Live" },
   ];
 
   return (
     <>
-      {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-50">
-        <Link to="/" className="text-xl font-bold text-gray-900 dark:text-white">
-          Creator Hub
+      <div className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
+        <Link to="/" className="font-bold">
+          CreatorHub
         </Link>
         
-        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-          <Menu className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-around z-50">
-        {navItems.slice(0, 5).map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex flex-col items-center gap-1 p-2 ${
-              isActive(item.path)
-                ? "text-blue-600 dark:text-blue-400"
-                : "text-gray-600 dark:text-gray-400"
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs">{item.label}</span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50" 
-            onClick={closeSidebar}
-          />
+        <div className="flex items-center space-x-2">
+          {user && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/notifications">
+                <Bell className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
           
-          {/* Sidebar */}
-          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-lg font-semibold">Menu</span>
-              <Button variant="ghost" size="icon" onClick={closeSidebar}>
-                <X className="h-5 w-5" />
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <Menu className="h-4 w-4" />
               </Button>
-            </div>
-
-            <nav className="flex-1 p-4">
-              <ul className="space-y-2">
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80">
+              <SheetHeader>
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              
+              <div className="mt-6 flex flex-col space-y-2">
                 {navItems.map((item) => (
-                  <li key={item.path}>
-                    <Link
-                      to={item.path}
-                      onClick={closeSidebar}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      }`}
-                    >
-                      <item.icon className="w-5 h-5" />
+                  <Button
+                    key={item.to}
+                    variant="ghost"
+                    className="justify-start"
+                    asChild
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Link to={item.to}>
+                      <item.icon className="mr-2 h-4 w-4" />
                       {item.label}
                     </Link>
-                  </li>
+                  </Button>
                 ))}
-              </ul>
-
-              {user && (
-                <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <ul className="space-y-2">
-                    <li>
-                      <Link
-                        to="/creator"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/creator")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <Video className="w-5 h-5" />
-                        Creator Studio
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/dm"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/dm")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                        Paid DMs
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/notifications"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/notifications")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <Bell className="w-5 h-5" />
-                        <span className="flex items-center gap-2">
-                          Notifications
-                          {unreadCount > 0 && (
-                            <Badge variant="destructive" className="text-xs">
-                              {unreadCount}
-                            </Badge>
-                          )}
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/profile"
-                        onClick={closeSidebar}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                          isActive("/profile")
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <User className="w-5 h-5" />
+                
+                {user ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      asChild
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Link to="/profile">
+                        <User className="mr-2 h-4 w-4" />
                         Profile
                       </Link>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </nav>
-
-            {/* Auth Section */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              {user ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Signed in as {user.email}
-                  </p>
-                  <Button variant="outline" onClick={handleSignOut} className="w-full">
-                    Sign Out
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      asChild
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Link to="/creator">
+                        <User className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Link>
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      className="justify-start text-red-600 hover:text-red-700"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => {
+                      setIsOpen(false);
+                      setShowAuthModal(true);
+                    }}
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Sign In
                   </Button>
-                </div>
-              ) : (
-                <Button onClick={() => { onAuthClick(); closeSidebar(); }} className="w-full">
-                  Sign In
-                </Button>
-              )}
-            </div>
-          </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      )}
+      </div>
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </>
   );
 };
