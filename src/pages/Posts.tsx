@@ -11,7 +11,7 @@ const Posts = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      <Navbar />
       
       <div className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
         <div className="mb-6 sm:mb-8">

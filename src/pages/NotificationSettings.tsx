@@ -14,7 +14,7 @@ const NotificationSettings = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
+        <Navbar />
         <div className="ml-64 p-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
           <Card className="p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Sign in to manage notifications</h2>
@@ -31,7 +31,7 @@ const NotificationSettings = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      <Navbar />
       
       <div className="ml-64 p-4 sm:p-6 max-w-2xl">
         <div className="space-y-6">

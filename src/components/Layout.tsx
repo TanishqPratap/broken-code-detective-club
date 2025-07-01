@@ -10,10 +10,6 @@ const Layout = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const isMobile = useIsMobile();
 
-  const handleAuthClick = () => {
-    setShowAuthModal(true);
-  };
-
   // Use mobile layout for mobile devices
   if (isMobile) {
     return <MobileLayout />;
@@ -22,7 +18,7 @@ const Layout = () => {
   // Desktop layout
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      <Navbar onAuthClick={handleAuthClick} />
+      <Navbar />
       <main className="flex-1 ml-64">
         <div className="w-full min-h-screen px-4 py-6">
           <Outlet />
