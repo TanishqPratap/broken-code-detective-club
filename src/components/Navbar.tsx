@@ -1,111 +1,158 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Search, Bell, User, Video, Heart, MessageSquare, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Bell, User, LogOut, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import AuthModal from "@/components/auth/AuthModal";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { useNotifications } from "@/hooks/useNotifications";
 
-const Navbar = () => {
-  const { user, signOut } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+interface NavbarProps {
+  onAuthClick: () => void;
+}
+
+const Navbar = ({ onAuthClick }: NavbarProps) => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const navItems = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/discover", icon: Search, label: "Discover" },
+    { path: "/posts", icon: Heart, label: "Posts" },
+    { path: "/vibes", icon: Video, label: "Vibes" },
+    { path: "/marketplace", icon: ShoppingBag, label: "Marketplace" },
+    { path: "/live", icon: Video, label: "Live" },
+  ];
+
   return (
-    <>
-      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 hidden md:flex">
-            <Link to="/" className="mr-6 flex items-center space-x-2">
-              <span className="hidden font-bold sm:inline-block">CreatorHub</span>
-            </Link>
-            <nav className="flex items-center space-x-6 text-sm font-medium">
-              <Link to="/discover" className="transition-colors hover:text-foreground/80">
-                Discover
+    <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col z-50">
+      {/* Logo */}
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <Link to="/" className="text-2xl font-bold text-gray-900 dark:text-white">
+          Creator Hub
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <Link
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive(item.path)
+                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
               </Link>
-              <Link to="/marketplace" className="transition-colors hover:text-foreground/80">
-                Marketplace
-              </Link>
-              <Link to="/live" className="transition-colors hover:text-foreground/80">
-                Live
-              </Link>
-            </nav>
-          </div>
-          
-          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-            <div className="w-full flex-1 md:w-auto md:flex-none">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search creators, content..."
-                  className="pl-8 md:w-[300px] lg:w-[400px]"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              {user ? (
-                <>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/notifications">
-                      <Bell className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <User className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link to="/profile">Profile</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/creator">Dashboard</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSignOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign Out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : (
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowAuthModal(true)}
+            </li>
+          ))}
+        </ul>
+
+        {user && (
+          <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <ul className="space-y-2">
+              <li>
+                <Link
+                  to="/creator"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive("/creator")
+                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
                 >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-              )}
-            </div>
+                  <Video className="w-5 h-5" />
+                  Creator Studio
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/dm"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive("/dm")
+                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  Paid DMs
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/notifications"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive("/notifications")
+                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="flex items-center gap-2">
+                    Notifications
+                    {unreadCount > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/profile"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive("/profile")
+                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                  Profile
+                </Link>
+              </li>
+            </ul>
           </div>
-        </div>
+        )}
       </nav>
 
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
-    </>
+      {/* Auth Section */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        {user ? (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Signed in as {user.email}
+            </p>
+            <Button variant="outline" onClick={handleSignOut} className="w-full">
+              Sign Out
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={onAuthClick} className="w-full">
+            Sign In
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
 

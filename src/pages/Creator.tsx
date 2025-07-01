@@ -69,7 +69,7 @@ const Creator = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar />
+        <Navbar onAuthClick={() => setShowAuthModal(true)} />
         <div className="container mx-auto px-4 py-16">
           <Card className="max-w-md mx-auto">
             <CardHeader>
@@ -87,10 +87,10 @@ const Creator = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar />
+      <Navbar onAuthClick={() => setShowAuthModal(true)} />
       <SidebarProvider>
         <div className="flex w-full max-w-[1400px] mx-auto px-4 py-8 gap-6">
-          <CreatorSidebar />
+          <CreatorSidebar active={activeSection} onSelect={setActiveSection} />
           <main className="flex-1 min-w-0">
             {!activeSessionId && (
               <div className="mb-8 flex items-center gap-4">

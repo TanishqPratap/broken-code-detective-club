@@ -10,6 +10,10 @@ const MobileLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
 
+  const handleAuthClick = () => {
+    setShowAuthModal(true);
+  };
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -20,7 +24,12 @@ const MobileLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <MobileNavbar />
+      <MobileNavbar 
+        onAuthClick={handleAuthClick}
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        closeSidebar={closeSidebar}
+      />
       
       <main className="pt-16 px-4 py-6">
         <Outlet />

@@ -21,7 +21,7 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
       <div className="container mx-auto px-4 py-8 sm:py-16">
         <div className="max-w-2xl mx-auto text-center">
