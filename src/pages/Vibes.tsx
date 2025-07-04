@@ -219,27 +219,43 @@ const Vibes = () => {
 
   // Handle touch gestures for mobile scrolling
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Don't interfere with button clicks
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
     setTouchStartY(e.targetTouches[0].clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent default scroll behavior
-    setTouchEndY(e.targetTouches[0].clientY);
+    // Don't interfere with button clicks
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
+    
+    // Only prevent default for swipe gestures, not button interactions
+    if (touchStartY) {
+      e.preventDefault();
+      setTouchEndY(e.targetTouches[0].clientY);
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent default behavior that could trigger reload
+    // Don't interfere with button clicks
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
     
     if (!touchStartY || !touchEndY) return;
     
     const distance = touchStartY - touchEndY;
-    const minSwipeDistance = 80; // Increased threshold for more reliable detection
+    const minSwipeDistance = 80;
     
     if (distance > minSwipeDistance && currentIndex < vibes.length - 1) {
-      // Swipe up (positive distance) - next vibe
       handleVibeChange(currentIndex + 1);
     } else if (distance < -minSwipeDistance && currentIndex > 0) {
-      // Swipe down (negative distance) - previous vibe
       handleVibeChange(currentIndex - 1);
     }
     
