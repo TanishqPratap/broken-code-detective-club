@@ -223,22 +223,23 @@ const Vibes = () => {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default scroll behavior
     setTouchEndY(e.targetTouches[0].clientY);
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default behavior that could trigger reload
+    
     if (!touchStartY || !touchEndY) return;
     
     const distance = touchStartY - touchEndY;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe && currentIndex < vibes.length - 1) {
-      // Swipe up - next vibe
+    const minSwipeDistance = 80; // Increased threshold for more reliable detection
+    
+    if (distance > minSwipeDistance && currentIndex < vibes.length - 1) {
+      // Swipe up (positive distance) - next vibe
       handleVibeChange(currentIndex + 1);
-    }
-    if (isRightSwipe && currentIndex > 0) {
-      // Swipe down - previous vibe
+    } else if (distance < -minSwipeDistance && currentIndex > 0) {
+      // Swipe down (negative distance) - previous vibe
       handleVibeChange(currentIndex - 1);
     }
     
@@ -496,7 +497,7 @@ const Vibes = () => {
     <>
       <div 
         ref={containerRef} 
-        className="min-h-screen bg-black relative overflow-hidden"
+        className="min-h-screen bg-black relative overflow-hidden touch-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
