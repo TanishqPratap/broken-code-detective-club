@@ -39,6 +39,11 @@ const Vibes = () => {
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Touch gesture states
+  const [touchStartY, setTouchStartY] = useState(0);
+  const [touchEndY, setTouchEndY] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   const fetchVibes = async () => {
     try {
       setLoading(true);
@@ -212,21 +217,65 @@ const Vibes = () => {
     });
   }, [isMuted]);
 
+  // Handle touch gestures for mobile scrolling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartY || !touchEndY) return;
+    
+    const distance = touchStartY - touchEndY;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentIndex < vibes.length - 1) {
+      // Swipe up - next vibe
+      handleVibeChange(currentIndex + 1);
+    }
+    if (isRightSwipe && currentIndex > 0) {
+      // Swipe down - previous vibe
+      handleVibeChange(currentIndex - 1);
+    }
+    
+    setTouchStartY(0);
+    setTouchEndY(0);
+  };
+
+  const handleVibeChange = (newIndex: number) => {
+    if (isTransitioning) return;
+    
+    setIsTransitioning(true);
+    setCurrentIndex(newIndex);
+    
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 300);
+  };
+
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+      if (isTransitioning) return;
+      
       if (e.deltaY > 0 && currentIndex < vibes.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+        handleVibeChange(currentIndex + 1);
       } else if (e.deltaY < 0 && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
+        handleVibeChange(currentIndex - 1);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTransitioning) return;
+      
       if (e.key === 'ArrowDown' && currentIndex < vibes.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+        handleVibeChange(currentIndex + 1);
       } else if (e.key === 'ArrowUp' && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
+        handleVibeChange(currentIndex - 1);
       } else if (e.key === ' ') {
         e.preventDefault();
         setIsPlaying(!isPlaying);
@@ -245,7 +294,7 @@ const Vibes = () => {
       }
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, vibes.length, isPlaying]);
+  }, [currentIndex, vibes.length, isPlaying, isTransitioning]);
 
   const handleLike = async (vibeId: string, currentlyLiked: boolean) => {
     if (!user) {
@@ -445,7 +494,13 @@ const Vibes = () => {
 
   return (
     <>
-      <div ref={containerRef} className="min-h-screen bg-black relative">
+      <div 
+        ref={containerRef} 
+        className="min-h-screen bg-black relative overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Mobile-first design container */}
         <div className="max-w-md mx-auto relative min-h-screen">
           {/* Progress indicators */}
@@ -456,23 +511,26 @@ const Vibes = () => {
                 className={`w-0.5 h-4 rounded-full transition-all duration-300 cursor-pointer ${
                   index === currentIndex ? 'bg-white' : 'bg-white/40'
                 }`}
-                onClick={() => setCurrentIndex(index)}
+                onClick={() => !isTransitioning && handleVibeChange(index)}
               />
             ))}
           </div>
 
-          {/* Video container */}
+          {/* Video container with smooth scrolling */}
           <div className="relative h-screen overflow-hidden">
             {vibes.map((vibe, index) => (
               <div
                 key={vibe.id}
-                className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
+                className={`absolute inset-0 transition-all duration-300 ease-out ${
                   index === currentIndex
-                    ? 'translate-y-0 opacity-100'
+                    ? 'translate-y-0 opacity-100 scale-100'
                     : index < currentIndex
-                    ? '-translate-y-full opacity-0'
-                    : 'translate-y-full opacity-0'
+                    ? '-translate-y-full opacity-0 scale-95'
+                    : 'translate-y-full opacity-0 scale-95'
                 }`}
+                style={{
+                  transform: `translateY(${(index - currentIndex) * 100}%) scale(${index === currentIndex ? 1 : 0.95})`,
+                }}
               >
                 {/* Video */}
                 {vibe.media_url && (
