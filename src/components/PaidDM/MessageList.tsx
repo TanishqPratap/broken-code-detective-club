@@ -27,7 +27,10 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
   const [hasViewed, setHasViewed] = useState(!!message.viewed_at);
   const { toast } = useToast();
 
-  const handleViewOneTimeMedia = async () => {
+  const handleViewOneTimeMedia = async (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (hasViewed) return;
     
     try {
@@ -76,12 +79,14 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
       <div className="mt-2">
         <button
           onClick={handleViewOneTimeMedia}
+          onTouchEnd={handleViewOneTimeMedia}
           disabled={!canView}
-          className={`p-3 border border-purple-200 rounded-2xl flex items-center gap-2 transition-colors ${
+          className={`p-3 border border-purple-200 rounded-2xl flex items-center gap-2 transition-colors touch-manipulation ${
             canView 
-              ? 'bg-purple-50 hover:bg-purple-100 cursor-pointer' 
+              ? 'bg-purple-50 hover:bg-purple-100 active:bg-purple-200 cursor-pointer' 
               : 'bg-gray-50 cursor-not-allowed'
           }`}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
           <Eye className="w-4 h-4 text-purple-500" />
           <span className="text-sm text-purple-700">
