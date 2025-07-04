@@ -498,7 +498,7 @@ const Vibes = () => {
       <div 
         ref={containerRef} 
         className="h-screen bg-black relative overflow-hidden touch-none"
-        style={{ height: '100vh', height: '100dvh' }}
+        style={{ height: '100dvh' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
