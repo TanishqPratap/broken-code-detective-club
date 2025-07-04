@@ -497,13 +497,14 @@ const Vibes = () => {
     <>
       <div 
         ref={containerRef} 
-        className="min-h-screen bg-black relative overflow-hidden touch-none"
+        className="h-screen bg-black relative overflow-hidden touch-none"
+        style={{ height: '100vh', height: '100dvh' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Mobile-first design container */}
-        <div className="max-w-md mx-auto relative min-h-screen">
+        <div className="max-w-md mx-auto relative h-full">
           {/* Progress indicators */}
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-1">
             {vibes.map((_, index) => (
@@ -518,7 +519,7 @@ const Vibes = () => {
           </div>
 
           {/* Video container with smooth scrolling */}
-          <div className="relative h-screen overflow-hidden">
+          <div className="relative h-full overflow-hidden">
             {vibes.map((vibe, index) => (
               <div
                 key={vibe.id}
@@ -547,6 +548,7 @@ const Vibes = () => {
                     }}
                     src={vibe.media_url}
                     className="w-full h-full object-cover"
+                    style={{ height: '100%', width: '100%' }}
                     loop
                     muted={isMuted}
                     playsInline
