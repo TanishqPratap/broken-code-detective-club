@@ -1,6 +1,5 @@
-
-import { MessageCircle, Eye, EyeOff } from "lucide-react";
-import React, { useState } from "react";
+import { MessageCircle, Eye, EyeOff, Timer } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,7 +24,20 @@ interface MessageListProps {
 const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; currentUserId: string }) => {
   const [isViewing, setIsViewing] = useState(false);
   const [hasViewed, setHasViewed] = useState(!!message.viewed_at);
+  const [countdown, setCountdown] = useState(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isViewing && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else if (isViewing && countdown === 0) {
+      setIsViewing(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isViewing, countdown]);
 
   const handleViewOneTimeMedia = async (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
@@ -44,11 +56,8 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
 
       setIsViewing(true);
       setHasViewed(true);
+      setCountdown(10); // 10 second countdown like Snapchat
       
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        setIsViewing(false);
-      }, 10000);
     } catch (error) {
       console.error('Error marking media as viewed:', error);
       toast({
@@ -65,10 +74,12 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
 
   if (hasViewed && isRecipient && !isViewing) {
     return (
-      <div className="mt-2 p-3 border border-gray-200 rounded-2xl bg-gray-50">
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
-          <EyeOff className="w-4 h-4" />
-          One-time media (viewed)
+      <div className="mt-2 p-4 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50">
+        <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+          <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center">
+            <EyeOff className="w-4 h-4" />
+          </div>
+          <span>Opened</span>
         </div>
       </div>
     );
@@ -81,32 +92,55 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
           onClick={handleViewOneTimeMedia}
           onTouchEnd={handleViewOneTimeMedia}
           disabled={!canView}
-          className={`p-3 border border-purple-200 rounded-2xl flex items-center gap-2 transition-colors touch-manipulation ${
+          className={`relative p-4 border-2 rounded-2xl flex flex-col items-center gap-3 transition-all duration-200 w-full ${
             canView 
-              ? 'bg-purple-50 hover:bg-purple-100 active:bg-purple-200 cursor-pointer' 
-              : 'bg-gray-50 cursor-not-allowed'
+              ? 'border-purple-400 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 active:scale-95 cursor-pointer shadow-sm hover:shadow-md' 
+              : 'border-gray-300 bg-gray-50 cursor-not-allowed'
           }`}
-          style={{ WebkitTapHighlightColor: 'transparent' }}
+          style={{ 
+            WebkitTapHighlightColor: 'transparent',
+            minHeight: '120px'
+          }}
         >
-          <Eye className="w-4 h-4 text-purple-500" />
-          <span className="text-sm text-purple-700">
-            {canView ? 'Tap to view once' : 'One-time media'}
-          </span>
+          <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
+            <Eye className="w-6 h-6 text-white" />
+          </div>
+          <div className="text-center">
+            <div className="font-medium text-purple-700 mb-1">
+              {canView ? 'Tap to view' : 'One-time photo'}
+            </div>
+            <div className="text-xs text-purple-600">
+              {canView ? 'Photo • View once' : 'Already opened'}
+            </div>
+          </div>
+          {canView && (
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 pointer-events-none" />
+          )}
         </button>
       </div>
     );
   }
 
-  // Show the actual media
+  // Show the actual media with countdown
   return (
-    <div className="mt-2">
-      {isViewing && (
-        <div className="mb-2 text-xs text-orange-600 flex items-center gap-1">
-          <Eye className="w-3 h-3" />
-          Viewing for 10 seconds...
+    <div className="mt-2 relative">
+      {isViewing && countdown > 0 && (
+        <div className="absolute top-2 left-2 z-10 bg-black/80 text-white px-3 py-1 rounded-full flex items-center gap-2 text-sm font-medium">
+          <Timer className="w-4 h-4" />
+          {countdown}s
         </div>
       )}
-      {renderMedia(message)}
+      {isViewing && (
+        <div className="absolute top-2 right-2 z-10 bg-black/80 text-white px-3 py-1 rounded-full text-xs">
+          Tap and hold to replay
+        </div>
+      )}
+      <div className={`relative overflow-hidden rounded-2xl ${isViewing ? 'ring-2 ring-purple-500' : ''}`}>
+        {renderMedia(message)}
+        {isViewing && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+        )}
+      </div>
     </div>
   );
 };
@@ -120,17 +154,24 @@ const renderMedia = (message: MessageRow) => {
         <img
           src={message.media_url}
           alt="Shared"
-          className="max-w-xs rounded-2xl cursor-pointer shadow-sm"
+          className="max-w-xs w-full rounded-2xl cursor-pointer shadow-sm"
           onClick={() => window.open(message.media_url, "_blank")}
+          style={{ maxHeight: '400px', objectFit: 'cover' }}
         />
       );
     case "video":
       return (
-        <video src={message.media_url} controls className="max-w-xs rounded-2xl shadow-sm" preload="metadata" />
+        <video 
+          src={message.media_url} 
+          controls 
+          className="max-w-xs w-full rounded-2xl shadow-sm" 
+          preload="metadata"
+          style={{ maxHeight: '400px' }}
+        />
       );
     case "audio":
       return (
-        <audio src={message.media_url} controls className="max-w-xs" preload="metadata" />
+        <audio src={message.media_url} controls className="max-w-xs w-full" preload="metadata" />
       );
     default:
       return null;
