@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import SubscriptionPaymentModal from "@/components/SubscriptionPaymentModal";
@@ -30,6 +32,7 @@ const Discover = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showPaidDMModal, setShowPaidDMModal] = useState(false);
@@ -168,9 +171,9 @@ const Discover = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <main className="flex-1 ml-64">
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-16' : 'flex'}`}>
+        {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
+        <main className={`flex-1 ${isMobile ? '' : 'ml-64'}`}>
           <div className="w-full min-h-screen px-4 py-6">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -183,9 +186,9 @@ const Discover = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      <Navbar onAuthClick={() => setShowAuthModal(true)} />
-      <main className="flex-1 ml-64">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-16' : 'flex'}`}>
+      {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
+      <main className={`flex-1 ${isMobile ? '' : 'ml-64'}`}>
         <div className="w-full min-h-screen px-4 py-6">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Discover Creators</h1>
