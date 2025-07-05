@@ -25,7 +25,19 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
   const [isViewing, setIsViewing] = useState(false);
   const [hasViewed, setHasViewed] = useState(!!message.viewed_at);
   const [countdown, setCountdown] = useState(0);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // Get video duration when component mounts
+  useEffect(() => {
+    if (message.media_type === 'video' && message.media_url) {
+      const video = document.createElement('video');
+      video.src = message.media_url;
+      video.onloadedmetadata = () => {
+        setVideoDuration(Math.ceil(video.duration)); // Round up to nearest second
+      };
+    }
+  }, [message.media_url, message.media_type]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -56,7 +68,13 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
 
       setIsViewing(true);
       setHasViewed(true);
-      setCountdown(10); // 10 second countdown like Snapchat
+      
+      // Set countdown based on media type
+      if (message.media_type === 'video' && videoDuration) {
+        setCountdown(videoDuration);
+      } else {
+        setCountdown(10); // Default 10 seconds for images and audio
+      }
       
     } catch (error) {
       console.error('Error marking media as viewed:', error);
@@ -86,6 +104,13 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
   }
 
   if (!shouldShowMedia) {
+    const getMediaTypeText = () => {
+      if (message.media_type === 'video') {
+        return videoDuration ? `Video • ${videoDuration}s • View once` : 'Video • View once';
+      }
+      return `${message.media_type === 'image' ? 'Photo' : 'Audio'} • View once`;
+    };
+
     return (
       <div className="mt-2">
         <button
@@ -107,10 +132,10 @@ const OneTimeMediaView = ({ message, currentUserId }: { message: MessageRow; cur
           </div>
           <div className="text-center">
             <div className="font-medium text-purple-700 mb-1">
-              {canView ? 'Tap to view' : 'One-time photo'}
+              {canView ? 'Tap to view' : `One-time ${message.media_type}`}
             </div>
             <div className="text-xs text-purple-600">
-              {canView ? 'Photo • View once' : 'Already opened'}
+              {canView ? getMediaTypeText() : 'Already opened'}
             </div>
           </div>
           {canView && (
