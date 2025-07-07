@@ -519,8 +519,8 @@ const Vibes = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Mobile-first design container */}
-        <div className="max-w-md mx-auto relative h-full">
+        {/* Mobile-first design container - Full screen on mobile */}
+        <div className="w-full h-full relative">
           {/* Progress indicators */}
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-1">
             {vibes.map((_, index) => (
@@ -609,7 +609,7 @@ const Vibes = () => {
                 </div>
 
                 {/* Creator info and caption - positioned like Instagram */}
-                <div className="absolute bottom-16 left-4 right-16 z-10">
+                <div className="absolute bottom-20 left-4 right-16 z-10">
                   <div className="flex items-center gap-2 mb-2">
                     <Avatar className="w-8 h-8 border border-white">
                       <AvatarImage src={vibe.creator_avatar} />
@@ -676,7 +676,7 @@ const Vibes = () => {
                 </div>
 
                 {/* Action buttons - Instagram Reels style on the right */}
-                <div className="absolute bottom-16 right-3 flex flex-col gap-4 z-10">
+                <div className="absolute bottom-20 right-3 flex flex-col gap-4 z-10">
                   <div className="flex flex-col items-center">
                     <Button
                       variant="ghost"
@@ -730,8 +730,8 @@ const Vibes = () => {
             ))}
           </div>
 
-          {/* Navigation hint */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-20 text-center">
+          {/* Navigation hint - positioned to avoid bottom nav */}
+          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 text-center">
             <div className="bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs opacity-70">
               Swipe up for next • Tap to pause
             </div>

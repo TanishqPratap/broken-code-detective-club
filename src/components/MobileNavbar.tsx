@@ -44,12 +44,12 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
     { path: "/live", icon: Video, label: "Live" },
   ];
 
-  // Bottom navigation items for authenticated users
+  // Bottom navigation items for authenticated users - Include Vibes for everyone
   const bottomNavItems = user ? [
     { path: "/", icon: Home, label: "Home" },
     { path: "/discover", icon: Search, label: "Discover" },
+    { path: "/vibes", icon: Video, label: "Vibes" },
     { path: "/dm", icon: MessageSquare, label: "DM", showBadge: false },
-    { path: "/creator", icon: Briefcase, label: "Studio" },
     { path: "/notifications", icon: Bell, label: "Alerts", showBadge: true, badgeCount: unreadCount },
   ] : [
     { path: "/", icon: Home, label: "Home" },
@@ -100,9 +100,9 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
         ))}
       </div>
 
-      {/* Sidebar Overlay - Higher z-index to appear above everything */}
+      {/* Sidebar Overlay - Highest z-index to appear above everything */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-[60] flex">
           {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-black bg-opacity-50" 
@@ -110,7 +110,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
           />
           
           {/* Sidebar */}
-          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col z-50">
+          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col z-[70]">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <span className="text-lg font-semibold">Menu</span>
               <Button variant="ghost" size="icon" onClick={closeSidebar}>
