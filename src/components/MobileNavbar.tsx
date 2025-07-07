@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Bell, User, Video, Heart, MessageSquare, Menu, X, ShoppingBag } from "lucide-react";
+import { Home, Search, Bell, User, Video, Heart, MessageSquare, Menu, X, ShoppingBag, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,21 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
     { path: "/live", icon: Video, label: "Live" },
   ];
 
+  // Bottom navigation items for authenticated users
+  const bottomNavItems = user ? [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/discover", icon: Search, label: "Discover" },
+    { path: "/dm", icon: MessageSquare, label: "DM", showBadge: false },
+    { path: "/creator", icon: Briefcase, label: "Studio" },
+    { path: "/notifications", icon: Bell, label: "Alerts", showBadge: true, badgeCount: unreadCount },
+  ] : [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/discover", icon: Search, label: "Discover" },
+    { path: "/posts", icon: Heart, label: "Posts" },
+    { path: "/vibes", icon: Video, label: "Vibes" },
+    { path: "/marketplace", icon: ShoppingBag, label: "Shop" },
+  ];
+
   return (
     <>
       {/* Top Navigation Bar */}
@@ -59,17 +74,27 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
 
       {/* Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-around z-50">
-        {navItems.slice(0, 5).map((item) => (
+        {bottomNavItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center gap-1 p-2 ${
+            className={`flex flex-col items-center gap-1 p-2 relative ${
               isActive(item.path)
                 ? "text-blue-600 dark:text-blue-400"
                 : "text-gray-600 dark:text-gray-400"
             }`}
           >
-            <item.icon className="w-5 h-5" />
+            <div className="relative">
+              <item.icon className="w-5 h-5" />
+              {item.showBadge && item.badgeCount && item.badgeCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-4 w-4 text-xs p-0 flex items-center justify-center min-w-4"
+                >
+                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                </Badge>
+              )}
+            </div>
             <span className="text-xs">{item.label}</span>
           </Link>
         ))}
@@ -127,7 +152,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
                               : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                           }`}
                         >
-                          <Video className="w-5 h-5" />
+                          <Briefcase className="w-5 h-5" />
                           Creator Studio
                         </Link>
                       </li>
