@@ -246,7 +246,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
 
   if (showVibesUpload) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Create New Vibe</h1>
           <Button 
@@ -265,7 +265,7 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 py-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Creator Dashboard</h1>
         <div className="flex gap-2">

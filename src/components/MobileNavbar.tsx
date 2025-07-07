@@ -62,7 +62,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
   return (
     <>
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-50">
+      <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-40">
         <Link to="/" className="text-xl font-bold text-gray-900 dark:text-white">
           Creator Hub
         </Link>
@@ -73,7 +73,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-around z-50">
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-around z-40">
         {bottomNavItems.map((item) => (
           <Link
             key={item.path}
@@ -100,7 +100,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
         ))}
       </div>
 
-      {/* Sidebar Overlay */}
+      {/* Sidebar Overlay - Higher z-index to appear above everything */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
           {/* Backdrop */}
@@ -110,7 +110,7 @@ const MobileNavbar = ({ onAuthClick, isSidebarOpen, toggleSidebar, closeSidebar 
           />
           
           {/* Sidebar */}
-          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col">
+          <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col z-50">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <span className="text-lg font-semibold">Menu</span>
               <Button variant="ghost" size="icon" onClick={closeSidebar}>

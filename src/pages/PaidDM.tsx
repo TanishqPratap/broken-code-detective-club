@@ -135,7 +135,7 @@ const PaidDM = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
       
-      <div className="container mx-auto max-w-2xl py-6 px-4">
+      <div className="px-4 py-4">
         {/* Instagram-like Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
