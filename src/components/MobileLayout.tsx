@@ -31,8 +31,11 @@ const MobileLayout = () => {
         closeSidebar={closeSidebar}
       />
       
-      <main className="pt-16 px-4 py-6">
-        <Outlet />
+      {/* Main content with proper spacing for top and bottom navigation */}
+      <main className="pt-16 pb-20 min-h-screen">
+        <div className="px-4 py-4 sm:py-6">
+          <Outlet />
+        </div>
       </main>
       
       {showAuthModal && (

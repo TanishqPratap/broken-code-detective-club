@@ -39,7 +39,7 @@ const Index = () => {
   if (user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-        <div className={`container mx-auto px-4 py-6 sm:py-8 max-w-4xl ${isMobile ? 'mt-0' : ''}`}>
+        <div className={`container mx-auto max-w-4xl ${isMobile ? '' : 'px-4 py-6 sm:py-8'}`}>
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text px-2 text-sky-500">Welcome</h1>
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">Ready For Amazing Content?</p>
@@ -92,7 +92,7 @@ const Index = () => {
           </div>
           
         </div>
-        <Footer />
+        {!isMobile && <Footer />}
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </div>
     );
@@ -101,11 +101,11 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       {/* Video Hero Section */}
-      <VideoHero />
+      {!isMobile && <VideoHero />}
       
       {/* Rest of the content */}
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
-        <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
+        <section className={`container mx-auto px-4 py-12 sm:py-16 lg:py-20 ${isMobile ? 'pt-4' : ''}`}>
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12 sm:mb-16 text-gray-900 dark:text-gray-100">Everything you need to succeed</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -152,7 +152,7 @@ const Index = () => {
           </div>
         </section>
         
-        <Footer />
+        {!isMobile && <Footer />}
       </div>
       
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
