@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, User } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AvatarUpload from "@/components/AvatarUpload";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Profile {
   id: string;
@@ -33,6 +33,7 @@ interface Profile {
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,8 +156,8 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => {}} />
-        <div className="container mx-auto px-4 py-16">
+        {!isMobile && <Navbar onAuthClick={() => {}} />}
+        <div className={`${isMobile ? 'px-4 py-4 pt-20' : 'container mx-auto px-4 py-16'}`}>
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading profile...</span>
@@ -169,8 +170,8 @@ const Profile = () => {
   if (!profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => {}} />
-        <div className="container mx-auto px-4 py-16">
+        {!isMobile && <Navbar onAuthClick={() => {}} />}
+        <div className={`${isMobile ? 'px-4 py-4 pt-20' : 'container mx-auto px-4 py-16'}`}>
           <Card>
             <CardHeader>
               <CardTitle>Profile Not Found</CardTitle>
@@ -184,9 +185,9 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar onAuthClick={() => {}} />
+      {!isMobile && <Navbar onAuthClick={() => {}} />}
       
-      <div className="container mx-auto px-4 py-16">
+      <div className={`${isMobile ? 'px-4 py-4 pt-20 pb-32' : 'container mx-auto px-4 py-16'}`}>
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold">My Profile</h1>
