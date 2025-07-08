@@ -7,32 +7,23 @@ import MobileNavbar from "./MobileNavbar";
 
 const MobileLayout = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   const handleAuthClick = () => {
     setShowAuthModal(true);
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <MobileNavbar 
         onAuthClick={handleAuthClick}
-        isSidebarOpen={isSidebarOpen}
-        toggleSidebar={toggleSidebar}
-        closeSidebar={closeSidebar}
+        isSidebarOpen={false}
+        toggleSidebar={() => {}}
+        closeSidebar={() => {}}
       />
       
-      {/* Main content with proper spacing for top and bottom navigation */}
-      <main className="pt-16 pb-20 min-h-screen">
+      {/* Main content with proper spacing for top navigation and double bottom navigation */}
+      <main className="pt-16 pb-28 min-h-screen">
         <div className="w-full">
           <Outlet />
         </div>
