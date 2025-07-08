@@ -10,9 +10,11 @@ import AuthModal from "@/components/auth/AuthModal";
 import NotificationItem from "@/components/NotificationItem";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Notifications = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   
@@ -55,8 +57,8 @@ const Notifications = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="ml-64 p-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
+        {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
+        <div className={`${isMobile ? 'px-4 py-4 pt-20' : 'ml-64 p-8'} flex items-center justify-center min-h-[calc(100vh-80px)]`}>
           <Card className="p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Sign in to view notifications</h2>
             <p className="text-gray-600 mb-6">You need to be logged in to see your notifications.</p>
@@ -73,8 +75,8 @@ const Notifications = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="ml-64 p-8 flex items-center justify-center min-h-[calc(100vh-80px)]">
+        {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
+        <div className={`${isMobile ? 'px-4 py-4 pt-20' : 'ml-64 p-8'} flex items-center justify-center min-h-[calc(100vh-80px)]`}>
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading notifications...</p>
@@ -86,9 +88,9 @@ const Notifications = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Navbar onAuthClick={() => setShowAuthModal(true)} />
+      {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
       
-      <div className="ml-64 p-4 sm:p-6 max-w-2xl">
+      <div className={`${isMobile ? 'px-4 py-4 pt-20 pb-32' : 'ml-64 p-4 sm:p-6'} max-w-2xl`}>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
