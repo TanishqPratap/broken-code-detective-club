@@ -15,10 +15,12 @@ import PaidDMChat from "@/components/PaidDMChat";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Creator = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [showPaidDM, setShowPaidDM] = useState(false);
@@ -69,8 +71,8 @@ const Creator = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <Navbar onAuthClick={() => setShowAuthModal(true)} />
-        <div className="container mx-auto px-4 py-16">
+        {!isMobile && <Navbar onAuthClick={() => setShowAuthModal(true)} />}
+        <div className={`${isMobile ? 'px-4 py-4' : 'container mx-auto px-4 py-16'}`}>
           <Card className="max-w-md mx-auto">
             <CardHeader>
               <CardTitle>Creator Access Required</CardTitle>
@@ -85,6 +87,59 @@ const Creator = () => {
     );
   }
 
+  // Mobile layout - render content directly without sidebar
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+        <main className="w-full">
+          {!activeSessionId && (
+            <div className="mb-4 flex items-center gap-4 px-4 pt-4">
+              <h1 className="text-2xl font-bold">Creator Studio</h1>
+              <Button onClick={handleOpenPaidDM} variant="outline" className="ml-auto" size="sm">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Test Paid DM
+              </Button>
+            </div>
+          )}
+          
+          {activeSessionId && (
+            <PaidDMChat 
+              sessionId={activeSessionId} 
+              currentUserId={user.id} 
+              onBack={() => setActiveSessionId(null)} 
+            />
+          )}
+          
+          {!activeSessionId && activeSection === "overview" && (
+            <CreatorDashboard 
+              onNavigateToLivestream={handleNavigateToLivestream}
+              onNavigateToContent={handleNavigateToContent}
+            />
+          )}
+          {!activeSessionId && activeSection === "livestream" && <LivestreamDashboard />}
+          {!activeSessionId && activeSection === "content" && <ContentManagement />}
+          {!activeSessionId && activeSection === "settings" && <CreatorSettings />}
+        </main>
+        
+        {/* Paid DM modal */}
+        {creatorDMProps && (
+          <PaidDMModal 
+            open={showPaidDM} 
+            onClose={() => setShowPaidDM(false)} 
+            creatorId={creatorDMProps.creatorId} 
+            creatorName={creatorDMProps.creatorName} 
+            chatRate={creatorDMProps.creatorChatRate} 
+            subscriberId={creatorDMProps.subscriberId} 
+            onSessionCreated={sessionId => setActiveSessionId(sessionId)} 
+          />
+        )}
+        
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      </div>
+    );
+  }
+
+  // Desktop layout with sidebar
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <Navbar onAuthClick={() => setShowAuthModal(true)} />
