@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Plus, Palette, Music, Smile } from "lucide-react";
+import { Upload, Plus, Palette, Music, Smile, Images } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import StoryEnhancementPanel from "./StoryEnhancementPanel";
+import MultiImageStoryEditor from "./MultiImageStoryEditor";
 
 interface StoryUploadProps {
   onStoryUploaded?: () => void;
@@ -23,11 +24,25 @@ interface StoryElement {
   style?: any;
 }
 
+interface ImageElement {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scale: number;
+  zIndex: number;
+}
+
 const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isMultiImage, setIsMultiImage] = useState(false);
+  const [imageElements, setImageElements] = useState<ImageElement[]>([]);
   const [textOverlay, setTextOverlay] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [showEnhancements, setShowEnhancements] = useState(false);
@@ -35,30 +50,57 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   const [isDrawingMode, setIsDrawingMode] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      console.log('File selected:', selectedFile.name, selectedFile.type, selectedFile.size);
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    console.log('Files selected:', selectedFiles.length);
+    
+    // Validate file types
+    const invalidFiles = selectedFiles.filter(file => 
+      !file.type.startsWith('image/') && !file.type.startsWith('video/')
+    );
+    
+    if (invalidFiles.length > 0) {
+      toast.error("Please select only image or video files");
+      return;
+    }
+
+    // Validate file sizes (max 50MB each)
+    const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast.error("Each file must be less than 50MB");
+      return;
+    }
+
+    // Check if multiple images are selected
+    if (selectedFiles.length > 1) {
+      const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
+      if (hasVideo) {
+        toast.error("Cannot mix videos with other files in multi-image stories");
+        return;
+      }
       
-      // Validate file type
-      if (!selectedFile.type.startsWith('image/') && !selectedFile.type.startsWith('video/')) {
-        toast.error("Please select an image or video file");
+      const allImages = selectedFiles.every(file => file.type.startsWith('image/'));
+      if (!allImages) {
+        toast.error("Multi-file stories only support images");
         return;
       }
-
-      // Validate file size (max 50MB)
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        toast.error("File size must be less than 50MB");
-        return;
-      }
-
-      setFile(selectedFile);
+      
+      setIsMultiImage(true);
+      setFiles(selectedFiles);
+      setPreview(null);
+    } else {
+      // Single file
+      const file = selectedFiles[0];
+      setIsMultiImage(false);
+      setFiles([file]);
       
       // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreview(e.target?.result as string);
       };
-      reader.readAsDataURL(selectedFile);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -111,96 +153,157 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
     toast.info(isDrawingMode ? "Drawing mode disabled" : "Drawing mode enabled");
   };
 
-  const uploadStory = async () => {
-    if (!user || !file) {
-      toast.error("Please select a file");
-      return;
-    }
+  const createMultiImageStory = async () => {
+    if (!user || files.length === 0) return;
 
     try {
       setUploading(true);
-      console.log('Starting story upload for user:', user.id);
+      
+      // Create a canvas to combine multiple images
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get canvas context');
+      
+      canvas.width = 400;
+      canvas.height = 600;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw each image element
+      for (const element of imageElements) {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = element.src;
+        });
+        
+        ctx.save();
+        ctx.translate(element.x, element.y);
+        ctx.rotate((element.rotation * Math.PI) / 180);
+        ctx.scale(element.scale, element.scale);
+        ctx.drawImage(
+          img,
+          -element.width / 2,
+          -element.height / 2,
+          element.width,
+          element.height
+        );
+        ctx.restore();
+      }
+      
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob!);
+        }, 'image/jpeg', 0.9);
+      });
+      
+      // Upload the combined image
+      const fileName = `${Date.now()}.jpg`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('story-media')
+        .upload(filePath, blob, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('story-media')
+        .getPublicUrl(filePath);
+      
+      await saveStoryToDatabase(publicUrl, 'image');
+      
+    } catch (error) {
+      console.error('Error creating multi-image story:', error);
+      toast.error("Failed to create story");
+    }
+  };
 
-      // Upload file to storage
+  const uploadSingleStory = async () => {
+    if (!user || files.length === 0) return;
+    
+    try {
+      setUploading(true);
+      const file = files[0];
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      console.log('Uploading file to path:', filePath);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('story-media')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
         });
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error(`Upload failed: ${uploadError.message}`);
-        return;
-      }
+      if (uploadError) throw uploadError;
 
-      console.log('File uploaded successfully:', uploadData);
-
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('story-media')
         .getPublicUrl(filePath);
 
-      console.log('Public URL generated:', publicUrl);
-
-      // Prepare story metadata with enhancements
-      const storyMetadata = {
-        elements: storyElements,
-        textOverlay: textOverlay || null,
-        hasDrawing: isDrawingMode
-      };
-
-      // Save story to database
-      const { data: storyData, error: dbError } = await supabase
-        .from('stories')
-        .insert({
-          creator_id: user.id,
-          media_url: publicUrl,
-          content_type: file.type.startsWith('image/') ? 'image' : 'video',
-          text_overlay: JSON.stringify(storyMetadata),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        })
-        .select();
-
-      if (dbError) {
-        console.error('Database error:', dbError);
-        toast.error(`Database error: ${dbError.message}`);
-        return;
-      }
-
-      console.log('Story saved to database:', storyData);
-      toast.success("Story uploaded successfully!");
+      await saveStoryToDatabase(publicUrl, file.type.startsWith('image/') ? 'image' : 'video');
       
-      // Reset form
-      resetForm();
-      setIsOpen(false);
-      
-      // Call the callback to refresh stories
-      if (onStoryUploaded) {
-        onStoryUploaded();
-      }
     } catch (error) {
-      console.error('Unexpected error uploading story:', error);
-      toast.error("An unexpected error occurred. Please try again.");
-    } finally {
-      setUploading(false);
+      console.error('Error uploading single story:', error);
+      toast.error("Failed to upload story");
     }
   };
 
+  const saveStoryToDatabase = async (mediaUrl: string, contentType: string) => {
+    const storyMetadata = {
+      elements: storyElements,
+      textOverlay: textOverlay || null,
+      hasDrawing: isDrawingMode,
+      isMultiImage: isMultiImage,
+      imageElements: isMultiImage ? imageElements : undefined
+    };
+
+    const { error: dbError } = await supabase
+      .from('stories')
+      .insert({
+        creator_id: user!.id,
+        media_url: mediaUrl,
+        content_type: contentType,
+        text_overlay: JSON.stringify(storyMetadata),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      });
+
+    if (dbError) throw dbError;
+
+    toast.success("Story uploaded successfully!");
+    resetForm();
+    setIsOpen(false);
+    
+    if (onStoryUploaded) {
+      onStoryUploaded();
+    }
+  };
+
+  const uploadStory = async () => {
+    if (isMultiImage) {
+      await createMultiImageStory();
+    } else {
+      await uploadSingleStory();
+    }
+    setUploading(false);
+  };
+
   const resetForm = () => {
-    setFile(null);
+    setFiles([]);
     setPreview(null);
     setTextOverlay("");
     setStoryElements([]);
+    setImageElements([]);
     setIsDrawingMode(false);
     setShowEnhancements(false);
+    setIsMultiImage(false);
   };
 
   const removeElement = (elementId: string) => {
@@ -218,7 +321,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
           <Plus className="w-3 h-3" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Create Story</DialogTitle>
         </DialogHeader>
@@ -226,11 +329,14 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
         <div className="flex gap-4 h-[70vh]">
           {/* Main content area */}
           <div className="flex-1 space-y-4">
-            {!file ? (
+            {files.length === 0 ? (
               <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center h-full flex flex-col items-center justify-center">
                 <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Upload an image or video for your story
+                  Upload images or video for your story
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Select multiple images to create a collage story
                 </p>
                 <Input
                   type="file"
@@ -238,10 +344,14 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                   onChange={handleFileSelect}
                   className="hidden"
                   id="story-upload"
+                  multiple
                 />
                 <Label htmlFor="story-upload" className="cursor-pointer">
                   <Button type="button" variant="outline" asChild>
-                    <span>Choose File</span>
+                    <span className="flex items-center gap-2">
+                      <Images className="w-4 h-4" />
+                      Choose Files
+                    </span>
                   </Button>
                 </Label>
               </div>
@@ -249,53 +359,64 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
               <div className="space-y-4 h-full">
                 {/* Preview area */}
                 <div className="relative w-full h-80 bg-black rounded-lg overflow-hidden">
-                  {file.type.startsWith('image/') ? (
-                    <img src={preview || ''} alt="Preview" className="w-full h-full object-cover" />
+                  {isMultiImage ? (
+                    <MultiImageStoryEditor
+                      images={files}
+                      onImagesChange={setImageElements}
+                      canvasWidth={400}
+                      canvasHeight={600}
+                    />
                   ) : (
-                    <video src={preview || ''} className="w-full h-full object-cover" controls />
-                  )}
-                  
-                  {/* Render story elements overlay */}
-                  {storyElements.map(element => (
-                    <div
-                      key={element.id}
-                      className="absolute cursor-pointer"
-                      style={{
-                        left: element.position.x,
-                        top: element.position.y,
-                        transform: 'translate(-50%, -50%)'
-                      }}
-                      onClick={() => removeElement(element.id)}
-                    >
-                      {element.type === 'sticker' && (
-                        <span className="text-3xl">{element.content}</span>
+                    <>
+                      {files[0].type.startsWith('image/') ? (
+                        <img src={preview || ''} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <video src={preview || ''} className="w-full h-full object-cover" controls />
                       )}
-                      {element.type === 'text' && (
-                        <span 
+                      
+                      {/* Render story elements overlay for single images */}
+                      {storyElements.map(element => (
+                        <div
+                          key={element.id}
+                          className="absolute cursor-pointer"
                           style={{
-                            color: element.style?.color,
-                            fontSize: element.style?.fontSize,
-                            fontWeight: element.style?.fontWeight,
-                            backgroundColor: element.style?.backgroundColor
+                            left: element.position.x,
+                            top: element.position.y,
+                            transform: 'translate(-50%, -50%)'
                           }}
-                          className="px-2 py-1 rounded"
+                          onClick={() => removeElement(element.id)}
                         >
-                          {element.content}
-                        </span>
-                      )}
-                      {element.type === 'gif' && (
-                        <img src={element.content} alt="GIF" className="w-16 h-16 object-cover rounded" />
-                      )}
-                      {element.type === 'music' && (
-                        <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
-                          <Music className="w-3 h-3" />
-                          Music Added
+                          {element.type === 'sticker' && (
+                            <span className="text-3xl">{element.content}</span>
+                          )}
+                          {element.type === 'text' && (
+                            <span 
+                              style={{
+                                color: element.style?.color,
+                                fontSize: element.style?.fontSize,
+                                fontWeight: element.style?.fontWeight,
+                                backgroundColor: element.style?.backgroundColor
+                              }}
+                              className="px-2 py-1 rounded"
+                            >
+                              {element.content}
+                            </span>
+                          )}
+                          {element.type === 'gif' && (
+                            <img src={element.content} alt="GIF" className="w-16 h-16 object-cover rounded" />
+                          )}
+                          {element.type === 'music' && (
+                            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                              <Music className="w-3 h-3" />
+                              Music Added
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      ))}
+                    </>
+                  )}
 
-                  {textOverlay && (
+                  {textOverlay && !isMultiImage && (
                     <div className="absolute bottom-4 left-4 right-4">
                       <p className="text-white text-center font-medium drop-shadow-lg">
                         {textOverlay}
@@ -303,7 +424,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                     </div>
                   )}
 
-                  {isDrawingMode && (
+                  {isDrawingMode && !isMultiImage && (
                     <div className="absolute inset-0 bg-transparent cursor-crosshair">
                       <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
                         Drawing Mode Active
@@ -312,32 +433,36 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                   )}
                 </div>
 
-                {/* Text overlay input */}
-                <div>
-                  <Label htmlFor="text-overlay">Caption (Optional)</Label>
-                  <Textarea
-                    id="text-overlay"
-                    placeholder="Add a caption to your story..."
-                    value={textOverlay}
-                    onChange={(e) => setTextOverlay(e.target.value)}
-                    maxLength={150}
-                    rows={2}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {textOverlay.length}/150 characters
-                  </p>
-                </div>
+                {/* Text overlay input - only for single images */}
+                {!isMultiImage && (
+                  <div>
+                    <Label htmlFor="text-overlay">Caption (Optional)</Label>
+                    <Textarea
+                      id="text-overlay"
+                      placeholder="Add a caption to your story..."
+                      value={textOverlay}
+                      onChange={(e) => setTextOverlay(e.target.value)}
+                      maxLength={150}
+                      rows={2}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {textOverlay.length}/150 characters
+                    </p>
+                  </div>
+                )}
 
                 {/* Enhancement toggle and actions */}
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowEnhancements(!showEnhancements)}
-                    className="flex items-center gap-2"
-                  >
-                    <Smile className="w-4 h-4" />
-                    Enhance
-                  </Button>
+                  {!isMultiImage && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEnhancements(!showEnhancements)}
+                      className="flex items-center gap-2"
+                    >
+                      <Smile className="w-4 h-4" />
+                      Enhance
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={resetForm}
@@ -347,7 +472,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                   </Button>
                   <Button
                     onClick={uploadStory}
-                    disabled={uploading}
+                    disabled={uploading || (isMultiImage && imageElements.length === 0)}
                     className="flex-1"
                   >
                     {uploading ? "Uploading..." : "Share Story"}
@@ -357,8 +482,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
             )}
           </div>
 
-          {/* Enhancement panel */}
-          {showEnhancements && file && (
+          {/* Enhancement panel - only for single images */}
+          {showEnhancements && files.length > 0 && !isMultiImage && (
             <div className="w-80 border-l pl-4 overflow-y-auto">
               <StoryEnhancementPanel
                 onStickerSelect={handleStickerSelect}
