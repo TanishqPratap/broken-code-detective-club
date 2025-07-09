@@ -85,13 +85,13 @@ const MultiImageStoryEditor = ({
     }
   }, [images, canvasWidth, canvasHeight, onImagesChange]);
 
-  const getDistance = (touch1: Touch, touch2: Touch) => {
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
     const dx = touch1.clientX - touch2.clientX;
     const dy = touch1.clientY - touch2.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  const getMidpoint = (touch1: Touch, touch2: Touch) => {
+  const getMidpoint = (touch1: React.Touch, touch2: React.Touch) => {
     return {
       x: (touch1.clientX + touch2.clientX) / 2,
       y: (touch1.clientY + touch2.clientY) / 2
