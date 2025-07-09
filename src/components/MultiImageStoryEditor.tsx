@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, RotateCcw, Move, ZoomIn, ZoomOut } from "lucide-react";
@@ -54,7 +55,7 @@ const MultiImageStoryEditor = ({
         });
         
         const aspectRatio = img.width / img.height;
-        const maxSize = Math.min(canvasWidth, canvasHeight) * 0.6;
+        const maxSize = Math.min(canvasWidth, canvasHeight) * 0.5; // Smaller for mobile
         let width = maxSize;
         let height = maxSize;
         
@@ -67,8 +68,8 @@ const MultiImageStoryEditor = ({
         elements.push({
           id: `image-${i}`,
           src,
-          x: canvasWidth / 2 + (i * 20),
-          y: canvasHeight / 2 + (i * 20),
+          x: canvasWidth / 2 + (i * 15), // Smaller offset for mobile
+          y: canvasHeight / 2 + (i * 15),
           width,
           height,
           rotation: 0,
@@ -168,12 +169,8 @@ const MultiImageStoryEditor = ({
     }
   }, [imageElements]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || !selectedElement) return;
-    
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
+  const handleMove = useCallback((currentX: number, currentY: number) => {
+    if (!selectedElement) return;
     
     if (isDragging && !isResizing) {
       const deltaX = currentX - dragStart.x;
@@ -198,20 +195,20 @@ const MultiImageStoryEditor = ({
         
         switch (resizeHandle) {
           case 'nw':
-            newWidth = Math.max(50, initialSize.width - deltaX);
-            newHeight = Math.max(50, initialSize.height - deltaY);
+            newWidth = Math.max(30, initialSize.width - deltaX); // Smaller min size for mobile
+            newHeight = Math.max(30, initialSize.height - deltaY);
             break;
           case 'ne':
-            newWidth = Math.max(50, initialSize.width + deltaX);
-            newHeight = Math.max(50, initialSize.height - deltaY);
+            newWidth = Math.max(30, initialSize.width + deltaX);
+            newHeight = Math.max(30, initialSize.height - deltaY);
             break;
           case 'sw':
-            newWidth = Math.max(50, initialSize.width - deltaX);
-            newHeight = Math.max(50, initialSize.height + deltaY);
+            newWidth = Math.max(30, initialSize.width - deltaX);
+            newHeight = Math.max(30, initialSize.height + deltaY);
             break;
           case 'se':
-            newWidth = Math.max(50, initialSize.width + deltaX);
-            newHeight = Math.max(50, initialSize.height + deltaY);
+            newWidth = Math.max(30, initialSize.width + deltaX);
+            newHeight = Math.max(30, initialSize.height + deltaY);
             break;
         }
         
@@ -219,6 +216,16 @@ const MultiImageStoryEditor = ({
       }));
     }
   }, [isDragging, isResizing, selectedElement, dragStart, resizeHandle, initialSize]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    handleMove(currentX, currentY);
+  }, [handleMove]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -231,16 +238,7 @@ const MultiImageStoryEditor = ({
     if (e.touches.length === 1 && isDragging && !isResizing) {
       const currentX = e.touches[0].clientX - rect.left;
       const currentY = e.touches[0].clientY - rect.top;
-      const deltaX = currentX - dragStart.x;
-      const deltaY = currentY - dragStart.y;
-      
-      setImageElements(prev => prev.map(element => 
-        element.id === selectedElement 
-          ? { ...element, x: element.x + deltaX, y: element.y + deltaY }
-          : element
-      ));
-      
-      setDragStart({ x: currentX, y: currentY });
+      handleMove(currentX, currentY);
     } else if (e.touches.length === 2 && isResizing && initialTouch) {
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const scaleChange = currentDistance / initialTouch.distance;
@@ -249,22 +247,15 @@ const MultiImageStoryEditor = ({
         element.id === selectedElement 
           ? { 
               ...element, 
-              width: Math.max(50, Math.min(canvasWidth, initialSize.width * scaleChange)),
-              height: Math.max(50, Math.min(canvasHeight, initialSize.height * scaleChange))
+              width: Math.max(30, Math.min(canvasWidth, initialSize.width * scaleChange)),
+              height: Math.max(30, Math.min(canvasHeight, initialSize.height * scaleChange))
             }
           : element
       ));
     }
-  }, [isDragging, isResizing, selectedElement, dragStart, initialTouch, initialSize, canvasWidth, canvasHeight]);
+  }, [isDragging, isResizing, selectedElement, initialTouch, initialSize, canvasWidth, canvasHeight, handleMove]);
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-    setIsResizing(false);
-    setResizeHandle(null);
-    setInitialTouch(null);
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
+  const handleEnd = useCallback(() => {
     setIsDragging(false);
     setIsResizing(false);
     setResizeHandle(null);
@@ -302,16 +293,20 @@ const MultiImageStoryEditor = ({
   }, [imageElements, onImagesChange]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <div 
         ref={containerRef}
-        className="relative bg-black rounded-lg overflow-hidden select-none"
-        style={{ width: canvasWidth, height: canvasHeight }}
+        className="relative bg-black rounded-lg overflow-hidden select-none mx-auto"
+        style={{ 
+          width: Math.min(canvasWidth, window.innerWidth - 32), // Responsive width
+          height: Math.min(canvasHeight, window.innerHeight * 0.6), // Responsive height
+          aspectRatio: `${canvasWidth}/${canvasHeight}`
+        }}
         onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleEnd}
         onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchEnd={handleEnd}
       >
         {imageElements
           .sort((a, b) => a.zIndex - b.zIndex)
@@ -344,47 +339,47 @@ const MultiImageStoryEditor = ({
               
               {selectedElement === element.id && (
                 <>
-                  {/* Corner resize handles */}
+                  {/* Corner resize handles - larger for mobile */}
                   <div 
-                    className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-nw-resize"
+                    className="absolute -top-3 -left-3 w-6 h-6 bg-blue-500 rounded-full cursor-nw-resize touch-manipulation"
                     onMouseDown={(e) => handleResizeStart(e, element.id, 'nw')}
                   />
                   <div 
-                    className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-ne-resize"
+                    className="absolute -top-3 -right-3 w-6 h-6 bg-blue-500 rounded-full cursor-ne-resize touch-manipulation"
                     onMouseDown={(e) => handleResizeStart(e, element.id, 'ne')}
                   />
                   <div 
-                    className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-sw-resize"
+                    className="absolute -bottom-3 -left-3 w-6 h-6 bg-blue-500 rounded-full cursor-sw-resize touch-manipulation"
                     onMouseDown={(e) => handleResizeStart(e, element.id, 'sw')}
                   />
                   <div 
-                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize"
+                    className="absolute -bottom-3 -right-3 w-6 h-6 bg-blue-500 rounded-full cursor-se-resize touch-manipulation"
                     onMouseDown={(e) => handleResizeStart(e, element.id, 'se')}
                   />
                   
-                  {/* Action buttons */}
-                  <div className="absolute -top-8 left-0 flex gap-1">
+                  {/* Action buttons - larger for mobile */}
+                  <div className="absolute -top-12 left-0 flex gap-2">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-6 w-6 p-0"
+                      className="h-8 w-8 p-0 touch-manipulation"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeImage(element.id);
                       }}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-6 w-6 p-0"
+                      className="h-8 w-8 p-0 touch-manipulation"
                       onClick={(e) => {
                         e.stopPropagation();
                         resetTransform(element.id);
                       }}
                     >
-                      <RotateCcw className="w-3 h-3" />
+                      <RotateCcw className="w-4 h-4" />
                     </Button>
                   </div>
                 </>
@@ -393,12 +388,12 @@ const MultiImageStoryEditor = ({
           ))}
       </div>
       
-      {/* Instructions */}
-      <div className="mt-4 text-sm text-gray-600 space-y-1">
+      {/* Instructions - mobile optimized */}
+      <div className="mt-4 text-sm text-gray-600 space-y-1 px-2">
         <p>• Tap to select an image</p>
-        <p>• Drag to move</p>
-        <p>• Drag corner handles to resize</p>
-        <p>• Pinch with two fingers to resize on mobile</p>
+        <p>• Drag to move around</p>
+        <p>• Use corner handles to resize</p>
+        <p>• Pinch with two fingers to scale</p>
       </div>
     </div>
   );

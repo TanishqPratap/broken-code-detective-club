@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import StoryViewer from "./StoryViewer";
 import StoryUpload from "./StoryUpload";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Story = Tables<"stories"> & {
@@ -25,6 +26,7 @@ interface StoryGroup {
 
 const StoriesCarousel = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStoryGroup, setSelectedStoryGroup] = useState<Story[] | null>(null);
@@ -102,11 +104,11 @@ const StoriesCarousel = () => {
 
   if (loading) {
     return (
-      <div className="flex gap-4 p-4 overflow-x-auto">
+      <div className={`flex gap-4 p-4 overflow-x-auto ${isMobile ? 'gap-3 p-3' : ''}`}>
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
-            <div className="w-16 h-16 bg-gray-300 rounded-full" />
-            <div className="w-12 h-3 bg-gray-300 rounded" />
+            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gray-300 rounded-full`} />
+            <div className={`${isMobile ? 'w-10 h-2' : 'w-12 h-3'} bg-gray-300 rounded`} />
           </div>
         ))}
       </div>
@@ -115,47 +117,49 @@ const StoriesCarousel = () => {
 
   return (
     <>
-      <div className="flex gap-4 p-4 overflow-x-auto">
+      <div className={`flex gap-4 p-4 overflow-x-auto ${isMobile ? 'gap-3 p-3' : ''}`}>
         {/* Add Story Button */}
         <div className="flex flex-col items-center gap-2 flex-shrink-0">
           <div className="relative">
-            <Avatar className="w-16 h-16 border-2 border-gray-300 dark:border-gray-600">
+            <Avatar className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} border-2 border-gray-300 dark:border-gray-600`}>
               <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback>You</AvatarFallback>
+              <AvatarFallback className={isMobile ? 'text-xs' : ''}>You</AvatarFallback>
             </Avatar>
             <StoryUpload onStoryUploaded={fetchStories} />
           </div>
-          <span className="text-xs text-center w-16 truncate">Your Story</span>
+          <span className={`${isMobile ? 'text-xs w-14' : 'text-xs w-16'} text-center truncate`}>
+            Your Story
+          </span>
         </div>
 
         {/* Story Groups */}
         {storyGroups.map((group) => (
           <div
             key={group.creator_id}
-            className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer"
+            className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer touch-manipulation"
             onClick={() => openStoryViewer(group.stories)}
           >
             <div className="relative">
               <Avatar 
-                className={`w-16 h-16 border-2 ${
+                className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} border-2 ${
                   group.hasNewStory 
                     ? 'border-gradient-to-r from-purple-600 to-pink-600' 
                     : 'border-gray-300 dark:border-gray-600'
                 }`}
               >
                 <AvatarImage src={group.creator_avatar} />
-                <AvatarFallback>{group.creator_name[0]}</AvatarFallback>
+                <AvatarFallback className={isMobile ? 'text-xs' : ''}>{group.creator_name[0]}</AvatarFallback>
               </Avatar>
               {group.hasNewStory && (
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 p-0.5">
+                <div className={`absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 p-0.5`}>
                   <Avatar className="w-full h-full">
                     <AvatarImage src={group.creator_avatar} />
-                    <AvatarFallback>{group.creator_name[0]}</AvatarFallback>
+                    <AvatarFallback className={isMobile ? 'text-xs' : ''}>{group.creator_name[0]}</AvatarFallback>
                   </Avatar>
                 </div>
               )}
             </div>
-            <span className="text-xs text-center w-16 truncate">
+            <span className={`${isMobile ? 'text-xs w-14' : 'text-xs w-16'} text-center truncate`}>
               {group.creator_name}
             </span>
           </div>

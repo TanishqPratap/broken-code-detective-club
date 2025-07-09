@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import StoryEnhancementPanel from "./StoryEnhancementPanel";
 import MultiImageStoryEditor from "./MultiImageStoryEditor";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StoryUploadProps {
   onStoryUploaded?: () => void;
@@ -38,6 +38,7 @@ interface ImageElement {
 
 const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -164,8 +165,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
       
-      canvas.width = 400;
-      canvas.height = 600;
+      // Mobile-responsive canvas size
+      const canvasWidth = isMobile ? 320 : 400;
+      const canvasHeight = isMobile ? 480 : 600;
+      
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
@@ -321,16 +326,16 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
           <Plus className="w-3 h-3" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className={`${isMobile ? 'max-w-full max-h-full h-full w-full rounded-none' : 'max-w-5xl max-h-[90vh]'} overflow-hidden`}>
+        <DialogHeader className={isMobile ? 'px-4 py-2' : ''}>
           <DialogTitle>Create Story</DialogTitle>
         </DialogHeader>
         
-        <div className="flex gap-4 h-[70vh]">
+        <div className={`${isMobile ? 'flex flex-col h-full' : 'flex gap-4 h-[70vh]'}`}>
           {/* Main content area */}
-          <div className="flex-1 space-y-4">
+          <div className={`${isMobile ? 'flex-1 overflow-y-auto px-4' : 'flex-1'} space-y-4`}>
             {files.length === 0 ? (
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center h-full flex flex-col items-center justify-center">
+              <div className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center ${isMobile ? 'h-64' : 'h-full'} flex flex-col items-center justify-center`}>
                 <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Upload images or video for your story
@@ -358,13 +363,13 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
             ) : (
               <div className="space-y-4 h-full">
                 {/* Preview area */}
-                <div className="relative w-full h-80 bg-black rounded-lg overflow-hidden">
+                <div className={`relative w-full ${isMobile ? 'h-96' : 'h-80'} bg-black rounded-lg overflow-hidden`}>
                   {isMultiImage ? (
                     <MultiImageStoryEditor
                       images={files}
                       onImagesChange={setImageElements}
-                      canvasWidth={400}
-                      canvasHeight={600}
+                      canvasWidth={isMobile ? 320 : 400}
+                      canvasHeight={isMobile ? 480 : 600}
                     />
                   ) : (
                     <>
@@ -387,13 +392,13 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                           onClick={() => removeElement(element.id)}
                         >
                           {element.type === 'sticker' && (
-                            <span className="text-3xl">{element.content}</span>
+                            <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{element.content}</span>
                           )}
                           {element.type === 'text' && (
                             <span 
                               style={{
                                 color: element.style?.color,
-                                fontSize: element.style?.fontSize,
+                                fontSize: isMobile ? '14px' : element.style?.fontSize,
                                 fontWeight: element.style?.fontWeight,
                                 backgroundColor: element.style?.backgroundColor
                               }}
@@ -403,7 +408,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                             </span>
                           )}
                           {element.type === 'gif' && (
-                            <img src={element.content} alt="GIF" className="w-16 h-16 object-cover rounded" />
+                            <img src={element.content} alt="GIF" className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} object-cover rounded`} />
                           )}
                           {element.type === 'music' && (
                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
@@ -418,7 +423,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
 
                   {textOverlay && !isMultiImage && (
                     <div className="absolute bottom-4 left-4 right-4">
-                      <p className="text-white text-center font-medium drop-shadow-lg">
+                      <p className={`text-white text-center font-medium drop-shadow-lg ${isMobile ? 'text-sm' : ''}`}>
                         {textOverlay}
                       </p>
                     </div>
@@ -443,7 +448,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                       value={textOverlay}
                       onChange={(e) => setTextOverlay(e.target.value)}
                       maxLength={150}
-                      rows={2}
+                      rows={isMobile ? 2 : 2}
+                      className={isMobile ? 'text-sm' : ''}
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       {textOverlay.length}/150 characters
@@ -452,12 +458,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                 )}
 
                 {/* Enhancement toggle and actions */}
-                <div className="flex gap-2">
+                <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
                   {!isMultiImage && (
                     <Button
                       variant="outline"
                       onClick={() => setShowEnhancements(!showEnhancements)}
-                      className="flex items-center gap-2"
+                      className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}
                     >
                       <Smile className="w-4 h-4" />
                       Enhance
@@ -467,13 +473,14 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                     variant="outline"
                     onClick={resetForm}
                     disabled={uploading}
+                    className={isMobile ? 'w-full' : ''}
                   >
                     Reset
                   </Button>
                   <Button
                     onClick={uploadStory}
                     disabled={uploading || (isMultiImage && imageElements.length === 0)}
-                    className="flex-1"
+                    className={isMobile ? 'w-full' : 'flex-1'}
                   >
                     {uploading ? "Uploading..." : "Share Story"}
                   </Button>
@@ -482,8 +489,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
             )}
           </div>
 
-          {/* Enhancement panel - only for single images */}
-          {showEnhancements && files.length > 0 && !isMultiImage && (
+          {/* Enhancement panel - only for single images and desktop */}
+          {showEnhancements && files.length > 0 && !isMultiImage && !isMobile && (
             <div className="w-80 border-l pl-4 overflow-y-auto">
               <StoryEnhancementPanel
                 onStickerSelect={handleStickerSelect}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, Vol
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Story = Tables<"stories"> & {
@@ -42,6 +42,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   const [isLiking, setIsLiking] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const currentStory = stories[currentIndex];
   const duration = currentStory?.content_type === 'video' ? 15000 : 5000;
@@ -182,7 +183,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       }}
     >
       {/* Progress bars */}
-      <div className="absolute top-4 left-4 right-4 flex gap-1 z-30">
+      <div className={`absolute top-4 left-4 right-4 flex gap-1 z-30 ${isMobile ? 'top-8' : ''}`}>
         {stories.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded">
             <div
@@ -196,40 +197,55 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       </div>
 
       {/* Header */}
-      <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-30">
+      <div className={`absolute ${isMobile ? 'top-12' : 'top-8'} left-4 right-4 flex items-center justify-between z-30`}>
         <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
+          <Avatar className={`${isMobile ? 'w-10 h-10' : 'w-8 h-8'}`}>
             <AvatarImage src={currentStory.creator_avatar} />
             <AvatarFallback>{currentStory.creator_name[0]}</AvatarFallback>
           </Avatar>
-          <span className="text-white font-semibold text-sm">{currentStory.creator_name}</span>
-          <span className="text-white/70 text-xs">
-            {new Date(currentStory.created_at).toLocaleDateString()}
-          </span>
+          <div className="flex flex-col">
+            <span className={`text-white font-semibold ${isMobile ? 'text-base' : 'text-sm'}`}>
+              {currentStory.creator_name}
+            </span>
+            <span className={`text-white/70 ${isMobile ? 'text-sm' : 'text-xs'}`}>
+              {new Date(currentStory.created_at).toLocaleDateString()}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {storyMetadata.elements?.some(e => e.type === 'music') && (
             <Button 
               variant="ghost" 
-              size="sm" 
+              size={isMobile ? "default" : "sm"}
               onClick={() => setIsMuted(!isMuted)} 
-              className="text-white hover:bg-white/20"
+              className="text-white hover:bg-white/20 touch-manipulation"
             >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? <VolumeX className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} /> : <Volume2 className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />}
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/20">
-            <X className="w-5 h-5" />
+          <Button 
+            variant="ghost" 
+            size={isMobile ? "default" : "sm"} 
+            onClick={onClose} 
+            className="text-white hover:bg-white/20 touch-manipulation"
+          >
+            <X className={`${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`} />
           </Button>
         </div>
       </div>
 
-      {/* Navigation areas */}
-      <div className="absolute left-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToPrevious} />
-      <div className="absolute right-0 top-0 w-1/3 h-full z-20 cursor-pointer" onClick={goToNext} />
+      {/* Navigation areas - larger touch targets on mobile */}
+      <div 
+        className={`absolute left-0 top-0 ${isMobile ? 'w-1/2' : 'w-1/3'} h-full z-20 cursor-pointer touch-manipulation`} 
+        onClick={goToPrevious} 
+      />
+      <div 
+        className={`absolute right-0 top-0 ${isMobile ? 'w-1/2' : 'w-1/3'} h-full z-20 cursor-pointer touch-manipulation`} 
+        onClick={goToNext} 
+      />
 
       {/* Story content */}
-      <div className="relative w-full h-full max-w-md mx-auto flex items-center justify-center">
+      <div className={`relative w-full h-full ${isMobile ? '' : 'max-w-md mx-auto'} flex items-center justify-center`}>
         {currentStory.content_type === 'image' ? (
           <img
             src={currentStory.media_url}
@@ -261,7 +277,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             }}
           >
             {element.type === 'sticker' && (
-              <span className="text-4xl drop-shadow-lg animate-bounce">
+              <span className={`${isMobile ? 'text-5xl' : 'text-4xl'} drop-shadow-lg animate-bounce`}>
                 {element.content}
               </span>
             )}
@@ -269,7 +285,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
               <span 
                 style={{
                   color: element.style?.color || '#ffffff',
-                  fontSize: (element.style?.fontSize || 16) + 'px',
+                  fontSize: isMobile ? '18px' : (element.style?.fontSize || 16) + 'px',
                   fontWeight: element.style?.fontWeight || 'normal',
                   backgroundColor: element.style?.backgroundColor || 'transparent'
                 }}
@@ -282,7 +298,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
               <img 
                 src={element.content} 
                 alt="GIF" 
-                className="w-20 h-20 object-cover rounded drop-shadow-lg" 
+                className={`${isMobile ? 'w-24 h-24' : 'w-20 h-20'} object-cover rounded drop-shadow-lg`} 
               />
             )}
           </div>
@@ -290,9 +306,9 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
         {/* Music indicator */}
         {storyMetadata.elements?.some(e => e.type === 'music') && (
-          <div className="absolute top-20 right-4 z-10">
-            <div className="bg-black/50 text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 backdrop-blur-sm">
-              <Music className="w-4 h-4 animate-pulse" />
+          <div className={`absolute ${isMobile ? 'top-24 right-4' : 'top-20 right-4'} z-10`}>
+            <div className={`bg-black/50 text-white px-3 py-2 rounded-full ${isMobile ? 'text-base' : 'text-sm'} flex items-center gap-2 backdrop-blur-sm`}>
+              <Music className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} animate-pulse`} />
               <span>♪ Music</span>
             </div>
           </div>
@@ -300,50 +316,58 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
         {/* Caption/Text overlay */}
         {storyMetadata.textOverlay && (
-          <div className="absolute bottom-24 left-4 right-4 z-20">
-            <p className="text-white text-lg font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm">
+          <div className={`absolute ${isMobile ? 'bottom-32' : 'bottom-24'} left-4 right-4 z-20`}>
+            <p className={`text-white ${isMobile ? 'text-xl' : 'text-lg'} font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm`}>
               {storyMetadata.textOverlay}
             </p>
           </div>
         )}
 
         {/* Action buttons */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-6 z-20">
+        <div className={`absolute ${isMobile ? 'bottom-16' : 'bottom-8'} left-1/2 transform -translate-x-1/2 flex gap-6 z-20`}>
           <Button 
             variant="ghost" 
             size="lg" 
-            className={`text-white hover:bg-white/20 transition-colors p-4 rounded-full ${isLiked ? 'text-red-500' : ''}`}
+            className={`text-white hover:bg-white/20 transition-colors ${isMobile ? 'p-6' : 'p-4'} rounded-full touch-manipulation ${isLiked ? 'text-red-500' : ''}`}
             onClick={handleLike}
             disabled={isLiking}
           >
-            <Heart className={`w-7 h-7 ${isLiked ? 'fill-current' : ''}`} />
+            <Heart className={`${isMobile ? 'w-8 h-8' : 'w-7 h-7'} ${isLiked ? 'fill-current' : ''}`} />
           </Button>
-          <Button variant="ghost" size="lg" className="text-white hover:bg-white/20 p-4 rounded-full">
-            <MessageCircle className="w-7 h-7" />
+          <Button 
+            variant="ghost" 
+            size="lg" 
+            className={`text-white hover:bg-white/20 ${isMobile ? 'p-6' : 'p-4'} rounded-full touch-manipulation`}
+          >
+            <MessageCircle className={`${isMobile ? 'w-8 h-8' : 'w-7 h-7'}`} />
           </Button>
         </div>
       </div>
 
-      {/* Navigation arrows */}
-      {currentIndex > 0 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-30"
-          onClick={goToPrevious}
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </Button>
-      )}
-      {currentIndex < stories.length - 1 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 hidden md:flex z-30"
-          onClick={goToNext}
-        >
-          <ChevronRight className="w-6 h-6" />
-        </Button>
+      {/* Navigation arrows - hidden on mobile */}
+      {!isMobile && (
+        <>
+          {currentIndex > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-30"
+              onClick={goToPrevious}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+          )}
+          {currentIndex < stories.length - 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-30"
+              onClick={goToNext}
+            >
+              <ChevronRight className="w-6 h-6" />
+            </Button>
+          )}
+        </>
       )}
     </div>,
     document.body
