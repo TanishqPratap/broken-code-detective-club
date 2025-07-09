@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, VolumeX, Share } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,13 +42,15 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const progressRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
   const currentStory = stories[currentIndex];
   const duration = currentStory?.content_type === 'video' ? 15000 : 5000;
 
-  // Parse story metadata
   const getStoryMetadata = (story: Story): StoryMetadata => {
     try {
       return story.text_overlay ? JSON.parse(story.text_overlay) : {};
@@ -58,10 +61,10 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
   const storyMetadata = currentStory ? getStoryMetadata(currentStory) : {};
 
-  useEffect(() => {
-    if (!currentStory) return;
-
-    const interval = setInterval(() => {
+  const startProgress = () => {
+    if (progressRef.current) clearInterval(progressRef.current);
+    
+    progressRef.current = setInterval(() => {
       setProgress((prev) => {
         const newProgress = prev + (100 / (duration / 100));
         if (newProgress >= 100) {
@@ -76,11 +79,34 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         return newProgress;
       });
     }, 100);
+  };
 
-    return () => clearInterval(interval);
-  }, [currentIndex, currentStory, duration, stories.length, onClose]);
+  const pauseProgress = () => {
+    if (progressRef.current) {
+      clearInterval(progressRef.current);
+      progressRef.current = null;
+    }
+    setIsPaused(true);
+  };
 
-  // Check if current story is liked when story changes
+  const resumeProgress = () => {
+    setIsPaused(false);
+    startProgress();
+  };
+
+  useEffect(() => {
+    if (!currentStory || isPaused) return;
+    
+    setProgress(0);
+    startProgress();
+
+    return () => {
+      if (progressRef.current) {
+        clearInterval(progressRef.current);
+      }
+    };
+  }, [currentIndex, currentStory, duration, stories.length, onClose, isPaused]);
+
   useEffect(() => {
     const checkIfLiked = async () => {
       if (!user || !currentStory) return;
@@ -102,13 +128,27 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     checkIfLiked();
   }, [currentIndex, user, currentStory]);
 
-  // Prevent body scroll when story viewer is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    
+    // Prevent zoom on mobile
+    if (isMobile) {
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+      }
+    }
+    
     return () => {
       document.body.style.overflow = 'unset';
+      if (isMobile) {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+          viewport.setAttribute('content', 'width=device-width, initial-scale=1');
+        }
+      }
     };
-  }, []);
+  }, [isMobile]);
 
   const goToPrevious = () => {
     if (currentIndex > 0) {
@@ -165,6 +205,71 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     }
   };
 
+  const handleShare = async () => {
+    if (navigator.share && isMobile) {
+      try {
+        await navigator.share({
+          title: `${currentStory.creator_name}'s Story`,
+          text: 'Check out this story!',
+          url: window.location.href
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard!");
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+    pauseProgress();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+    
+    // Determine if it's a swipe
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        goToPrevious();
+      } else {
+        goToNext();
+      }
+    } else if (Math.abs(deltaY) > 100) {
+      if (deltaY > 0) {
+        onClose(); // Swipe down to close
+      }
+    } else {
+      // Tap behavior
+      const screenWidth = window.innerWidth;
+      if (touch.clientX < screenWidth / 3) {
+        goToPrevious();
+      } else if (touch.clientX > (screenWidth * 2) / 3) {
+        goToNext();
+      } else {
+        // Center tap - toggle pause/play
+        if (isPaused) {
+          resumeProgress();
+        } else {
+          pauseProgress();
+        }
+      }
+    }
+    
+    setTouchStart(null);
+    if (!isPaused) {
+      resumeProgress();
+    }
+  };
+
   if (!currentStory) return null;
 
   return createPortal(
@@ -179,11 +284,16 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         width: '100vw',
         height: '100vh',
         zIndex: 9999,
-        backgroundColor: '#000000'
+        backgroundColor: '#000000',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none'
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Progress bars */}
-      <div className={`absolute top-4 left-4 right-4 flex gap-1 z-30 ${isMobile ? 'top-8' : ''}`}>
+      <div className={`absolute ${isMobile ? 'top-safe-4' : 'top-4'} left-4 right-4 flex gap-1 z-30`}>
         {stories.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded">
             <div
@@ -197,7 +307,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
       </div>
 
       {/* Header */}
-      <div className={`absolute ${isMobile ? 'top-12' : 'top-8'} left-4 right-4 flex items-center justify-between z-30`}>
+      <div className={`absolute ${isMobile ? 'top-safe-12' : 'top-8'} left-4 right-4 flex items-center justify-between z-30`}>
         <div className="flex items-center gap-3">
           <Avatar className={`${isMobile ? 'w-10 h-10' : 'w-8 h-8'}`}>
             <AvatarImage src={currentStory.creator_avatar} />
@@ -226,6 +336,14 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
           <Button 
             variant="ghost" 
             size={isMobile ? "default" : "sm"} 
+            onClick={handleShare} 
+            className="text-white hover:bg-white/20 touch-manipulation"
+          >
+            <Share className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size={isMobile ? "default" : "sm"} 
             onClick={onClose} 
             className="text-white hover:bg-white/20 touch-manipulation"
           >
@@ -233,16 +351,6 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
           </Button>
         </div>
       </div>
-
-      {/* Navigation areas - larger touch targets on mobile */}
-      <div 
-        className={`absolute left-0 top-0 ${isMobile ? 'w-1/2' : 'w-1/3'} h-full z-20 cursor-pointer touch-manipulation`} 
-        onClick={goToPrevious} 
-      />
-      <div 
-        className={`absolute right-0 top-0 ${isMobile ? 'w-1/2' : 'w-1/3'} h-full z-20 cursor-pointer touch-manipulation`} 
-        onClick={goToNext} 
-      />
 
       {/* Story content */}
       <div className={`relative w-full h-full ${isMobile ? '' : 'max-w-md mx-auto'} flex items-center justify-center`}>
@@ -252,6 +360,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             alt="Story"
             className="w-full h-full object-cover"
             style={{ objectFit: 'cover' }}
+            draggable={false}
           />
         ) : (
           <video
@@ -262,14 +371,15 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             muted={isMuted}
             loop
             playsInline
+            controls={false}
           />
         )}
 
-        {/* Render story elements */}
+        {/* Story elements overlay */}
         {storyMetadata.elements?.map(element => (
           <div
             key={element.id}
-            className="absolute z-10"
+            className="absolute z-10 pointer-events-none"
             style={{
               left: element.position.x,
               top: element.position.y,
@@ -316,7 +426,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
 
         {/* Caption/Text overlay */}
         {storyMetadata.textOverlay && (
-          <div className={`absolute ${isMobile ? 'bottom-32' : 'bottom-24'} left-4 right-4 z-20`}>
+          <div className={`absolute ${isMobile ? 'bottom-safe-32' : 'bottom-24'} left-4 right-4 z-20`}>
             <p className={`text-white ${isMobile ? 'text-xl' : 'text-lg'} font-medium text-center drop-shadow-lg px-4 py-3 bg-black/50 rounded-lg backdrop-blur-sm`}>
               {storyMetadata.textOverlay}
             </p>
@@ -324,12 +434,15 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
         )}
 
         {/* Action buttons */}
-        <div className={`absolute ${isMobile ? 'bottom-16' : 'bottom-8'} left-1/2 transform -translate-x-1/2 flex gap-6 z-20`}>
+        <div className={`absolute ${isMobile ? 'bottom-safe-16' : 'bottom-8'} left-1/2 transform -translate-x-1/2 flex gap-6 z-20`}>
           <Button 
             variant="ghost" 
             size="lg" 
             className={`text-white hover:bg-white/20 transition-colors ${isMobile ? 'p-6' : 'p-4'} rounded-full touch-manipulation ${isLiked ? 'text-red-500' : ''}`}
-            onClick={handleLike}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLike();
+            }}
             disabled={isLiking}
           >
             <Heart className={`${isMobile ? 'w-8 h-8' : 'w-7 h-7'} ${isLiked ? 'fill-current' : ''}`} />
@@ -338,13 +451,23 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
             variant="ghost" 
             size="lg" 
             className={`text-white hover:bg-white/20 ${isMobile ? 'p-6' : 'p-4'} rounded-full touch-manipulation`}
+            onClick={(e) => e.stopPropagation()}
           >
             <MessageCircle className={`${isMobile ? 'w-8 h-8' : 'w-7 h-7'}`} />
           </Button>
         </div>
+
+        {/* Pause indicator */}
+        {isPaused && (
+          <div className="absolute inset-0 flex items-center justify-center z-25">
+            <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-sm">
+              Paused
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Navigation arrows - hidden on mobile */}
+      {/* Desktop navigation arrows */}
       {!isMobile && (
         <>
           {currentIndex > 0 && (
@@ -369,6 +492,21 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
           )}
         </>
       )}
+
+      <style>{`
+        .top-safe-4 {
+          top: calc(env(safe-area-inset-top) + 1rem);
+        }
+        .top-safe-12 {
+          top: calc(env(safe-area-inset-top) + 3rem);
+        }
+        .bottom-safe-16 {
+          bottom: calc(env(safe-area-inset-bottom) + 4rem);
+        }
+        .bottom-safe-32 {
+          bottom: calc(env(safe-area-inset-bottom) + 8rem);
+        }
+      `}</style>
     </div>,
     document.body
   );

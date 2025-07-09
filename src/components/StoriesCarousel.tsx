@@ -42,7 +42,6 @@ const StoriesCarousel = () => {
     try {
       console.log('Fetching stories...');
       
-      // Fetch stories that haven't expired yet
       const { data: stories, error } = await supabase
         .from('stories')
         .select(`
@@ -63,7 +62,6 @@ const StoriesCarousel = () => {
 
       console.log('Fetched stories:', stories);
 
-      // Group stories by creator
       const groupedStories: { [key: string]: StoryGroup } = {};
 
       stories?.forEach((story: any) => {
@@ -77,7 +75,7 @@ const StoriesCarousel = () => {
             creator_name: creatorName,
             creator_avatar: creatorAvatar,
             stories: [],
-            hasNewStory: true // For now, assume all stories are new
+            hasNewStory: true
           };
         }
 
@@ -104,11 +102,11 @@ const StoriesCarousel = () => {
 
   if (loading) {
     return (
-      <div className={`flex gap-4 p-4 overflow-x-auto ${isMobile ? 'gap-3 p-3' : ''}`}>
+      <div className={`flex gap-3 p-3 overflow-x-auto scrollbar-hide ${isMobile ? 'pb-safe' : 'gap-4 p-4'}`}>
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
-            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gray-300 rounded-full`} />
-            <div className={`${isMobile ? 'w-10 h-2' : 'w-12 h-3'} bg-gray-300 rounded`} />
+          <div key={i} className="flex flex-col items-center gap-1 animate-pulse">
+            <div className={`${isMobile ? 'w-16 h-16' : 'w-16 h-16'} bg-gray-300 rounded-full`} />
+            <div className={`${isMobile ? 'w-12 h-2' : 'w-12 h-3'} bg-gray-300 rounded`} />
           </div>
         ))}
       </div>
@@ -117,17 +115,24 @@ const StoriesCarousel = () => {
 
   return (
     <>
-      <div className={`flex gap-4 p-4 overflow-x-auto ${isMobile ? 'gap-3 p-3' : ''}`}>
+      <div 
+        className={`flex gap-3 p-3 overflow-x-auto scrollbar-hide ${isMobile ? 'pb-safe touch-pan-x' : 'gap-4 p-4'}`}
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
         {/* Add Story Button */}
-        <div className="flex flex-col items-center gap-2 flex-shrink-0">
+        <div className="flex flex-col items-center gap-1 flex-shrink-0 min-w-fit">
           <div className="relative">
-            <Avatar className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} border-2 border-gray-300 dark:border-gray-600`}>
+            <Avatar className={`${isMobile ? 'w-16 h-16' : 'w-16 h-16'} border-2 border-gray-300 dark:border-gray-600`}>
               <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback className={isMobile ? 'text-xs' : ''}>You</AvatarFallback>
+              <AvatarFallback className="text-xs">You</AvatarFallback>
             </Avatar>
             <StoryUpload onStoryUploaded={fetchStories} />
           </div>
-          <span className={`${isMobile ? 'text-xs w-14' : 'text-xs w-16'} text-center truncate`}>
+          <span className={`${isMobile ? 'text-xs w-16' : 'text-xs w-16'} text-center truncate`}>
             Your Story
           </span>
         </div>
@@ -136,30 +141,40 @@ const StoriesCarousel = () => {
         {storyGroups.map((group) => (
           <div
             key={group.creator_id}
-            className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer touch-manipulation"
+            className="flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer touch-manipulation min-w-fit"
             onClick={() => openStoryViewer(group.stories)}
+            onTouchStart={(e) => {
+              e.currentTarget.style.transform = 'scale(0.95)';
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+            style={{ 
+              transition: 'transform 0.1s ease',
+              WebkitTapHighlightColor: 'transparent'
+            }}
           >
             <div className="relative">
               <Avatar 
-                className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} border-2 ${
+                className={`${isMobile ? 'w-16 h-16' : 'w-16 h-16'} border-2 ${
                   group.hasNewStory 
                     ? 'border-gradient-to-r from-purple-600 to-pink-600' 
                     : 'border-gray-300 dark:border-gray-600'
                 }`}
               >
                 <AvatarImage src={group.creator_avatar} />
-                <AvatarFallback className={isMobile ? 'text-xs' : ''}>{group.creator_name[0]}</AvatarFallback>
+                <AvatarFallback className="text-xs">{group.creator_name[0]}</AvatarFallback>
               </Avatar>
               {group.hasNewStory && (
-                <div className={`absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 p-0.5`}>
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 p-0.5">
                   <Avatar className="w-full h-full">
                     <AvatarImage src={group.creator_avatar} />
-                    <AvatarFallback className={isMobile ? 'text-xs' : ''}>{group.creator_name[0]}</AvatarFallback>
+                    <AvatarFallback className="text-xs">{group.creator_name[0]}</AvatarFallback>
                   </Avatar>
                 </div>
               )}
             </div>
-            <span className={`${isMobile ? 'text-xs w-14' : 'text-xs w-16'} text-center truncate`}>
+            <span className={`${isMobile ? 'text-xs w-16' : 'text-xs w-16'} text-center truncate`}>
               {group.creator_name}
             </span>
           </div>
@@ -174,6 +189,19 @@ const StoriesCarousel = () => {
           onClose={() => setSelectedStoryGroup(null)}
         />
       )}
+
+      <style>{`
+        .scrollbar-hide {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .pb-safe {
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      `}</style>
     </>
   );
 };

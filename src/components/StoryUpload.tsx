@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Plus, Palette, Music, Smile, Images } from "lucide-react";
+import { Upload, Plus, Palette, Music, Smile, Images, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -56,7 +56,6 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
 
     console.log('Files selected:', selectedFiles.length);
     
-    // Validate file types
     const invalidFiles = selectedFiles.filter(file => 
       !file.type.startsWith('image/') && !file.type.startsWith('video/')
     );
@@ -66,14 +65,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
       return;
     }
 
-    // Validate file sizes (max 50MB each)
     const oversizedFiles = selectedFiles.filter(file => file.size > 50 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       toast.error("Each file must be less than 50MB");
       return;
     }
 
-    // Check if multiple images are selected
     if (selectedFiles.length > 1) {
       const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
       if (hasVideo) {
@@ -91,12 +88,10 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
       setFiles(selectedFiles);
       setPreview(null);
     } else {
-      // Single file
       const file = selectedFiles[0];
       setIsMultiImage(false);
       setFiles([file]);
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreview(e.target?.result as string);
@@ -160,12 +155,10 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
     try {
       setUploading(true);
       
-      // Create a canvas to combine multiple images
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
       
-      // Mobile-responsive canvas size
       const canvasWidth = isMobile ? 320 : 400;
       const canvasHeight = isMobile ? 480 : 600;
       
@@ -174,7 +167,6 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw each image element
       for (const element of imageElements) {
         const img = new Image();
         await new Promise((resolve, reject) => {
@@ -197,14 +189,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
         ctx.restore();
       }
       
-      // Convert canvas to blob
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((blob) => {
           resolve(blob!);
         }, 'image/jpeg', 0.9);
       });
       
-      // Upload the combined image
       const fileName = `${Date.now()}.jpg`;
       const filePath = `${user.id}/${fileName}`;
       
@@ -321,26 +311,37 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
         <Button
           variant="outline"
           size="sm"
-          className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full p-0 bg-blue-600 border-2 border-white text-white hover:bg-blue-700"
+          className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full p-0 bg-blue-600 border-2 border-white text-white hover:bg-blue-700 touch-manipulation"
         >
           <Plus className="w-3 h-3" />
         </Button>
       </DialogTrigger>
-      <DialogContent className={`${isMobile ? 'max-w-full max-h-full h-full w-full rounded-none' : 'max-w-5xl max-h-[90vh]'} overflow-hidden`}>
-        <DialogHeader className={isMobile ? 'px-4 py-2' : ''}>
-          <DialogTitle>Create Story</DialogTitle>
+      <DialogContent className={`${isMobile ? 'max-w-full max-h-full h-screen w-full rounded-none p-0 gap-0' : 'max-w-5xl max-h-[90vh]'} overflow-hidden`}>
+        <DialogHeader className={`${isMobile ? 'px-4 py-3 border-b' : ''} flex-shrink-0`}>
+          <div className="flex items-center justify-between">
+            <DialogTitle className={isMobile ? 'text-lg' : ''}>Create Story</DialogTitle>
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                className="p-2"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         
-        <div className={`${isMobile ? 'flex flex-col h-full' : 'flex gap-4 h-[70vh]'}`}>
-          {/* Main content area */}
-          <div className={`${isMobile ? 'flex-1 overflow-y-auto px-4' : 'flex-1'} space-y-4`}>
+        <div className={`${isMobile ? 'flex flex-col h-full overflow-hidden' : 'flex gap-4 h-[70vh]'}`}>
+          <div className={`${isMobile ? 'flex-1 overflow-y-auto px-4 pb-4' : 'flex-1'} space-y-4`}>
             {files.length === 0 ? (
-              <div className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center ${isMobile ? 'h-64' : 'h-full'} flex flex-col items-center justify-center`}>
-                <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <div className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg ${isMobile ? 'h-64 mx-4 mt-4' : 'h-full p-8'} flex flex-col items-center justify-center text-center`}>
+                <Upload className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} mx-auto text-gray-400 mb-4`} />
+                <p className={`text-gray-600 dark:text-gray-400 mb-4 ${isMobile ? 'text-sm px-4' : ''}`}>
                   Upload images or video for your story
                 </p>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className={`text-gray-500 mb-4 ${isMobile ? 'text-xs px-4' : 'text-sm'}`}>
                   Select multiple images to create a collage story
                 </p>
                 <Input
@@ -352,7 +353,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                   multiple
                 />
                 <Label htmlFor="story-upload" className="cursor-pointer">
-                  <Button type="button" variant="outline" asChild>
+                  <Button type="button" variant="outline" asChild className={isMobile ? 'text-sm' : ''}>
                     <span className="flex items-center gap-2">
                       <Images className="w-4 h-4" />
                       Choose Files
@@ -376,14 +377,14 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                       {files[0].type.startsWith('image/') ? (
                         <img src={preview || ''} alt="Preview" className="w-full h-full object-cover" />
                       ) : (
-                        <video src={preview || ''} className="w-full h-full object-cover" controls />
+                        <video src={preview || ''} className="w-full h-full object-cover" controls playsInline />
                       )}
                       
-                      {/* Render story elements overlay for single images */}
+                      {/* Story elements overlay */}
                       {storyElements.map(element => (
                         <div
                           key={element.id}
-                          className="absolute cursor-pointer"
+                          className="absolute cursor-pointer touch-manipulation"
                           style={{
                             left: element.position.x,
                             top: element.position.y,
@@ -440,8 +441,8 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
 
                 {/* Text overlay input - only for single images */}
                 {!isMultiImage && (
-                  <div>
-                    <Label htmlFor="text-overlay">Caption (Optional)</Label>
+                  <div className={isMobile ? 'px-4' : ''}>
+                    <Label htmlFor="text-overlay" className={isMobile ? 'text-sm' : ''}>Caption (Optional)</Label>
                     <Textarea
                       id="text-overlay"
                       placeholder="Add a caption to your story..."
@@ -449,7 +450,7 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                       onChange={(e) => setTextOverlay(e.target.value)}
                       maxLength={150}
                       rows={isMobile ? 2 : 2}
-                      className={isMobile ? 'text-sm' : ''}
+                      className={isMobile ? 'text-sm mt-1' : ''}
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       {textOverlay.length}/150 characters
@@ -457,39 +458,54 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
                   </div>
                 )}
 
-                {/* Enhancement toggle and actions */}
-                <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
-                  {!isMultiImage && (
+                {/* Mobile enhancement panel */}
+                {isMobile && showEnhancements && files.length > 0 && !isMultiImage && (
+                  <div className="px-4">
+                    <StoryEnhancementPanel
+                      onStickerSelect={handleStickerSelect}
+                      onTextAdd={handleTextAdd}
+                      onGifSelect={handleGifSelect}
+                      onMusicSelect={handleMusicSelect}
+                      onDrawingToggle={handleDrawingToggle}
+                    />
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className={`${isMobile ? 'px-4 pb-safe-4' : ''} flex-shrink-0`}>
+                  <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
+                    {!isMultiImage && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowEnhancements(!showEnhancements)}
+                        className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}
+                      >
+                        <Smile className="w-4 h-4" />
+                        {showEnhancements ? 'Hide' : 'Show'} Tools
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
-                      onClick={() => setShowEnhancements(!showEnhancements)}
-                      className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}
+                      onClick={resetForm}
+                      disabled={uploading}
+                      className={isMobile ? 'w-full' : ''}
                     >
-                      <Smile className="w-4 h-4" />
-                      Enhance
+                      Reset
                     </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={resetForm}
-                    disabled={uploading}
-                    className={isMobile ? 'w-full' : ''}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    onClick={uploadStory}
-                    disabled={uploading || (isMultiImage && imageElements.length === 0)}
-                    className={isMobile ? 'w-full' : 'flex-1'}
-                  >
-                    {uploading ? "Uploading..." : "Share Story"}
-                  </Button>
+                    <Button
+                      onClick={uploadStory}
+                      disabled={uploading || (isMultiImage && imageElements.length === 0)}
+                      className={isMobile ? 'w-full' : 'flex-1'}
+                    >
+                      {uploading ? "Uploading..." : "Share Story"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Enhancement panel - only for single images and desktop */}
+          {/* Desktop enhancement panel */}
           {showEnhancements && files.length > 0 && !isMultiImage && !isMobile && (
             <div className="w-80 border-l pl-4 overflow-y-auto">
               <StoryEnhancementPanel
@@ -503,6 +519,12 @@ const StoryUpload = ({ onStoryUploaded }: StoryUploadProps) => {
           )}
         </div>
       </DialogContent>
+
+      <style>{`
+        .pb-safe-4 {
+          padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+        }
+      `}</style>
     </Dialog>
   );
 };
