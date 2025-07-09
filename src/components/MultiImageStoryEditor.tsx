@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, RotateCcw, Move, ZoomIn, ZoomOut } from "lucide-react";
@@ -32,8 +31,10 @@ const MultiImageStoryEditor = ({
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialTouch, setInitialTouch] = useState<{ x: number; y: number; distance: number } | null>(null);
+  const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize image elements when images change
@@ -112,6 +113,27 @@ const MultiImageStoryEditor = ({
     }
   }, []);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent, elementId: string, handle: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedElement(elementId);
+    setIsResizing(true);
+    setResizeHandle(handle);
+    
+    const element = imageElements.find(el => el.id === elementId);
+    if (element) {
+      setInitialSize({ width: element.width, height: element.height });
+    }
+    
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDragStart({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+    }
+  }, [imageElements]);
+
   const handleTouchStart = useCallback((e: React.TouchEvent, elementId: string) => {
     e.preventDefault();
     setSelectedElement(elementId);
@@ -131,6 +153,11 @@ const MultiImageStoryEditor = ({
       const midpoint = getMidpoint(e.touches[0], e.touches[1]);
       const rect = containerRef.current?.getBoundingClientRect();
       
+      const element = imageElements.find(el => el.id === elementId);
+      if (element) {
+        setInitialSize({ width: element.width, height: element.height });
+      }
+      
       if (rect) {
         setInitialTouch({
           x: midpoint.x - rect.left,
@@ -139,27 +166,59 @@ const MultiImageStoryEditor = ({
         });
       }
     }
-  }, []);
+  }, [imageElements]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !selectedElement) return;
-    
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect || !selectedElement) return;
     
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
-    const deltaX = currentX - dragStart.x;
-    const deltaY = currentY - dragStart.y;
     
-    setImageElements(prev => prev.map(element => 
-      element.id === selectedElement 
-        ? { ...element, x: element.x + deltaX, y: element.y + deltaY }
-        : element
-    ));
-    
-    setDragStart({ x: currentX, y: currentY });
-  }, [isDragging, selectedElement, dragStart]);
+    if (isDragging && !isResizing) {
+      const deltaX = currentX - dragStart.x;
+      const deltaY = currentY - dragStart.y;
+      
+      setImageElements(prev => prev.map(element => 
+        element.id === selectedElement 
+          ? { ...element, x: element.x + deltaX, y: element.y + deltaY }
+          : element
+      ));
+      
+      setDragStart({ x: currentX, y: currentY });
+    } else if (isResizing && resizeHandle) {
+      const deltaX = currentX - dragStart.x;
+      const deltaY = currentY - dragStart.y;
+      
+      setImageElements(prev => prev.map(element => {
+        if (element.id !== selectedElement) return element;
+        
+        let newWidth = element.width;
+        let newHeight = element.height;
+        
+        switch (resizeHandle) {
+          case 'nw':
+            newWidth = Math.max(50, initialSize.width - deltaX);
+            newHeight = Math.max(50, initialSize.height - deltaY);
+            break;
+          case 'ne':
+            newWidth = Math.max(50, initialSize.width + deltaX);
+            newHeight = Math.max(50, initialSize.height - deltaY);
+            break;
+          case 'sw':
+            newWidth = Math.max(50, initialSize.width - deltaX);
+            newHeight = Math.max(50, initialSize.height + deltaY);
+            break;
+          case 'se':
+            newWidth = Math.max(50, initialSize.width + deltaX);
+            newHeight = Math.max(50, initialSize.height + deltaY);
+            break;
+        }
+        
+        return { ...element, width: newWidth, height: newHeight };
+      }));
+    }
+  }, [isDragging, isResizing, selectedElement, dragStart, resizeHandle, initialSize]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -169,7 +228,7 @@ const MultiImageStoryEditor = ({
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     
-    if (e.touches.length === 1 && isDragging) {
+    if (e.touches.length === 1 && isDragging && !isResizing) {
       const currentX = e.touches[0].clientX - rect.left;
       const currentY = e.touches[0].clientY - rect.top;
       const deltaX = currentX - dragStart.x;
@@ -188,26 +247,27 @@ const MultiImageStoryEditor = ({
       
       setImageElements(prev => prev.map(element => 
         element.id === selectedElement 
-          ? { ...element, scale: Math.max(0.1, Math.min(3, element.scale * scaleChange)) }
+          ? { 
+              ...element, 
+              width: Math.max(50, Math.min(canvasWidth, initialSize.width * scaleChange)),
+              height: Math.max(50, Math.min(canvasHeight, initialSize.height * scaleChange))
+            }
           : element
       ));
-      
-      setInitialTouch({
-        ...initialTouch,
-        distance: currentDistance
-      });
     }
-  }, [isDragging, isResizing, selectedElement, dragStart, initialTouch]);
+  }, [isDragging, isResizing, selectedElement, dragStart, initialTouch, initialSize, canvasWidth, canvasHeight]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     setIsResizing(false);
+    setResizeHandle(null);
     setInitialTouch(null);
   }, []);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
     setIsResizing(false);
+    setResizeHandle(null);
     setInitialTouch(null);
   }, []);
 
@@ -285,10 +345,22 @@ const MultiImageStoryEditor = ({
               {selectedElement === element.id && (
                 <>
                   {/* Corner resize handles */}
-                  <div className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-nw-resize" />
-                  <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-ne-resize" />
-                  <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-sw-resize" />
-                  <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize" />
+                  <div 
+                    className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-nw-resize"
+                    onMouseDown={(e) => handleResizeStart(e, element.id, 'nw')}
+                  />
+                  <div 
+                    className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-ne-resize"
+                    onMouseDown={(e) => handleResizeStart(e, element.id, 'ne')}
+                  />
+                  <div 
+                    className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-sw-resize"
+                    onMouseDown={(e) => handleResizeStart(e, element.id, 'sw')}
+                  />
+                  <div 
+                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize"
+                    onMouseDown={(e) => handleResizeStart(e, element.id, 'se')}
+                  />
                   
                   {/* Action buttons */}
                   <div className="absolute -top-8 left-0 flex gap-1">
@@ -325,8 +397,8 @@ const MultiImageStoryEditor = ({
       <div className="mt-4 text-sm text-gray-600 space-y-1">
         <p>• Tap to select an image</p>
         <p>• Drag to move</p>
-        <p>• Pinch with two fingers to resize</p>
-        <p>• Use corner handles for precise resizing</p>
+        <p>• Drag corner handles to resize</p>
+        <p>• Pinch with two fingers to resize on mobile</p>
       </div>
     </div>
   );
