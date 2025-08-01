@@ -360,10 +360,7 @@ const MultiImageStoryEditor = ({
                       setSelectedElement(element.id);
                       setIsResizing(true);
                       setResizeHandle('nw');
-                      const element = imageElements.find(el => el.id === element.id);
-                      if (element) {
-                        setInitialSize({ width: element.width, height: element.height });
-                      }
+                      setInitialSize({ width: element.width, height: element.height });
                       const pos = getRelativePosition(e.touches[0].clientX, e.touches[0].clientY);
                       setDragStart(pos);
                     }}
@@ -379,10 +376,7 @@ const MultiImageStoryEditor = ({
                       setSelectedElement(element.id);
                       setIsResizing(true);
                       setResizeHandle('ne');
-                      const element = imageElements.find(el => el.id === element.id);
-                      if (element) {
-                        setInitialSize({ width: element.width, height: element.height });
-                      }
+                      setInitialSize({ width: element.width, height: element.height });
                       const pos = getRelativePosition(e.touches[0].clientX, e.touches[0].clientY);
                       setDragStart(pos);
                     }}
@@ -398,10 +392,7 @@ const MultiImageStoryEditor = ({
                       setSelectedElement(element.id);
                       setIsResizing(true);
                       setResizeHandle('sw');
-                      const element = imageElements.find(el => el.id === element.id);
-                      if (element) {
-                        setInitialSize({ width: element.width, height: element.height });
-                      }
+                      setInitialSize({ width: element.width, height: element.height });
                       const pos = getRelativePosition(e.touches[0].clientX, e.touches[0].clientY);
                       setDragStart(pos);
                     }}
@@ -417,10 +408,7 @@ const MultiImageStoryEditor = ({
                       setSelectedElement(element.id);
                       setIsResizing(true);
                       setResizeHandle('se');
-                      const element = imageElements.find(el => el.id === element.id);
-                      if (element) {
-                        setInitialSize({ width: element.width, height: element.height });
-                      }
+                      setInitialSize({ width: element.width, height: element.height });
                       const pos = getRelativePosition(e.touches[0].clientX, e.touches[0].clientY);
                       setDragStart(pos);
                     }}
