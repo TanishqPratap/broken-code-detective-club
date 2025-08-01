@@ -519,21 +519,8 @@ const Vibes = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Mobile-first design container - Full screen on mobile */}
+        {/* Full screen reels container */}
         <div className="w-full h-full relative">
-          {/* Progress indicators */}
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-1">
-            {vibes.map((_, index) => (
-              <div
-                key={index}
-                className={`w-0.5 h-4 rounded-full transition-all duration-300 cursor-pointer ${
-                  index === currentIndex ? 'bg-white' : 'bg-white/40'
-                }`}
-                onClick={() => !isTransitioning && handleVibeChange(index)}
-              />
-            ))}
-          </div>
-
           {/* Video container with smooth scrolling */}
           <div className="relative h-full overflow-hidden">
             {vibes.map((vibe, index) => (
@@ -546,25 +533,21 @@ const Vibes = () => {
                     ? '-translate-y-full opacity-0 scale-95'
                     : 'translate-y-full opacity-0 scale-95'
                 }`}
-                style={{
-                  transform: `translateY(${(index - currentIndex) * 100}%) scale(${index === currentIndex ? 1 : 0.95})`,
-                }}
               >
-                {/* Video */}
+                {/* Video - full screen */}
                 {vibe.media_url && (
                   <video
                     ref={el => {
                       videoRefs.current[index] = el;
                       if (el) {
                         el.addEventListener('loadeddata', () => {
-                          // Setup audio when video is loaded
                           setupAudioForVibe(vibe, index);
                         });
                       }
                     }}
                     src={vibe.media_url}
                     className="w-full h-full object-cover"
-                    style={{ height: '100%', width: '100%' }}
+                    style={{ height: '100dvh', width: '100vw' }}
                     loop
                     muted={isMuted}
                     playsInline
@@ -588,153 +571,155 @@ const Vibes = () => {
                   />
                 )}
 
-                {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+                {/* Overlay gradient - subtle like Instagram */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40 pointer-events-none" />
 
-                {/* Top controls */}
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
-                  <div className="text-white font-semibold text-sm">
-                    {/* Could add live indicator or other info here */}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={toggleMute}
-                      className="text-white hover:bg-white/20 p-1.5 rounded-full bg-black/30 backdrop-blur-sm"
-                    >
-                      {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    </Button>
-                  </div>
+                {/* Top right controls */}
+                <div className="absolute top-safe-area-top right-4 z-30 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleMute}
+                    className="text-white hover:bg-white/20 p-2 rounded-full bg-black/20 backdrop-blur-sm w-8 h-8"
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </Button>
                 </div>
 
-                {/* Creator info and caption - positioned like Instagram */}
-                <div className="absolute bottom-20 left-4 right-16 z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Avatar className="w-8 h-8 border border-white">
-                      <AvatarImage src={vibe.creator_avatar} />
-                      <AvatarFallback className="bg-gray-600 text-white text-sm">
-                        {vibe.creator_name[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-semibold text-sm">{vibe.creator_username}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSubscribe(vibe.user_id, vibe.creator_name, vibe.subscription_price, vibe.user_subscribed)}
-                        className={`text-xs px-2 py-1 h-6 ${
-                          vibe.user_subscribed
-                            ? 'border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-white bg-transparent'
-                            : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
-                        }`}
-                      >
-                        {vibe.user_subscribed ? 'Subscribed' : vibe.subscription_price > 0 ? `Subscribe $${vibe.subscription_price}` : 'Subscribe'}
-                      </Button>
+                {/* Bottom content overlay */}
+                <div className="absolute bottom-0 left-0 right-0 z-20">
+                  {/* Creator info and caption - bottom left like Instagram */}
+                  <div className="absolute bottom-safe-area-bottom left-4 right-20 pb-4">
+                    {/* Creator info */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="w-10 h-10 border-2 border-white">
+                        <AvatarImage src={vibe.creator_avatar} />
+                        <AvatarFallback className="bg-gray-600 text-white">
+                          {vibe.creator_name[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-semibold text-base">{vibe.creator_username}</span>
+                        {!vibe.user_subscribed && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleSubscribe(vibe.user_id, vibe.creator_name, vibe.subscription_price, vibe.user_subscribed)}
+                            className="border border-white text-white bg-transparent hover:bg-white hover:text-black px-4 py-1 h-8 text-sm font-semibold rounded-md"
+                          >
+                            Follow
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Caption */}
-                  {vibe.description && (
-                    <p className="text-white text-sm mb-1 leading-relaxed">
-                      {vibe.description.length > 100
-                        ? `${vibe.description.substring(0, 100)}...`
-                        : vibe.description}
-                    </p>
-                  )}
-
-                  {/* Hashtags from metadata */}
-                  {vibe.metadata &&
-                    typeof vibe.metadata === 'object' &&
-                    'hashtags' in vibe.metadata && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {(vibe.metadata.hashtags as string[])?.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="text-blue-400 text-xs">
-                            #{tag}
-                          </span>
-                        ))}
+                    {/* Caption */}
+                    {vibe.description && (
+                      <div className="mb-2">
+                        <p className="text-white text-sm leading-relaxed">
+                          {vibe.description.length > 120
+                            ? `${vibe.description.substring(0, 120)}...`
+                            : vibe.description}
+                        </p>
                       </div>
                     )}
 
-                  {/* Music info if available from Spotify */}
-                  {vibe.metadata &&
-                    typeof vibe.metadata === 'object' &&
-                    'effects' in vibe.metadata &&
-                    (vibe.metadata.effects as any)?.music && (
-                      <div className="flex items-center gap-2 text-white text-xs opacity-90 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 w-fit mb-2">
-                        <Music className="w-3 h-3" />
-                        <div className="flex flex-col">
-                          <span className="font-medium truncate max-w-40">
-                            {(vibe.metadata.effects as any).music.name}
-                          </span>
-                          <span className="text-gray-300 truncate max-w-40">
-                            {(vibe.metadata.effects as any).music.artist}
+                    {/* Music info */}
+                    {vibe.metadata &&
+                      typeof vibe.metadata === 'object' &&
+                      'effects' in vibe.metadata &&
+                      (vibe.metadata.effects as any)?.music && (
+                        <div className="flex items-center gap-2 text-white text-sm mb-2">
+                          <Music className="w-4 h-4" />
+                          <span className="truncate max-w-60">
+                            {(vibe.metadata.effects as any).music.name} • {(vibe.metadata.effects as any).music.artist}
                           </span>
                         </div>
+                      )}
+                  </div>
+
+                  {/* Action buttons - Instagram style on the right */}
+                  <div className="absolute bottom-safe-area-bottom right-4 flex flex-col gap-6 pb-4">
+                    {/* Like button */}
+                    <div className="flex flex-col items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleLike(vibe.id, vibe.user_liked)}
+                        className="text-white hover:scale-110 transition-transform p-0 bg-transparent w-12 h-12 rounded-full flex items-center justify-center"
+                      >
+                        <Heart className={`w-7 h-7 ${vibe.user_liked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                      </Button>
+                      {vibe.likes_count > 0 && (
+                        <span className="text-white text-xs font-medium mt-1">
+                          {vibe.likes_count.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Comment button */}
+                    <div className="flex flex-col items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCommentClick(vibe.id)}
+                        className="text-white hover:scale-110 transition-transform p-0 bg-transparent w-12 h-12 rounded-full flex items-center justify-center"
+                      >
+                        <MessageCircle className="w-7 h-7 text-white" />
+                      </Button>
+                      {vibe.comments_count > 0 && (
+                        <span className="text-white text-xs font-medium mt-1">
+                          {vibe.comments_count.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Share button */}
+                    <div className="flex flex-col items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleShare(vibe)}
+                        className="text-white hover:scale-110 transition-transform p-0 bg-transparent w-12 h-12 rounded-full flex items-center justify-center"
+                      >
+                        <Share2 className="w-7 h-7 text-white" />
+                      </Button>
+                    </div>
+
+                    {/* More options */}
+                    <div className="flex flex-col items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:scale-110 transition-transform p-0 bg-transparent w-12 h-12 rounded-full flex items-center justify-center"
+                      >
+                        <MoreHorizontal className="w-7 h-7 text-white" />
+                      </Button>
+                    </div>
+
+                    {/* Creator avatar as last element (like Instagram) */}
+                    <div className="flex flex-col items-center mt-2">
+                      <div className="relative">
+                        <Avatar className="w-12 h-12 border-2 border-white">
+                          <AvatarImage src={vibe.creator_avatar} />
+                          <AvatarFallback className="bg-gray-600 text-white">
+                            {vibe.creator_name[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Music note animation */}
+                        {vibe.metadata &&
+                          typeof vibe.metadata === 'object' &&
+                          'effects' in vibe.metadata &&
+                          (vibe.metadata.effects as any)?.music && (
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <Music className="w-3 h-3 text-white" />
+                            </div>
+                          )}
                       </div>
-                    )}
-                </div>
-
-                {/* Action buttons - Instagram Reels style on the right */}
-                <div className="absolute bottom-20 right-3 flex flex-col gap-4 z-10">
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleLike(vibe.id, vibe.user_liked)}
-                      className="text-white hover:bg-white/20 p-2 rounded-full bg-transparent"
-                    >
-                      <Heart className={`w-6 h-6 ${vibe.user_liked ? 'fill-red-500 text-red-500' : ''}`} />
-                    </Button>
-                    <span className="text-white text-xs font-medium">
-                      {vibe.likes_count > 0 ? vibe.likes_count : ''}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCommentClick(vibe.id)}
-                      className="text-white hover:bg-white/20 p-2 rounded-full bg-transparent"
-                    >
-                      <MessageCircle className="w-6 h-6" />
-                    </Button>
-                    <span className="text-white text-xs font-medium">
-                      {vibe.comments_count > 0 ? vibe.comments_count : ''}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleShare(vibe)}
-                      className="text-white hover:bg-white/20 p-2 rounded-full bg-transparent"
-                    >
-                      <Share2 className="w-6 h-6" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-white/20 p-2 rounded-full bg-transparent"
-                    >
-                      <MoreHorizontal className="w-6 h-6" />
-                    </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Navigation hint - positioned to avoid bottom nav */}
-          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 text-center">
-            <div className="bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs opacity-70">
-              Swipe up for next • Tap to pause
-            </div>
           </div>
         </div>
       </div>
