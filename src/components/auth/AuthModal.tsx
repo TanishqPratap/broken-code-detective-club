@@ -140,15 +140,27 @@ const AuthModal = ({
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Call our custom edge function for password reset
+      const response = await fetch(`https://iseaskggtqujanhgfxmk.supabase.co/functions/v1/send-reset-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          email: email,
+          redirectTo: `${window.location.origin}/reset-password`
+        }),
       });
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send reset email');
+      }
       
       toast({
         title: "Reset email sent!",
-        description: "Check your email for the password reset link."
+        description: "Check your email for the reset link and verification code."
       });
       setResetEmailSent(true);
     } catch (error: any) {
