@@ -24,10 +24,7 @@ const AuthModal = ({
   const [accountType, setAccountType] = useState<"creator" | "subscriber">("subscriber");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetToken, setResetToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetStep, setResetStep] = useState<"email" | "token" | "password">("email");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const {
     toast
   } = useToast();
@@ -144,92 +141,16 @@ const AuthModal = ({
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) throw error;
       
       toast({
         title: "Reset email sent!",
-        description: "Check your email for the password reset code."
+        description: "Check your email for the password reset link."
       });
-      setResetStep("token");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyToken = async () => {
-    if (!resetToken.trim()) {
-      toast({
-        title: "Token required",
-        description: "Please enter the reset token from your email.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setResetStep("password");
-    toast({
-      title: "Token verified!",
-      description: "Now enter your new password."
-    });
-  };
-
-  const handleResetPassword = async () => {
-    if (!newPassword.trim()) {
-      toast({
-        title: "Password required",
-        description: "Please enter a new password.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords match.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Password updated!",
-        description: "Your password has been successfully updated."
-      });
-      
-      // Reset form and close modal
-      setShowForgotPassword(false);
-      setResetStep("email");
-      setResetToken("");
-      setNewPassword("");
-      setConfirmPassword("");
-      onClose();
+      setResetEmailSent(true);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -243,10 +164,7 @@ const AuthModal = ({
 
   const resetForgotPasswordFlow = () => {
     setShowForgotPassword(false);
-    setResetStep("email");
-    setResetToken("");
-    setNewPassword("");
-    setConfirmPassword("");
+    setResetEmailSent(false);
   };
   return <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
@@ -298,7 +216,7 @@ const AuthModal = ({
                   <h3 className="font-medium">Reset Password</h3>
                 </div>
 
-                {resetStep === "email" && (
+                {!resetEmailSent ? (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="reset-email">Email Address</Label>
@@ -314,54 +232,24 @@ const AuthModal = ({
                       {loading ? "Sending reset email..." : "Send Reset Email"}
                     </Button>
                   </>
-                )}
-
-                {resetStep === "token" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-token">Reset Code</Label>
-                      <Input 
-                        id="reset-token" 
-                        value={resetToken} 
-                        onChange={e => setResetToken(e.target.value)} 
-                        placeholder="Enter the code from your email" 
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Check your email for the password reset code.
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm text-green-800">
+                        📧 Reset email sent to <strong>{email}</strong>
+                      </p>
+                      <p className="text-xs text-green-600 mt-2">
+                        Click the link in your email to reset your password.
                       </p>
                     </div>
-                    <Button onClick={handleVerifyToken} disabled={loading} className="w-full">
-                      {loading ? "Verifying..." : "Verify Code"}
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setResetEmailSent(false)}
+                      className="w-full"
+                    >
+                      Send Another Email
                     </Button>
-                  </>
-                )}
-
-                {resetStep === "password" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
-                      <Input 
-                        id="new-password" 
-                        type="password" 
-                        value={newPassword} 
-                        onChange={e => setNewPassword(e.target.value)} 
-                        placeholder="Enter your new password" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input 
-                        id="confirm-password" 
-                        type="password" 
-                        value={confirmPassword} 
-                        onChange={e => setConfirmPassword(e.target.value)} 
-                        placeholder="Confirm your new password" 
-                      />
-                    </div>
-                    <Button onClick={handleResetPassword} disabled={loading} className="w-full">
-                      {loading ? "Updating password..." : "Update Password"}
-                    </Button>
-                  </>
+                  </div>
                 )}
               </div>
             )}

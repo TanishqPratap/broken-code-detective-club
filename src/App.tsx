@@ -34,6 +34,7 @@ import TermsOfService from "@/pages/TermsOfService";
 import CookiePolicy from "@/pages/CookiePolicy";
 import DMCA from "@/pages/DMCA";
 import Marketplace from "@/pages/Marketplace";
+import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -74,8 +75,9 @@ function App() {
                   <Route path="terms-of-service" element={<TermsOfService />} />
                   <Route path="cookie-policy" element={<CookiePolicy />} />
                   <Route path="dmca" element={<DMCA />} />
-                  <Route path="*" element={<NotFound />} />
                 </Route>
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
