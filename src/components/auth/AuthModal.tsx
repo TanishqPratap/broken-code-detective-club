@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Video, Upload } from "lucide-react";
+import { User, Video, Upload, ArrowLeft } from "lucide-react";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,6 +23,11 @@ const AuthModal = ({
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [accountType, setAccountType] = useState<"creator" | "subscriber">("subscriber");
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetStep, setResetStep] = useState<"email" | "token" | "password">("email");
   const {
     toast
   } = useToast();
@@ -125,6 +130,124 @@ const AuthModal = ({
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Reset email sent!",
+        description: "Check your email for the password reset code."
+      });
+      setResetStep("token");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyToken = async () => {
+    if (!resetToken.trim()) {
+      toast({
+        title: "Token required",
+        description: "Please enter the reset token from your email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setResetStep("password");
+    toast({
+      title: "Token verified!",
+      description: "Now enter your new password."
+    });
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter a new password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords match.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password updated!",
+        description: "Your password has been successfully updated."
+      });
+      
+      // Reset form and close modal
+      setShowForgotPassword(false);
+      setResetStep("email");
+      setResetToken("");
+      setNewPassword("");
+      setConfirmPassword("");
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForgotPasswordFlow = () => {
+    setShowForgotPassword(false);
+    setResetStep("email");
+    setResetToken("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
   return <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -138,17 +261,110 @@ const AuthModal = ({
           </TabsList>
           
           <TabsContent value="signin" className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="signin-email">Email</Label>
-              <Input id="signin-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signin-password">Password</Label>
-              <Input id="signin-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" />
-            </div>
-            <Button onClick={handleSignIn} disabled={loading} className="w-full">
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
+            {!showForgotPassword ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input id="signin-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Password</Label>
+                  <Input id="signin-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" />
+                </div>
+                <Button onClick={handleSignIn} disabled={loading} className="w-full">
+                  {loading ? "Signing in..." : "Sign In"}
+                </Button>
+                <div className="text-center">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetForgotPasswordFlow}
+                    className="p-1"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                  <h3 className="font-medium">Reset Password</h3>
+                </div>
+
+                {resetStep === "email" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email Address</Label>
+                      <Input 
+                        id="reset-email" 
+                        type="email" 
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)} 
+                        placeholder="Enter your email address" 
+                      />
+                    </div>
+                    <Button onClick={handleForgotPassword} disabled={loading} className="w-full">
+                      {loading ? "Sending reset email..." : "Send Reset Email"}
+                    </Button>
+                  </>
+                )}
+
+                {resetStep === "token" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-token">Reset Code</Label>
+                      <Input 
+                        id="reset-token" 
+                        value={resetToken} 
+                        onChange={e => setResetToken(e.target.value)} 
+                        placeholder="Enter the code from your email" 
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Check your email for the password reset code.
+                      </p>
+                    </div>
+                    <Button onClick={handleVerifyToken} disabled={loading} className="w-full">
+                      {loading ? "Verifying..." : "Verify Code"}
+                    </Button>
+                  </>
+                )}
+
+                {resetStep === "password" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input 
+                        id="new-password" 
+                        type="password" 
+                        value={newPassword} 
+                        onChange={e => setNewPassword(e.target.value)} 
+                        placeholder="Enter your new password" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
+                      <Input 
+                        id="confirm-password" 
+                        type="password" 
+                        value={confirmPassword} 
+                        onChange={e => setConfirmPassword(e.target.value)} 
+                        placeholder="Confirm your new password" 
+                      />
+                    </div>
+                    <Button onClick={handleResetPassword} disabled={loading} className="w-full">
+                      {loading ? "Updating password..." : "Update Password"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="signup" className="space-y-4">
