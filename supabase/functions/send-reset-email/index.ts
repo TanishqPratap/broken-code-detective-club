@@ -98,18 +98,21 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Use Supabase Auth to send the email (this will override the default template)
-    const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: {
-        verification_code: verificationCode,
-        reset_link: data.properties?.action_link
-      },
-      redirectTo: redirectTo
+    // Send the reset password email using Supabase Auth
+    const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: redirectTo
+      }
     });
 
-    // Since we can't directly customize the email through Supabase Auth API easily,
-    // we'll return success and let the user know they need to configure email templates
-    // in Supabase dashboard for the custom template to work
+    if (emailError) {
+      console.error('Error sending reset email:', emailError);
+      throw new Error('Failed to send reset email');
+    }
+
+    console.log('Reset email sent successfully to:', email, 'with verification code:', verificationCode);
 
     return new Response(
       JSON.stringify({ 

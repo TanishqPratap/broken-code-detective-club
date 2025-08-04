@@ -46,8 +46,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!tokenData) {
+      console.log('Token verification failed for:', email, 'token:', token);
       throw new Error('Invalid or expired reset token');
     }
+
+    console.log('Token verified successfully for:', email);
 
     // Get user by email
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers();
