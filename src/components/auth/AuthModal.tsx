@@ -141,21 +141,15 @@ const AuthModal = ({
     setLoading(true);
     try {
       // Call our custom edge function for password reset
-      const response = await fetch(`https://iseaskggtqujanhgfxmk.supabase.co/functions/v1/send-reset-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('send-reset-email', {
+        body: {
           email: email,
           redirectTo: `${window.location.origin}/reset-password`
-        }),
+        }
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send reset email');
+      if (error) {
+        throw new Error(error.message || 'Failed to send reset email');
       }
       
       toast({
