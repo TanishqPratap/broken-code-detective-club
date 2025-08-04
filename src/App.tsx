@@ -35,6 +35,7 @@ import CookiePolicy from "@/pages/CookiePolicy";
 import DMCA from "@/pages/DMCA";
 import Marketplace from "@/pages/Marketplace";
 import ResetPassword from "@/pages/ResetPassword";
+import TokenPasswordReset from "@/pages/TokenPasswordReset";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ function App() {
                   <Route path="dmca" element={<DMCA />} />
                 </Route>
                 <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="token-reset" element={<TokenPasswordReset />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

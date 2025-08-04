@@ -199,13 +199,12 @@ const AuthModal = ({
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
                 <div className="text-center">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowForgotPassword(true)}
+                  <a 
+                    href="/token-reset"
                     className="text-sm text-primary hover:underline"
                   >
                     Forgot your password?
-                  </button>
+                  </a>
                 </div>
               </>
             ) : (
