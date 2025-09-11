@@ -45,9 +45,10 @@ const Discover = () => {
 
   const fetchCreators = async () => {
     try {
+      // Use safe_profiles view to avoid exposing sensitive data
       const { data: profilesData, error } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
+        .from('safe_profiles')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified')
         .not('subscription_price', 'is', null)
         .order('created_at', { ascending: false })
         .limit(12);

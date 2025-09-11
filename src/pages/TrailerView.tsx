@@ -66,9 +66,9 @@ const TrailerView = () => {
         return;
       }
 
-      // Fetch creator info
+      // Fetch creator info using safe profiles to protect sensitive data
       const { data: creatorData, error: creatorError } = await supabase
-        .from('profiles')
+        .from('safe_profiles')
         .select('id, username, display_name, avatar_url, is_verified, subscription_price')
         .eq('id', trailerData.creator_id)
         .single();

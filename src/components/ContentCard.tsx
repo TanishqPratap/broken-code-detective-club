@@ -23,7 +23,7 @@ interface Content {
     display_name: string | null;
     avatar_url: string | null;
     is_verified: boolean;
-    subscription_price: number | null;
+    subscription_price?: number | null; // Made optional for privacy protection
   };
 }
 

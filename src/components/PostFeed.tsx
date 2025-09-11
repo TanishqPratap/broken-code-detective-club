@@ -147,7 +147,7 @@ const PostFeed = () => {
         console.log('Unique creator IDs:', allCreatorIds);
 
         const { data: creatorProfiles, error: profilesError } = await supabase
-          .from('profiles')
+          .from('safe_profiles')
           .select('id, subscription_price, username, display_name, avatar_url, is_verified')
           .in('id', allCreatorIds);
 
@@ -299,7 +299,7 @@ const PostFeed = () => {
         if (trailersData && trailersData.length > 0) {
           const trailerCreatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
           const { data: trailerCreatorProfilesData, error: trailerCreatorProfilesError } = await supabase
-            .from('profiles')
+            .from('safe_profiles')
             .select('id, username, display_name, avatar_url, is_verified, subscription_price')
             .in('id', trailerCreatorIds);
 
@@ -375,7 +375,7 @@ const PostFeed = () => {
         if (postsData && postsData.length > 0) {
           const creatorIds = [...new Set(postsData.map(post => post.user_id))];
           const { data: creatorProfiles, error: profilesError } = await supabase
-            .from('profiles')
+            .from('safe_profiles')
             .select('id, subscription_price, username, display_name, avatar_url')
             .in('id', creatorIds);
 
@@ -440,7 +440,7 @@ const PostFeed = () => {
           if (trailersData && trailersData.length > 0) {
             const trailerCreatorIds = [...new Set(trailersData.map(trailer => trailer.creator_id))];
             const { data: trailerCreatorProfilesData, error: trailerCreatorProfilesError } = await supabase
-              .from('profiles')
+              .from('safe_profiles')
               .select('id, username, display_name, avatar_url, is_verified, subscription_price')
               .in('id', trailerCreatorIds);
 

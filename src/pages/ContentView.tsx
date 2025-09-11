@@ -25,7 +25,7 @@ interface Content {
     display_name: string | null;
     avatar_url: string | null;
     is_verified: boolean;
-    subscription_price: number | null;
+    subscription_price?: number | null; // Optional for backward compatibility
   };
 }
 
@@ -50,7 +50,7 @@ const ContentView = () => {
         .select(`
           *,
           creator:profiles!content_creator_id_fkey(
-            id, username, display_name, avatar_url, is_verified, subscription_price
+            id, username, display_name, avatar_url, is_verified
           )
         `)
         .eq("id", contentId)

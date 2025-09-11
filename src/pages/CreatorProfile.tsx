@@ -81,9 +81,9 @@ const CreatorProfilePage = () => {
     try {
       setError(null);
       
-      // Fetch creator profile
+      // Fetch creator profile using safe view to protect sensitive data
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+        .from('safe_profiles')
         .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
         .eq('id', creatorId)
         .maybeSingle();

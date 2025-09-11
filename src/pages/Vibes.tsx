@@ -59,7 +59,7 @@ const Vibes = () => {
       if (vibesData && vibesData.length > 0) {
         const userIds = [...new Set(vibesData.map(vibe => vibe.user_id))];
         const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
+          .from('safe_profiles')
           .select('id, username, display_name, avatar_url, subscription_price')
           .in('id', userIds);
 

@@ -110,10 +110,10 @@ const Search = () => {
     setError(null);
     
     try {
-      // Search creators
+      // Search creators using safe_profiles to protect user privacy
       const { data: creatorsData, error: creatorsError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified')
+        .from('safe_profiles')
+        .select('id, username, display_name, bio, avatar_url, is_verified')
         .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
         .limit(20);
 
@@ -130,6 +130,7 @@ const Search = () => {
 
           return {
             ...creator,
+            subscription_price: null, // Hidden for privacy - only visible to creator and subscribers
             subscriber_count: count || 0
           };
         })
