@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, VolumeX, Share } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Music, Volume2, VolumeX, Share, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
   const [isMuted, setIsMuted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -223,6 +224,46 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
     }
   };
 
+  const handleDelete = async () => {
+    if (!user || !currentStory || currentStory.creator_id !== user.id || isDeleting) return;
+
+    const confirmed = window.confirm("Are you sure you want to delete this story? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      
+      // Delete from database
+      const { error } = await supabase
+        .from('stories')
+        .delete()
+        .eq('id', currentStory.id)
+        .eq('creator_id', user.id);
+
+      if (error) throw error;
+
+      toast.success("Story deleted successfully!");
+      
+      // Remove from local stories array and navigate
+      const updatedStories = stories.filter(story => story.id !== currentStory.id);
+      
+      if (updatedStories.length === 0) {
+        onClose();
+      } else if (currentIndex >= updatedStories.length) {
+        setCurrentIndex(updatedStories.length - 1);
+      } else {
+        // Stay at same index, which will show the next story
+        setProgress(0);
+      }
+      
+    } catch (error) {
+      console.error('Error deleting story:', error);
+      toast.error("Failed to delete story");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     setTouchStart({ x: touch.clientX, y: touch.clientY });
@@ -341,6 +382,17 @@ const StoryViewer = ({ stories, initialIndex = 0, onClose }: StoryViewerProps) =
           >
             <Share className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
           </Button>
+          {user && currentStory.creator_id === user.id && (
+            <Button 
+              variant="ghost" 
+              size={isMobile ? "default" : "sm"} 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="text-white hover:bg-red-500/20 touch-manipulation"
+            >
+              <Trash2 className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size={isMobile ? "default" : "sm"} 
