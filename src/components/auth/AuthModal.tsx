@@ -70,12 +70,47 @@ const AuthModal = ({
       });
       return;
     }
+    if (!email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!password.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter a password.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Validate password length
+    if (password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
     setLoading(true);
     try {
       const {
         error
       } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
@@ -95,7 +130,7 @@ const AuthModal = ({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create account. Please try again.",
         variant: "destructive"
       });
     } finally {
