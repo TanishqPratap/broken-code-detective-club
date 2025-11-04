@@ -1,30 +1,18 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Function to create HMAC SHA256 signature
-async function createSignature(message: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(message);
-  
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-  return Array.from(new Uint8Array(signature))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+const PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
+function createPhonePeSignature(endpoint: string, saltKey: string): string {
+  const stringToHash = endpoint + saltKey;
+  const hash = crypto.createHash("sha256").update(stringToHash).digest("hex");
+  return hash;
 }
 
 serve(async (req) => {
@@ -46,39 +34,50 @@ serve(async (req) => {
     
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, streamId } = await req.json();
+    const { transactionId, streamId } = await req.json();
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !streamId) {
+    if (!transactionId || !streamId) {
       throw new Error("Missing required payment verification parameters");
     }
 
-    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-    if (!razorpayKeySecret) {
-      throw new Error("Razorpay key secret not configured");
+    const merchantId = Deno.env.get("PHONEPE_CLIENT_ID");
+    const saltKey = Deno.env.get("PHONEPE_CLIENT_SECRET");
+    
+    if (!merchantId || !saltKey) {
+      throw new Error("PhonePe credentials not configured");
     }
 
-    // Verify payment signature
-    const message = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const expectedSignature = await createSignature(message, razorpayKeySecret);
+    const endpoint = `/pg/v1/status/${merchantId}/${transactionId}`;
+    const xVerify = createPhonePeSignature(endpoint, saltKey) + "###1";
 
-    console.log('Verifying signature:', { message, expectedSignature, receivedSignature: razorpay_signature });
+    console.log('Checking stream payment status:', { transactionId });
 
-    if (expectedSignature !== razorpay_signature) {
-      throw new Error("Payment verification failed - invalid signature");
+    const response = await fetch(`${PHONEPE_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-VERIFY': xVerify
+      }
+    });
+
+    const result = await response.json();
+
+    if (!result.success || result.data.state !== 'COMPLETED') {
+      throw new Error("Payment verification failed - invalid status");
     }
 
-    console.log('Payment signature verified successfully');
+    console.log('Payment verified successfully');
 
     // Update subscription status to active
     const { data: updateData, error: updateError } = await supabaseClient
       .from('stream_subscriptions')
       .update({ 
         status: 'active',
-        stripe_payment_intent_id: razorpay_payment_id // Store payment ID for reference
+        stripe_payment_intent_id: transactionId
       })
       .eq('stream_id', streamId)
       .eq('subscriber_id', user.id)
-      .eq('stripe_payment_intent_id', razorpay_order_id)
+      .eq('stripe_payment_intent_id', transactionId)
       .select();
 
     if (updateError) {

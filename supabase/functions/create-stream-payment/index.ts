@@ -1,23 +1,30 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Function to get USD to INR exchange rate
+const PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
 async function getUSDToINRRate(): Promise<number> {
   try {
-    // Using a free exchange rate API
     const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const data = await response.json();
-    return data.rates.INR || 83; // Fallback to approximate rate if API fails
+    return data.rates.INR || 83;
   } catch (error) {
-    console.log('Exchange rate API failed, using fallback rate:', error);
-    return 83; // Fallback exchange rate (approximate USD to INR)
+    console.log('Using fallback exchange rate');
+    return 83;
   }
+}
+
+function createPhonePeSignature(base64Payload: string, endpoint: string, saltKey: string): string {
+  const stringToHash = base64Payload + endpoint + saltKey;
+  const hash = crypto.createHash("sha256").update(stringToHash).digest("hex");
+  return hash;
 }
 
 serve(async (req) => {
@@ -45,113 +52,102 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
 
-    const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID");
-    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-
-    if (!razorpayKeyId || !razorpayKeySecret) {
-      throw new Error("Razorpay credentials not configured");
+    const merchantId = Deno.env.get("PHONEPE_CLIENT_ID");
+    const saltKey = Deno.env.get("PHONEPE_CLIENT_SECRET");
+    
+    if (!merchantId || !saltKey) {
+      throw new Error("PhonePe credentials not configured");
     }
 
-    // Get stream details for the order
-    const { data: streamData } = await supabaseClient
+    const { data: stream } = await supabaseClient
       .from('live_streams')
-      .select('title')
+      .select('title, creator_id')
       .eq('id', streamId)
       .single();
 
-    // Get current USD to INR exchange rate
+    if (!stream) throw new Error("Stream not found");
+
     const exchangeRate = await getUSDToINRRate();
-    console.log('Current USD to INR exchange rate:', exchangeRate);
+    const amountInINR = Math.round(amount * exchangeRate);
+    const amountInPaise = amountInINR * 100;
 
-    // Convert USD amount to INR
-    const amountInINR = amount * exchangeRate;
-    console.log(`Converting ${amount} USD to ${amountInINR} INR`);
+    const transactionId = `STREAM_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const merchantOrderId = `ORDER_${Date.now()}`;
 
-    // Create a shorter receipt (max 40 chars)
-    const timestamp = Date.now().toString().slice(-8); // Last 8 digits
-    const streamIdShort = streamId.slice(0, 8); // First 8 chars of stream ID
-    const receipt = `str_${streamIdShort}_${timestamp}`;
-
-    // Create Razorpay order
-    const orderData = {
-      amount: Math.round(amountInINR * 100), // Convert INR to paise (smallest currency unit)
-      currency: "INR",
-      receipt: receipt, // Now under 40 characters
-      notes: {
-        streamId,
-        userId: user.id,
-        streamTitle: streamData?.title || 'Live Stream',
-        originalAmountUSD: amount,
-        exchangeRate: exchangeRate,
-        amountINR: amountInINR
+    const payload = {
+      merchantId: merchantId,
+      merchantTransactionId: transactionId,
+      merchantUserId: user.id,
+      amount: amountInPaise,
+      redirectUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/phonepe-callback`,
+      redirectMode: "POST",
+      callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/phonepe-callback`,
+      merchantOrderId: merchantOrderId,
+      mobileNumber: user.phone || "9999999999",
+      message: `Access to stream: ${stream.title}`,
+      paymentInstrument: {
+        type: "PAY_PAGE"
       }
     };
 
-    console.log('Creating Razorpay order with data:', orderData);
+    const base64Payload = btoa(JSON.stringify(payload));
+    const endpoint = "/pg/v1/pay";
+    const xVerify = createPhonePeSignature(base64Payload, endpoint, saltKey) + "###1";
 
-    const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
-    
-    const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
+    console.log('Creating PhonePe stream payment:', { transactionId, merchantOrderId });
+
+    const response = await fetch(`${PHONEPE_BASE_URL}${endpoint}`, {
+      method: 'POST',
       headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
+        'X-VERIFY': xVerify
       },
-      body: JSON.stringify(orderData),
+      body: JSON.stringify({ request: base64Payload })
     });
 
-    const responseText = await razorpayResponse.text();
-    console.log('Razorpay response status:', razorpayResponse.status);
-    console.log('Razorpay response:', responseText);
+    const result = await response.json();
 
-    if (!razorpayResponse.ok) {
-      console.error('Razorpay API error:', responseText);
-      throw new Error(`Razorpay API error: ${responseText}`);
+    if (!result.success) {
+      throw new Error(result.message || "Failed to create payment order");
     }
 
-    const order = JSON.parse(responseText);
-
-    // Check if subscription already exists and update it, otherwise create new one
+    // Create or update stream subscription with pending status
     const { data: existingSubscription } = await supabaseClient
       .from('stream_subscriptions')
-      .select('id')
+      .select('*')
       .eq('stream_id', streamId)
       .eq('subscriber_id', user.id)
       .single();
 
     if (existingSubscription) {
-      // Update existing subscription
       await supabaseClient
         .from('stream_subscriptions')
         .update({
-          amount: amountInINR,
-          stripe_payment_intent_id: order.id,
           status: 'pending',
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          stripe_payment_intent_id: transactionId
         })
         .eq('id', existingSubscription.id);
     } else {
-      // Create new subscription record
       await supabaseClient
         .from('stream_subscriptions')
         .insert({
           stream_id: streamId,
           subscriber_id: user.id,
-          amount: amountInINR,
-          stripe_payment_intent_id: order.id,
           status: 'pending',
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          stripe_payment_intent_id: transactionId
         });
     }
 
-    return new Response(JSON.stringify({ 
-      order_id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key_id: razorpayKeyId,
-      amount_usd: amount,
-      amount_inr: amountInINR,
-      exchange_rate: exchangeRate
+    console.log('PhonePe stream payment order created successfully');
+
+    return new Response(JSON.stringify({
+      success: true,
+      transactionId: transactionId,
+      merchantOrderId: merchantOrderId,
+      paymentUrl: result.data.instrumentResponse.redirectInfo.url,
+      amountINR: amountInINR,
+      amountUSD: amount,
+      exchangeRate: exchangeRate
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

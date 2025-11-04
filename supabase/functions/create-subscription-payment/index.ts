@@ -1,22 +1,30 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Function to get USD to INR exchange rate
+const PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
 async function getUSDToINRRate(): Promise<number> {
   try {
     const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const data = await response.json();
     return data.rates.INR || 83;
   } catch (error) {
-    console.log('Exchange rate API failed, using fallback rate:', error);
+    console.log('Using fallback exchange rate');
     return 83;
   }
+}
+
+function createPhonePeSignature(base64Payload: string, endpoint: string, saltKey: string): string {
+  const stringToHash = base64Payload + endpoint + saltKey;
+  const hash = crypto.createHash("sha256").update(stringToHash).digest("hex");
+  return hash;
 }
 
 serve(async (req) => {
@@ -44,81 +52,75 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
 
-    const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID");
-    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-
-    if (!razorpayKeyId || !razorpayKeySecret) {
-      throw new Error("Razorpay credentials not configured");
+    const merchantId = Deno.env.get("PHONEPE_CLIENT_ID");
+    const saltKey = Deno.env.get("PHONEPE_CLIENT_SECRET");
+    
+    if (!merchantId || !saltKey) {
+      throw new Error("PhonePe credentials not configured");
     }
 
-    // Get creator details
-    const { data: creatorData } = await supabaseClient
+    const { data: creator } = await supabaseClient
       .from('profiles')
-      .select('display_name, username')
+      .select('username, display_name')
       .eq('id', creatorId)
       .single();
 
-    // Get current USD to INR exchange rate
+    if (!creator) throw new Error("Creator not found");
+
     const exchangeRate = await getUSDToINRRate();
-    console.log('Current USD to INR exchange rate:', exchangeRate);
+    const amountInINR = Math.round(amount * exchangeRate);
+    const amountInPaise = amountInINR * 100;
 
-    // Convert USD amount to INR
-    const amountInINR = amount * exchangeRate;
-    console.log(`Converting ${amount} USD to ${amountInINR} INR`);
+    const transactionId = `SUB_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const merchantOrderId = `ORDER_${Date.now()}`;
 
-    // Create a shorter receipt (max 40 chars)
-    const timestamp = Date.now().toString().slice(-8);
-    const creatorIdShort = creatorId.slice(0, 8);
-    const receipt = `sub_${creatorIdShort}_${timestamp}`;
-
-    // Create Razorpay order
-    const orderData = {
-      amount: Math.round(amountInINR * 100), // Convert INR to paise
-      currency: "INR",
-      receipt: receipt,
-      notes: {
-        creatorId,
-        userId: user.id,
-        creatorName: creatorData?.display_name || creatorData?.username || 'Unknown',
-        originalAmountUSD: amount,
-        exchangeRate: exchangeRate,
-        amountINR: amountInINR,
-        type: 'subscription'
+    const payload = {
+      merchantId: merchantId,
+      merchantTransactionId: transactionId,
+      merchantUserId: user.id,
+      amount: amountInPaise,
+      redirectUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/phonepe-callback`,
+      redirectMode: "POST",
+      callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/phonepe-callback`,
+      merchantOrderId: merchantOrderId,
+      mobileNumber: user.phone || "9999999999",
+      message: `Subscription to ${creator.display_name || creator.username}`,
+      paymentInstrument: {
+        type: "PAY_PAGE"
       }
     };
 
-    console.log('Creating Razorpay order for subscription:', orderData);
+    const base64Payload = btoa(JSON.stringify(payload));
+    const endpoint = "/pg/v1/pay";
+    const xVerify = createPhonePeSignature(base64Payload, endpoint, saltKey) + "###1";
 
-    const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
-    
-    const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
+    console.log('Creating PhonePe payment order:', { transactionId, merchantOrderId });
+
+    const response = await fetch(`${PHONEPE_BASE_URL}${endpoint}`, {
+      method: 'POST',
       headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
+        'X-VERIFY': xVerify
       },
-      body: JSON.stringify(orderData),
+      body: JSON.stringify({ request: base64Payload })
     });
 
-    const responseText = await razorpayResponse.text();
-    console.log('Razorpay response status:', razorpayResponse.status);
-    console.log('Razorpay response:', responseText);
+    const result = await response.json();
 
-    if (!razorpayResponse.ok) {
-      console.error('Razorpay API error:', responseText);
-      throw new Error(`Razorpay API error: ${responseText}`);
+    if (!result.success) {
+      throw new Error(result.message || "Failed to create payment order");
     }
 
-    const order = JSON.parse(responseText);
+    console.log('PhonePe payment order created successfully');
 
-    return new Response(JSON.stringify({ 
-      order_id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key_id: razorpayKeyId,
-      amount_usd: amount,
-      amount_inr: amountInINR,
-      exchange_rate: exchangeRate
+    return new Response(JSON.stringify({
+      success: true,
+      transactionId: transactionId,
+      merchantOrderId: merchantOrderId,
+      paymentUrl: result.data.instrumentResponse.redirectInfo.url,
+      amountINR: amountInINR,
+      amountUSD: amount,
+      exchangeRate: exchangeRate
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

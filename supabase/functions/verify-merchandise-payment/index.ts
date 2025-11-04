@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
@@ -7,6 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const PHONEPE_BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
+function createPhonePeSignature(endpoint: string, saltKey: string): string {
+  const stringToHash = endpoint + saltKey;
+  const hash = crypto.createHash("sha256").update(stringToHash).digest("hex");
+  return hash;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,44 +35,39 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
 
     const { 
-      razorpay_order_id, 
-      razorpay_payment_id, 
-      razorpay_signature,
+      transactionId,
       merchandiseId,
       amount,
       quantity = 1
     } = await req.json();
 
-    const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-    if (!razorpayKeySecret) {
-      throw new Error("Razorpay secret not configured");
+    const merchantId = Deno.env.get("PHONEPE_CLIENT_ID");
+    const saltKey = Deno.env.get("PHONEPE_CLIENT_SECRET");
+    
+    if (!merchantId || !saltKey) {
+      throw new Error("PhonePe credentials not configured");
     }
 
-    // Verify the payment signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(razorpayKeySecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    
-    const signature = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(body)
-    );
-    
-    const expectedSignature = Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    const endpoint = `/pg/v1/status/${merchantId}/${transactionId}`;
+    const xVerify = createPhonePeSignature(endpoint, saltKey) + "###1";
 
-    if (expectedSignature !== razorpay_signature) {
-      throw new Error("Invalid payment signature");
+    console.log('Checking merchandise payment status:', { transactionId });
+
+    const response = await fetch(`${PHONEPE_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-VERIFY': xVerify
+      }
+    });
+
+    const result = await response.json();
+
+    if (!result.success || result.data.state !== 'COMPLETED') {
+      throw new Error("Payment not completed");
     }
 
-    console.log('Payment signature verified successfully');
+    console.log('Payment verified successfully');
 
     // Create the order record
     const { error: orderError } = await supabaseClient
@@ -90,14 +92,13 @@ serve(async (req) => {
 
     if (inventoryError) {
       console.error('Error updating inventory:', inventoryError);
-      // Don't throw here as payment is already successful
     }
 
     console.log('Merchandise order created successfully');
 
     return new Response(JSON.stringify({ 
       success: true,
-      payment_id: razorpay_payment_id,
+      payment_id: transactionId,
       order_status: 'completed'
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
