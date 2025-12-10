@@ -10,15 +10,14 @@ import {
 
 interface VideoSlide {
   id: number;
-  youtubeId: string;
+  src: string;
   title: string;
 }
 
 const videoSlides: VideoSlide[] = [
-  { id: 1, youtubeId: "jNnKKTKUGbg", title: "Creator Spotlight 1" },
-  { id: 2, youtubeId: "XzTaxbaiF4Q", title: "Creator Spotlight 2" },
-  { id: 3, youtubeId: "EE5NZN6E6OE", title: "Creator Spotlight 3" },
-  { id: 4, youtubeId: "Kg1QxkbIN9E", title: "Creator Spotlight 4" },
+  { id: 1, src: "/videos/art1.mp4", title: "Art Spotlight 1" },
+  { id: 2, src: "/videos/fash2.mp4", title: "Fashion Spotlight" },
+  { id: 3, src: "/videos/art2.mp4", title: "Art Spotlight 2" },
 ];
 
 const VideoCarousel = () => {
@@ -36,7 +35,6 @@ const VideoCarousel = () => {
     onSelect();
     api.on("select", onSelect);
 
-    // Auto-slide every 4 seconds
     const autoSlide = setInterval(() => {
       if (api.canScrollNext()) {
         api.scrollNext();
@@ -67,21 +65,20 @@ const VideoCarousel = () => {
             className="w-full"
           >
             <CarouselContent className="-ml-2 md:-ml-4">
-              {videoSlides.map((slide, index) => (
+              {videoSlides.map((slide) => (
                 <CarouselItem
                   key={slide.id}
                   className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
                 >
-                  <div className="relative overflow-hidden rounded-xl shadow-lg group">
-                    <div className="w-full aspect-video">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${slide.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${slide.youtubeId}&rel=0&controls=0&modestbranding=1&showinfo=0&disablekb=1`}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={slide.title}
-                      />
-                    </div>
+                  <div className="relative overflow-hidden rounded-xl shadow-lg">
+                    <video
+                      src={slide.src}
+                      className="w-full aspect-video object-cover"
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                    />
                   </div>
                 </CarouselItem>
               ))}
@@ -90,7 +87,6 @@ const VideoCarousel = () => {
             <CarouselNext className="hidden sm:flex -right-4 bg-background/80 hover:bg-background border-border" />
           </Carousel>
           
-          {/* Dots indicator */}
           <div className="flex justify-center gap-2 mt-6">
             {videoSlides.map((_, index) => (
               <button
