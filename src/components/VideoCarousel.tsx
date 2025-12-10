@@ -75,7 +75,7 @@ const VideoCarousel = () => {
                   <div className="relative overflow-hidden rounded-xl shadow-lg group">
                     <div className="w-full aspect-video">
                       <iframe
-                        src={`https://www.youtube.com/embed/${slide.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${slide.youtubeId}&rel=0`}
+                        src={`https://www.youtube.com/embed/${slide.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${slide.youtubeId}&rel=0&controls=0&modestbranding=1&showinfo=0&disablekb=1`}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
