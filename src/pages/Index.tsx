@@ -7,6 +7,7 @@ import PostFeed from "@/components/PostFeed";
 import Footer from "@/components/Footer";
 import StoriesCarousel from "@/components/StoriesCarousel";
 import VideoHero from "@/components/VideoHero";
+import VideoCarousel from "@/components/VideoCarousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -102,6 +103,9 @@ const Index = () => {
     <div className="min-h-screen">
       {/* Video Hero Section */}
       {!isMobile && <VideoHero />}
+      
+      {/* Video Carousel */}
+      <VideoCarousel />
       
       {/* Rest of the content */}
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
