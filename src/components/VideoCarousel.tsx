@@ -18,6 +18,7 @@ const videoSlides: VideoSlide[] = [
   { id: 1, src: "/videos/art1.mp4", title: "Art Spotlight 1" },
   { id: 2, src: "/videos/fash2.mp4", title: "Fashion Spotlight" },
   { id: 3, src: "/videos/art2.mp4", title: "Art Spotlight 2" },
+  { id: 4, src: "/videos/sing.mp4", title: "Music Spotlight" },
 ];
 
 const VideoCarousel = () => {
