@@ -99,6 +99,69 @@ export type Database = {
           },
         ]
       }
+      coin_packages: {
+        Row: {
+          coins: number
+          created_at: string
+          gumroad_link: string
+          id: string
+          is_active: boolean
+          price_usd: number
+          updated_at: string
+        }
+        Insert: {
+          coins: number
+          created_at?: string
+          gumroad_link: string
+          id?: string
+          is_active?: boolean
+          price_usd: number
+          updated_at?: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          gumroad_link?: string
+          id?: string
+          is_active?: boolean
+          price_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coin_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          gumroad_sale_id: string | null
+          id: string
+          related_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          gumroad_sale_id?: string | null
+          id?: string
+          related_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          gumroad_sale_id?: string | null
+          id?: string
+          related_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       content: {
         Row: {
           content_type: string
@@ -808,6 +871,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           chat_rate: number | null
+          chat_rate_coins: number | null
           created_at: string
           display_name: string | null
           email: string
@@ -815,6 +879,7 @@ export type Database = {
           is_verified: boolean | null
           role: Database["public"]["Enums"]["user_role"]
           subscription_price: number | null
+          subscription_price_coins: number | null
           updated_at: string
           username: string
         }
@@ -822,6 +887,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           chat_rate?: number | null
+          chat_rate_coins?: number | null
           created_at?: string
           display_name?: string | null
           email: string
@@ -829,6 +895,7 @@ export type Database = {
           is_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           subscription_price?: number | null
+          subscription_price_coins?: number | null
           updated_at?: string
           username: string
         }
@@ -836,6 +903,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           chat_rate?: number | null
+          chat_rate_coins?: number | null
           created_at?: string
           display_name?: string | null
           email?: string
@@ -843,6 +911,7 @@ export type Database = {
           is_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           subscription_price?: number | null
+          subscription_price_coins?: number | null
           updated_at?: string
           username?: string
         }
@@ -1461,6 +1530,69 @@ export type Database = {
           },
         ]
       }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      withdrawal_requests: {
+        Row: {
+          admin_notes: string | null
+          coins_amount: number
+          created_at: string
+          creator_id: string
+          id: string
+          payment_details: Json
+          payment_method: string
+          status: string
+          updated_at: string
+          usd_amount: number
+        }
+        Insert: {
+          admin_notes?: string | null
+          coins_amount: number
+          created_at?: string
+          creator_id: string
+          id?: string
+          payment_details: Json
+          payment_method: string
+          status?: string
+          updated_at?: string
+          usd_amount: number
+        }
+        Update: {
+          admin_notes?: string | null
+          coins_amount?: number
+          created_at?: string
+          creator_id?: string
+          id?: string
+          payment_details?: Json
+          payment_method?: string
+          status?: string
+          updated_at?: string
+          usd_amount?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_profiles: {
@@ -1552,6 +1684,17 @@ export type Database = {
       }
     }
     Functions: {
+      add_coins: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_gumroad_sale_id?: string
+          p_related_id?: string
+          p_transaction_type: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       can_view_creator_pricing: {
         Args: { creator_id: string }
         Returns: boolean
@@ -1586,6 +1729,25 @@ export type Database = {
           updated_at: string
           username: string
         }[]
+      }
+      spend_coins: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_related_id?: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      transfer_coins: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_from_user_id: string
+          p_related_id?: string
+          p_to_creator_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

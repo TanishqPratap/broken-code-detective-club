@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import WalletDisplay from "@/components/WalletDisplay";
 
 interface NavbarProps {
   onAuthClick: () => void;
@@ -138,12 +139,19 @@ const Navbar = ({ onAuthClick }: NavbarProps) => {
         </nav>
       </ScrollArea>
 
+      {/* Wallet Display */}
+      {user && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <WalletDisplay variant="full" />
+        </div>
+      )}
+
       {/* Auth Section */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         {user ? (
           <div className="space-y-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Signed in as {user.email}
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              {user.email}
             </p>
             <Button variant="outline" onClick={handleSignOut} className="w-full">
               Sign Out

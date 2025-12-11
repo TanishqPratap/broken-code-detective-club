@@ -17,6 +17,8 @@ interface ProfileData {
   bio: string | null;
   subscription_price: number | null;
   chat_rate: number | null;
+  subscription_price_coins: number | null;
+  chat_rate_coins: number | null;
   is_verified: boolean;
 }
 
@@ -29,6 +31,8 @@ const CreatorSettings = () => {
     bio: '',
     subscription_price: null,
     chat_rate: null,
+    subscription_price_coins: null,
+    chat_rate_coins: null,
     is_verified: false
   });
 
@@ -45,7 +49,7 @@ const CreatorSettings = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name, bio, subscription_price, chat_rate, is_verified')
+        .select('display_name, bio, subscription_price, chat_rate, subscription_price_coins, chat_rate_coins, is_verified')
         .eq('id', user.id)
         .single();
 
@@ -57,6 +61,8 @@ const CreatorSettings = () => {
           bio: data.bio || '',
           subscription_price: data.subscription_price,
           chat_rate: data.chat_rate,
+          subscription_price_coins: data.subscription_price_coins,
+          chat_rate_coins: data.chat_rate_coins,
           is_verified: data.is_verified || false
         });
       }
@@ -103,6 +109,8 @@ const CreatorSettings = () => {
         .update({
           subscription_price: profileData.subscription_price,
           chat_rate: profileData.chat_rate,
+          subscription_price_coins: profileData.subscription_price_coins,
+          chat_rate_coins: profileData.chat_rate_coins,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -218,47 +226,53 @@ const CreatorSettings = () => {
         <TabsContent value="pricing">
           <Card>
             <CardHeader>
-              <CardTitle>Pricing Settings</CardTitle>
+              <CardTitle>Pricing Settings (Coins)</CardTitle>
               <CardDescription>
-                Configure your subscription and chat pricing
+                Set your prices in coins. Users purchase coins and use them to pay for your services.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <Label htmlFor="subscription-price">Monthly Subscription Price ($)</Label>
-                <Input
-                  id="subscription-price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={profileData.subscription_price || ''}
-                  onChange={(e) => setProfileData(prev => ({ 
-                    ...prev, 
-                    subscription_price: e.target.value ? parseFloat(e.target.value) : null 
-                  }))}
-                  placeholder="9.99"
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Set your monthly subscription price for premium content access
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Coin Value:</strong> 1 Coin ≈ $10 USD. Users can purchase coins through our platform.
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="chat-rate">Paid DM Rate ($ per hour)</Label>
+                <Label htmlFor="subscription-price-coins">Monthly Subscription Price (Coins)</Label>
                 <Input
-                  id="chat-rate"
+                  id="subscription-price-coins"
                   type="number"
-                  step="0.01"
-                  min="0"
-                  value={profileData.chat_rate || ''}
+                  step="1"
+                  min="1"
+                  value={profileData.subscription_price_coins || ''}
                   onChange={(e) => setProfileData(prev => ({ 
                     ...prev, 
-                    chat_rate: e.target.value ? parseFloat(e.target.value) : null 
+                    subscription_price_coins: e.target.value ? parseInt(e.target.value) : null 
                   }))}
-                  placeholder="20.00"
+                  placeholder="5"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  Set your hourly rate for paid direct messages
+                  Monthly subscription price (e.g., 5 coins = $50)
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="chat-rate-coins">Paid DM Rate (Coins per message)</Label>
+                <Input
+                  id="chat-rate-coins"
+                  type="number"
+                  step="1"
+                  min="1"
+                  value={profileData.chat_rate_coins || ''}
+                  onChange={(e) => setProfileData(prev => ({ 
+                    ...prev, 
+                    chat_rate_coins: e.target.value ? parseInt(e.target.value) : null 
+                  }))}
+                  placeholder="1"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Per message rate for paid DMs
                 </p>
               </div>
 
