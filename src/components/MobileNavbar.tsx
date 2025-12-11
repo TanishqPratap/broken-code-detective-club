@@ -1,11 +1,12 @@
 
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Bell, User, Video, Heart, MessageSquare, Menu, X, ShoppingBag, Briefcase } from "lucide-react";
+import { Home, Search, Bell, User, Video, Heart, MessageSquare, Menu, X, ShoppingBag, Briefcase, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
+import WalletDisplay from "@/components/WalletDisplay";
 
 interface MobileNavbarProps {
   onAuthClick: () => void;
@@ -73,10 +74,11 @@ const MobileNavbar = ({ onAuthClick }: MobileNavbarProps) => {
   return (
     <>
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center px-4 z-40">
+      <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-40">
         <Link to="/" className="text-xl font-bold text-gray-900 dark:text-white">
           Creator Hub
         </Link>
+        {user && <WalletDisplay variant="compact" />}
       </div>
 
       {/* Primary Bottom Navigation Bar */}

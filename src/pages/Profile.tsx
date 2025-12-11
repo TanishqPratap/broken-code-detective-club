@@ -11,10 +11,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, User } from "lucide-react";
+import { Loader2, Save, User, Coins } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AvatarUpload from "@/components/AvatarUpload";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWallet } from "@/hooks/useWallet";
+import WalletModal from "@/components/WalletModal";
 
 interface Profile {
   id: string;
@@ -34,6 +36,8 @@ const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { balance, loading: walletLoading } = useWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -254,6 +258,38 @@ const Profile = () => {
               </CardHeader>
             </Card>
 
+            {/* Wallet Section */}
+            <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-yellow-500" />
+                  My Wallet
+                </CardTitle>
+                <CardDescription>Your coin balance for subscriptions and tips</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Balance</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Coins className="w-6 h-6 text-yellow-500" />
+                      <span className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">
+                        {walletLoading ? "..." : balance}
+                      </span>
+                      <span className="text-muted-foreground">Coins</span>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setShowWalletModal(true)}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    Buy Coins
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <WalletModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
             {/* Profile Information */}
             <Card>
               <CardHeader>
