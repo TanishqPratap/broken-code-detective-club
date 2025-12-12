@@ -3,12 +3,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck, Eye, ShoppingBag } from "lucide-react";
+import { PlusCircle, BarChart3, Users, DollarSign, Video, Film, UserCheck, Eye, ShoppingBag, Wallet } from "lucide-react";
 import ContentManagement from "./ContentManagement";
 import ContentScheduler from "./ContentScheduler";
 import VibesUpload from "./VibesUpload";
 import TrailerUpload from "./TrailerUpload";
 import MerchandiseManagement from "./MerchandiseManagement";
+import CreatorWithdrawal from "./CreatorWithdrawal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -281,11 +282,12 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="trailers">Trailers</TabsTrigger>
           <TabsTrigger value="merchandise">Merchandise</TabsTrigger>
+          <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -423,6 +425,10 @@ const CreatorDashboard = ({ onNavigateToLivestream, onNavigateToContent }: Creat
 
         <TabsContent value="merchandise">
           <MerchandiseManagement />
+        </TabsContent>
+
+        <TabsContent value="earnings">
+          <CreatorWithdrawal />
         </TabsContent>
 
         <TabsContent value="scheduler">
