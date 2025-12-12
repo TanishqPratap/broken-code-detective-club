@@ -3,16 +3,17 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, DollarSign } from "lucide-react";
+import { ShoppingCart, Package, Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/hooks/useWallet";
 
 interface Merchandise {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price_coins: number | null;
   image_url: string;
   is_digital: boolean;
   inventory: number;
@@ -23,46 +24,17 @@ interface Merchandise {
   };
 }
 
-// Declare Razorpay types
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 const Marketplace = () => {
   const [merchandise, setMerchandise] = useState<Merchandise[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { balance, transferCoins, refreshWallet } = useWallet();
 
   useEffect(() => {
     fetchMerchandise();
-    loadRazorpayScript();
   }, []);
-
-  const loadRazorpayScript = () => {
-    if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
-      return; // Script already loaded
-    }
-    
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => {
-      console.log('Razorpay script loaded successfully');
-    };
-    script.onerror = () => {
-      console.error('Failed to load Razorpay script');
-      toast({
-        title: "Payment Error",
-        description: "Failed to load payment system. Please refresh the page.",
-        variant: "destructive",
-      });
-    };
-    document.head.appendChild(script);
-  };
 
   const fetchMerchandise = async () => {
     try {
@@ -76,7 +48,8 @@ const Marketplace = () => {
           )
         `)
         .eq('is_published', true)
-        .gt('inventory', 0);
+        .gt('inventory', 0)
+        .not('price_coins', 'is', null);
 
       if (error) throw error;
       setMerchandise(data || []);
@@ -92,57 +65,6 @@ const Marketplace = () => {
     }
   };
 
-  const createMerchandiseOrder = async (item: Merchandise) => {
-    try {
-      console.log('Creating merchandise order for:', item.name);
-      const { data, error } = await supabase.functions.invoke('create-merchandise-payment', {
-        body: {
-          merchandiseId: item.id,
-          amount: item.price,
-          quantity: 1
-        }
-      });
-
-      if (error) {
-        console.error('Error creating merchandise order:', error);
-        throw error;
-      }
-      
-      console.log('Order created successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('Error creating merchandise order:', error);
-      throw error;
-    }
-  };
-
-  const verifyMerchandisePayment = async (paymentData: any, item: Merchandise) => {
-    try {
-      console.log('Verifying payment for:', item.name, paymentData);
-      const { data, error } = await supabase.functions.invoke('verify-merchandise-payment', {
-        body: {
-          razorpay_order_id: paymentData.razorpay_order_id,
-          razorpay_payment_id: paymentData.razorpay_payment_id,
-          razorpay_signature: paymentData.razorpay_signature,
-          merchandiseId: item.id,
-          amount: item.price,
-          quantity: 1
-        }
-      });
-
-      if (error) {
-        console.error('Error verifying payment:', error);
-        throw error;
-      }
-      
-      console.log('Payment verified successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('Error verifying merchandise payment:', error);
-      throw error;
-    }
-  };
-
   const handlePurchase = async (item: Merchandise) => {
     if (!user) {
       toast({
@@ -153,10 +75,19 @@ const Marketplace = () => {
       return;
     }
 
-    if (!window.Razorpay) {
+    if (!item.price_coins) {
       toast({
-        title: "Payment Error",
-        description: "Payment system is not loaded. Please refresh the page.",
+        title: "Error",
+        description: "This item doesn't have a valid price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (balance < item.price_coins) {
+      toast({
+        title: "Insufficient Coins",
+        description: `You need ${item.price_coins} coins but only have ${balance}. Please buy more coins.`,
         variant: "destructive",
       });
       return;
@@ -165,78 +96,53 @@ const Marketplace = () => {
     setProcessingPayment(item.id);
 
     try {
-      // Create payment order
-      console.log('Starting purchase process for:', item.name);
-      const orderData = await createMerchandiseOrder(item);
-      console.log('Order data received:', orderData);
-      
-      const options = {
-        key: orderData.key_id,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'Content Creator Platform',
-        description: `Purchase: ${item.name}`,
-        order_id: orderData.order_id,
-        handler: async function (response: any) {
-          try {
-            console.log('Payment successful, verifying...', response);
-            // Verify payment
-            await verifyMerchandisePayment(response, item);
-            
-            toast({
-              title: "Purchase Successful!",
-              description: `You have successfully purchased ${item.name}`,
-            });
+      // Transfer coins to creator
+      const success = await transferCoins(
+        item.creator_id,
+        item.price_coins,
+        `Purchase: ${item.name}`,
+        item.id
+      );
 
-            // Refresh merchandise to update inventory
-            fetchMerchandise();
-          } catch (error: any) {
-            console.error('Payment verification failed:', error);
-            toast({
-              title: "Payment Verification Failed",
-              description: error.message || "Please contact support",
-              variant: "destructive",
-            });
-          } finally {
-            setProcessingPayment(null);
-          }
-        },
-        prefill: {
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-          email: user.email || '',
-        },
-        theme: {
-          color: '#3B82F6'
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('Payment modal dismissed');
-            setProcessingPayment(null);
-          }
-        }
-      };
+      if (!success) {
+        throw new Error("Failed to process payment");
+      }
 
-      console.log('Opening Razorpay with options:', options);
-      const razorpay = new window.Razorpay(options);
-      razorpay.on('payment.failed', function (response: any) {
-        console.error('Payment failed:', response.error);
-        toast({
-          title: "Payment Failed",
-          description: response.error.description || "Payment could not be processed",
-          variant: "destructive",
+      // Create order record
+      const { error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          buyer_id: user.id,
+          merchandise_id: item.id,
+          price: item.price_coins,
+          quantity: 1,
+          status: 'completed'
         });
-        setProcessingPayment(null);
-      });
-      
-      razorpay.open();
 
+      if (orderError) throw orderError;
+
+      // Update inventory
+      await supabase
+        .from('merchandise')
+        .update({ inventory: item.inventory - 1 })
+        .eq('id', item.id);
+
+      toast({
+        title: "Purchase Successful!",
+        description: `You have successfully purchased ${item.name} for ${item.price_coins} coins`,
+      });
+
+      // Refresh data
+      fetchMerchandise();
+      refreshWallet();
     } catch (error: any) {
-      console.error('Error initiating purchase:', error);
+      console.error('Error purchasing merchandise:', error);
       toast({
         title: "Purchase Failed",
-        description: error.message || "Failed to initiate purchase",
+        description: error.message || "Failed to complete purchase",
         variant: "destructive",
       });
+    } finally {
       setProcessingPayment(null);
     }
   };
@@ -253,10 +159,16 @@ const Marketplace = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Marketplace</h1>
-        <Badge variant="secondary" className="flex items-center gap-2">
-          <Package className="w-4 h-4" />
-          {merchandise.length} Items Available
-        </Badge>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="flex items-center gap-2 px-3 py-1">
+            <Coins className="w-4 h-4" />
+            Your Balance: {balance} Coins
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            {merchandise.length} Items Available
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -270,8 +182,8 @@ const Marketplace = () => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <Package className="w-12 h-12 text-gray-400" />
+                <div className="w-full h-full bg-muted flex items-center justify-center">
+                  <Package className="w-12 h-12 text-muted-foreground" />
                 </div>
               )}
               {item.is_digital && (
@@ -287,15 +199,15 @@ const Marketplace = () => {
             </CardHeader>
             
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2">
                 {item.description}
               </p>
               
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-2xl font-bold flex items-center">
-                    <DollarSign className="w-5 h-5" />
-                    {item.price}
+                  <span className="text-2xl font-bold flex items-center gap-1">
+                    <Coins className="w-5 h-5" />
+                    {item.price_coins}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {item.inventory} in stock
@@ -304,7 +216,7 @@ const Marketplace = () => {
                 
                 <Button 
                   onClick={() => handlePurchase(item)}
-                  disabled={item.inventory === 0 || processingPayment === item.id}
+                  disabled={item.inventory === 0 || processingPayment === item.id || !item.price_coins}
                   className="flex items-center gap-2"
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -318,9 +230,9 @@ const Marketplace = () => {
 
       {merchandise.length === 0 && (
         <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-semibold mb-2">No merchandise available</h3>
-          <p className="text-gray-600">Check back later for new items from creators!</p>
+          <p className="text-muted-foreground">Check back later for new items from creators!</p>
         </div>
       )}
     </div>
