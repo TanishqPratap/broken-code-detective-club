@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Package, Edit, Trash2, DollarSign, TrendingUp } from "lucide-react";
+import { PlusCircle, Package, Edit, Trash2, TrendingUp, Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ interface Merchandise {
   name: string;
   description: string;
   price: number;
+  price_coins: number | null;
   image_url: string;
   is_digital: boolean;
   inventory: number;
@@ -47,7 +48,7 @@ const MerchandiseManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    price: '',
+    price_coins: '',
     image_url: '',
     is_digital: false,
     inventory: '',
@@ -127,7 +128,8 @@ const MerchandiseManagement = () => {
         creator_id: user.id,
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
+        price: 0, // Legacy field, keeping for compatibility
+        price_coins: parseInt(formData.price_coins),
         image_url: formData.image_url || null,
         is_digital: formData.is_digital,
         inventory: parseInt(formData.inventory),
@@ -176,7 +178,7 @@ const MerchandiseManagement = () => {
     setFormData({
       name: item.name,
       description: item.description || '',
-      price: item.price.toString(),
+      price_coins: (item.price_coins || 0).toString(),
       image_url: item.image_url || '',
       is_digital: item.is_digital,
       inventory: item.inventory.toString(),
@@ -214,7 +216,7 @@ const MerchandiseManagement = () => {
     setFormData({
       name: '',
       description: '',
-      price: '',
+      price_coins: '',
       image_url: '',
       is_digital: false,
       inventory: '',
@@ -266,15 +268,22 @@ const MerchandiseManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="price">Price ($)</Label>
+                <Label htmlFor="price_coins" className="flex items-center gap-1">
+                  <Coins className="w-4 h-4" />
+                  Price (Coins)
+                </Label>
                 <Input
-                  id="price"
+                  id="price_coins"
                   type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  min="1"
+                  value={formData.price_coins}
+                  onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
                   required
+                  placeholder="Enter price in coins"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Users will pay with coins from their wallet
+                </p>
               </div>
               
               <div>
@@ -346,11 +355,14 @@ const MerchandiseManagement = () => {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Coins Earned</CardTitle>
+            <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${salesData.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold flex items-center gap-1">
+              <Coins className="w-5 h-5" />
+              {salesData.totalRevenue}
+            </div>
             <p className="text-xs text-muted-foreground">
               From merchandise sales
             </p>
@@ -396,7 +408,10 @@ const MerchandiseManagement = () => {
               </p>
               
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold">${item.price}</span>
+                <span className="text-lg font-bold flex items-center gap-1">
+                  <Coins className="w-4 h-4" />
+                  {item.price_coins || 0}
+                </span>
                 <span className="text-sm text-muted-foreground">
                   {item.inventory} in stock
                 </span>

@@ -414,6 +414,7 @@ export type Database = {
           is_published: boolean
           name: string
           price: number
+          price_coins: number | null
           updated_at: string
         }
         Insert: {
@@ -428,6 +429,7 @@ export type Database = {
           is_published?: boolean
           name: string
           price: number
+          price_coins?: number | null
           updated_at?: string
         }
         Update: {
@@ -442,6 +444,7 @@ export type Database = {
           is_published?: boolean
           name?: string
           price?: number
+          price_coins?: number | null
           updated_at?: string
         }
         Relationships: [
