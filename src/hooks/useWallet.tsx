@@ -160,12 +160,13 @@ export const useWallet = () => {
     }
   }, [user, fetchTransactions]);
 
-  // Subscribe to wallet updates
+  // Subscribe to wallet updates - use unique channel name per component instance
   useEffect(() => {
     if (!user) return;
 
+    const channelId = `wallet_updates_${user.id}_${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel('wallet_updates')
+      .channel(channelId)
       .on(
         'postgres_changes',
         {
