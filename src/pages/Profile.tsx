@@ -29,6 +29,8 @@ interface Profile {
   is_verified: boolean | null;
   subscription_price: number | null;
   chat_rate: number | null;
+  subscription_price_coins: number | null;
+  chat_rate_coins: number | null;
   created_at: string;
 }
 
@@ -46,8 +48,8 @@ const Profile = () => {
     display_name: '',
     bio: '',
     role: 'subscriber' as 'creator' | 'subscriber' | 'admin',
-    subscription_price: '',
-    chat_rate: ''
+    subscription_price_coins: '',
+    chat_rate_coins: ''
   });
 
   useEffect(() => {
@@ -81,8 +83,8 @@ const Profile = () => {
         display_name: data.display_name || '',
         bio: data.bio || '',
         role: data.role,
-        subscription_price: data.subscription_price?.toString() || '',
-        chat_rate: data.chat_rate?.toString() || ''
+        subscription_price_coins: data.subscription_price_coins?.toString() || '',
+        chat_rate_coins: data.chat_rate_coins?.toString() || ''
       });
     } catch (error) {
       console.error('Error:', error);
@@ -100,8 +102,8 @@ const Profile = () => {
         display_name: editForm.display_name || null,
         bio: editForm.bio || null,
         role: editForm.role,
-        subscription_price: editForm.subscription_price ? parseFloat(editForm.subscription_price) : null,
-        chat_rate: editForm.chat_rate ? parseFloat(editForm.chat_rate) : null,
+        subscription_price_coins: editForm.subscription_price_coins ? parseInt(editForm.subscription_price_coins) : null,
+        chat_rate_coins: editForm.chat_rate_coins ? parseInt(editForm.chat_rate_coins) : null,
         updated_at: new Date().toISOString()
       };
 
@@ -355,43 +357,74 @@ const Profile = () => {
                     <>
                       <Separator />
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Creator Settings</h3>
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <Coins className="w-5 h-5 text-yellow-500" />
+                          Creator Pricing (in Coins)
+                        </h3>
                         
                         <div>
-                          <Label htmlFor="subscription_price">Monthly Subscription Price ($)</Label>
+                          <Label htmlFor="subscription_price_coins" className="flex items-center gap-2">
+                            Monthly Subscription Price
+                            <Coins className="w-4 h-4 text-yellow-500" />
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            How many coins subscribers pay per month to access your content
+                          </p>
                           {isEditing ? (
                             <Input
-                              id="subscription_price"
+                              id="subscription_price_coins"
                               type="number"
-                              step="0.01"
+                              step="1"
                               min="0"
-                              value={editForm.subscription_price}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, subscription_price: e.target.value }))}
-                              placeholder="e.g., 9.99"
+                              value={editForm.subscription_price_coins}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, subscription_price_coins: e.target.value }))}
+                              placeholder="e.g., 5"
                             />
                           ) : (
-                            <p className="mt-1 text-sm">
-                              {profile.subscription_price ? `$${profile.subscription_price}` : "Not set"}
-                            </p>
+                            <div className="mt-1 flex items-center gap-1">
+                              {profile.subscription_price_coins ? (
+                                <>
+                                  <Coins className="w-4 h-4 text-yellow-500" />
+                                  <span className="font-medium">{profile.subscription_price_coins}</span>
+                                  <span className="text-sm text-muted-foreground">coins/month</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">Not set</span>
+                              )}
+                            </div>
                           )}
                         </div>
 
                         <div>
-                          <Label htmlFor="chat_rate">Hourly Chat Rate ($)</Label>
+                          <Label htmlFor="chat_rate_coins" className="flex items-center gap-2">
+                            Hourly Chat Rate
+                            <Coins className="w-4 h-4 text-yellow-500" />
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            How many coins users pay per hour for private chat sessions
+                          </p>
                           {isEditing ? (
                             <Input
-                              id="chat_rate"
+                              id="chat_rate_coins"
                               type="number"
-                              step="0.01"
+                              step="1"
                               min="0"
-                              value={editForm.chat_rate}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, chat_rate: e.target.value }))}
-                              placeholder="e.g., 50.00"
+                              value={editForm.chat_rate_coins}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, chat_rate_coins: e.target.value }))}
+                              placeholder="e.g., 10"
                             />
                           ) : (
-                            <p className="mt-1 text-sm">
-                              {profile.chat_rate ? `$${profile.chat_rate}/hour` : "Not set"}
-                            </p>
+                            <div className="mt-1 flex items-center gap-1">
+                              {profile.chat_rate_coins ? (
+                                <>
+                                  <Coins className="w-4 h-4 text-yellow-500" />
+                                  <span className="font-medium">{profile.chat_rate_coins}</span>
+                                  <span className="text-sm text-muted-foreground">coins/hour</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">Not set</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
