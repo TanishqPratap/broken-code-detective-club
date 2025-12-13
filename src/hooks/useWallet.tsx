@@ -43,12 +43,22 @@ export const useWallet = () => {
       if (data) {
         setBalance(data.balance);
       } else {
-        // Create wallet if doesn't exist
+        // Create wallet if doesn't exist - give 5 free coins to start
         const { data: newWallet, error: createError } = await supabase
           .from('wallets')
-          .insert({ user_id: user.id, balance: 0 })
+          .insert({ user_id: user.id, balance: 5 })
           .select('balance')
           .single();
+        
+        // Record the welcome bonus transaction
+        if (newWallet && !createError) {
+          await supabase.from('coin_transactions').insert({
+            user_id: user.id,
+            amount: 5,
+            transaction_type: 'bonus',
+            description: 'Welcome bonus - 5 free coins'
+          });
+        }
         
         if (createError && createError.code !== '23505') {
           console.error('Error creating wallet:', createError);
