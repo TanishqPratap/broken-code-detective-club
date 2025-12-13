@@ -39,7 +39,7 @@ const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
   };
 
   const handleConfirmPurchase = () => {
-    if (!user?.email) {
+    if (!user?.email || !user?.id) {
       toast.error("You must be logged in to purchase coins");
       return;
     }
@@ -50,12 +50,13 @@ const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
     }
 
     if (selectedPackage) {
-      // Append email to Gumroad link for pre-filling
+      // Append email and user_id to Gumroad link for verification
       const gumroadUrl = new URL(selectedPackage.gumroad_link);
       gumroadUrl.searchParams.set('email', user.email);
+      gumroadUrl.searchParams.set('user_id', user.id);
       window.open(gumroadUrl.toString(), '_blank');
       
-      toast.success("Redirecting to Gumroad. Use the same email to receive your coins!");
+      toast.success("Redirecting to Gumroad. Complete your purchase to receive coins automatically!");
       setShowEmailVerification(false);
       setSelectedPackage(null);
       setEmailConfirmation("");
