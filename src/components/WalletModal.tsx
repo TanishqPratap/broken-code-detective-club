@@ -1,24 +1,71 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Coins, ExternalLink, TrendingUp, TrendingDown, ArrowUpRight, History } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Coins, ExternalLink, TrendingUp, TrendingDown, ArrowUpRight, History, AlertCircle, CheckCircle } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface CoinPackage {
+  id: string;
+  coins: number;
+  price_usd: number;
+  gumroad_link: string;
+}
+
 const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
   const { balance, packages, transactions, loading } = useWallet();
+  const { user } = useAuth();
+  const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
+  const [emailConfirmation, setEmailConfirmation] = useState("");
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
 
-  const handleBuyCoins = (gumroadLink: string) => {
-    window.open(gumroadLink, '_blank');
+  const handleSelectPackage = (pkg: CoinPackage) => {
+    setSelectedPackage(pkg);
+    setEmailConfirmation("");
+    setShowEmailVerification(true);
+  };
+
+  const handleConfirmPurchase = () => {
+    if (!user?.email) {
+      toast.error("You must be logged in to purchase coins");
+      return;
+    }
+
+    if (emailConfirmation.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+      toast.error("Email doesn't match your account email. Please use the same email for Gumroad purchase.");
+      return;
+    }
+
+    if (selectedPackage) {
+      // Append email to Gumroad link for pre-filling
+      const gumroadUrl = new URL(selectedPackage.gumroad_link);
+      gumroadUrl.searchParams.set('email', user.email);
+      window.open(gumroadUrl.toString(), '_blank');
+      
+      toast.success("Redirecting to Gumroad. Use the same email to receive your coins!");
+      setShowEmailVerification(false);
+      setSelectedPackage(null);
+      setEmailConfirmation("");
+    }
+  };
+
+  const handleCancelVerification = () => {
+    setShowEmailVerification(false);
+    setSelectedPackage(null);
+    setEmailConfirmation("");
   };
 
   const getTransactionIcon = (type: string, amount: number) => {
@@ -82,50 +129,103 @@ const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
           </TabsList>
 
           <TabsContent value="buy" className="mt-4">
-            <div className="space-y-3">
-              {packages.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6 text-center text-muted-foreground">
-                    No coin packages available at the moment.
-                  </CardContent>
-                </Card>
-              ) : (
-                packages.map((pkg) => (
-                  <Card 
-                    key={pkg.id} 
-                    className="hover:border-yellow-400 transition-colors cursor-pointer"
-                    onClick={() => handleBuyCoins(pkg.gumroad_link)}
-                  >
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
-                            <Coins className="w-6 h-6 text-yellow-600" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-lg">{pkg.coins} Coins</p>
-                            <p className="text-sm text-muted-foreground">
-                              ${(pkg.price_usd / pkg.coins).toFixed(2)} per coin
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-xl text-green-600">${pkg.price_usd}</p>
-                          <Button size="sm" variant="outline" className="mt-1">
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            Buy
-                          </Button>
-                        </div>
+            {showEmailVerification && selectedPackage ? (
+              <Card className="border-yellow-400">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-medium">Verify Your Email</span>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    To receive your coins, you must use the <strong>same email</strong> on Gumroad as your account email. Please confirm your email below:
+                  </p>
+
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Purchasing:</span>{" "}
+                      <strong>{selectedPackage.coins} Coins</strong> for <strong>${selectedPackage.price_usd}</strong>
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-confirm">Enter your account email to confirm</Label>
+                    <Input
+                      id="email-confirm"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={emailConfirmation}
+                      onChange={(e) => setEmailConfirmation(e.target.value)}
+                    />
+                    {emailConfirmation && user?.email && emailConfirmation.toLowerCase().trim() === user.email.toLowerCase().trim() && (
+                      <div className="flex items-center gap-1 text-green-600 text-sm">
+                        <CheckCircle className="w-4 h-4" />
+                        Email matches!
                       </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleCancelVerification} className="flex-1">
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleConfirmPurchase} 
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                      disabled={!emailConfirmation}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Continue to Gumroad
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {packages.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-6 text-center text-muted-foreground">
+                      No coin packages available at the moment.
                     </CardContent>
                   </Card>
-                ))
-              )}
-              
-              <p className="text-xs text-muted-foreground text-center mt-4">
-                Purchases are processed securely via Gumroad. After purchase, your coins will be added to your wallet automatically.
-              </p>
-            </div>
+                ) : (
+                  packages.map((pkg) => (
+                    <Card 
+                      key={pkg.id} 
+                      className="hover:border-yellow-400 transition-colors cursor-pointer"
+                      onClick={() => handleSelectPackage(pkg)}
+                    >
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                              <Coins className="w-6 h-6 text-yellow-600" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg">{pkg.coins} Coins</p>
+                              <p className="text-sm text-muted-foreground">
+                                ${(pkg.price_usd / pkg.coins).toFixed(2)} per coin
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-xl text-green-600">${pkg.price_usd}</p>
+                            <Button size="sm" variant="outline" className="mt-1">
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              Buy
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+                
+                <p className="text-xs text-muted-foreground text-center mt-4">
+                  Purchases are processed securely via Gumroad. Use your account email to automatically receive coins.
+                </p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="mt-4">
