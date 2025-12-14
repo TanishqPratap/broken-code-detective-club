@@ -24,6 +24,48 @@ export const useWallet = () => {
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
 
+  const checkDailyReward = useCallback(async (walletData: { last_daily_reward: string | null }) => {
+    if (!user) return;
+
+    const lastReward = walletData.last_daily_reward ? new Date(walletData.last_daily_reward) : null;
+    const now = new Date();
+    
+    // Check if last reward was on a different day (or never claimed)
+    const shouldClaimDaily = !lastReward || 
+      lastReward.toDateString() !== now.toDateString();
+
+    if (shouldClaimDaily) {
+      try {
+        // Update wallet with daily reward
+        const { error: updateError } = await supabase
+          .from('wallets')
+          .update({ 
+            balance: supabase.rpc ? undefined : undefined, // Will use RPC instead
+            last_daily_reward: now.toISOString()
+          })
+          .eq('user_id', user.id);
+
+        // Use RPC to add coins safely
+        const { error: rpcError } = await supabase.rpc('add_coins', {
+          p_user_id: user.id,
+          p_amount: 2,
+          p_transaction_type: 'daily_reward',
+          p_description: 'Daily login reward - 2 coins'
+        });
+
+        if (!rpcError && !updateError) {
+          // Update the last_daily_reward timestamp
+          await supabase
+            .from('wallets')
+            .update({ last_daily_reward: now.toISOString() })
+            .eq('user_id', user.id);
+        }
+      } catch (error) {
+        console.error('Error claiming daily reward:', error);
+      }
+    }
+  }, [user]);
+
   const fetchWallet = useCallback(async () => {
     if (!user) {
       setBalance(0);
@@ -34,7 +76,7 @@ export const useWallet = () => {
     try {
       const { data, error } = await supabase
         .from('wallets')
-        .select('balance')
+        .select('balance, last_daily_reward')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -42,11 +84,22 @@ export const useWallet = () => {
       
       if (data) {
         setBalance(data.balance);
+        // Check for daily reward
+        await checkDailyReward(data);
+        // Refresh balance after potential daily reward
+        const { data: refreshedData } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
+        if (refreshedData) {
+          setBalance(refreshedData.balance);
+        }
       } else {
         // Create wallet if doesn't exist - give 5 free coins to start
         const { data: newWallet, error: createError } = await supabase
           .from('wallets')
-          .insert({ user_id: user.id, balance: 5 })
+          .insert({ user_id: user.id, balance: 5, last_daily_reward: new Date().toISOString() })
           .select('balance')
           .single();
         
@@ -58,19 +111,26 @@ export const useWallet = () => {
             transaction_type: 'bonus',
             description: 'Welcome bonus - 5 free coins'
           });
-        }
-        
-        if (createError && createError.code !== '23505') {
+          setBalance(5);
+        } else if (createError && createError.code !== '23505') {
           console.error('Error creating wallet:', createError);
+          setBalance(0);
+        } else {
+          // Wallet might already exist due to race condition, fetch it
+          const { data: existingWallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', user.id)
+            .single();
+          setBalance(existingWallet?.balance || 0);
         }
-        setBalance(newWallet?.balance || 0);
       }
     } catch (error) {
       console.error('Error fetching wallet:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, checkDailyReward]);
 
   const fetchPackages = useCallback(async () => {
     try {
