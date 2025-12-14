@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
+import { toast } from "@/hooks/use-toast";
 interface CoinPackage {
   id: string;
   coins: number;
@@ -23,6 +23,8 @@ export const useWallet = () => {
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
+
+  const hasShownDailyRewardToast = useRef(false);
 
   const checkDailyReward = useCallback(async (walletData: { last_daily_reward: string | null }) => {
     if (!user) return;
@@ -59,6 +61,15 @@ export const useWallet = () => {
             .from('wallets')
             .update({ last_daily_reward: now.toISOString() })
             .eq('user_id', user.id);
+          
+          // Show toast notification only once per session
+          if (!hasShownDailyRewardToast.current) {
+            hasShownDailyRewardToast.current = true;
+            toast({
+              title: "🎁 Daily Reward!",
+              description: "You received 2 coins for logging in today!",
+            });
+          }
         }
       } catch (error) {
         console.error('Error claiming daily reward:', error);
