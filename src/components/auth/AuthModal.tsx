@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, Video, Upload, ArrowLeft } from "lucide-react";
+import { User, Video, Upload, ArrowLeft, Gift } from "lucide-react";
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
 const AuthModal = ({
   isOpen,
   onClose
@@ -22,12 +24,20 @@ const AuthModal = ({
   const [displayName, setDisplayName] = useState("");
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [accountType, setAccountType] = useState<"creator" | "subscriber">("subscriber");
+  const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+
+  // Check for referral code in URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode.toUpperCase());
+    }
+  }, []);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -108,6 +118,7 @@ const AuthModal = ({
     setLoading(true);
     try {
       const {
+        data: signUpData,
         error
       } = await supabase.auth.signUp({
         email: email.trim(),
@@ -116,12 +127,26 @@ const AuthModal = ({
           data: {
             username: username.trim(),
             display_name: displayName.trim(),
-            role: accountType
+            role: accountType,
+            referral_code: referralCode.trim() || null
           },
           emailRedirectTo: `${window.location.origin}/`
         }
       });
       if (error) throw error;
+
+      // Process referral if code was provided and user was created
+      if (referralCode.trim() && signUpData.user) {
+        try {
+          await supabase.rpc('process_referral', {
+            p_referral_code: referralCode.trim().toUpperCase(),
+            p_referred_user_id: signUpData.user.id
+          });
+        } catch (refError) {
+          console.error('Referral processing error:', refError);
+        }
+      }
+
       toast({
         title: "Account created!",
         description: "Please check your email to confirm your account."
@@ -357,6 +382,25 @@ const AuthModal = ({
               <Label htmlFor="signup-password">Password *</Label>
               <Input id="signup-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" required />
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="signup-referral" className="flex items-center gap-1">
+                <Gift className="w-3 h-3" />
+                Referral Code (Optional)
+              </Label>
+              <Input 
+                id="signup-referral" 
+                value={referralCode} 
+                onChange={e => setReferralCode(e.target.value.toUpperCase())} 
+                placeholder="Enter referral code" 
+                className="font-mono tracking-wider"
+                maxLength={8}
+              />
+              {referralCode && (
+                <p className="text-xs text-green-600">You'll receive 3 bonus coins!</p>
+              )}
+            </div>
+            
             <Button onClick={handleSignUp} disabled={loading} className="w-full">
               {loading ? "Creating account..." : `Create ${accountType === "creator" ? "Creator" : "Subscriber"} Account`}
             </Button>
