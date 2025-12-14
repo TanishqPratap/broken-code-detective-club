@@ -123,6 +123,12 @@ export const useWallet = () => {
             description: 'Welcome bonus - 5 free coins'
           });
           setBalance(5);
+          
+          // Show welcome toast
+          toast({
+            title: "🎉 Welcome Bonus!",
+            description: "You received 5 free coins to get started!",
+          });
         } else if (createError && createError.code !== '23505') {
           console.error('Error creating wallet:', createError);
           setBalance(0);
