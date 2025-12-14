@@ -920,6 +920,57 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_coins_awarded: number
+          referred_id: string
+          referrer_coins_awarded: number
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_coins_awarded?: number
+          referred_id: string
+          referrer_coins_awarded?: number
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_coins_awarded?: number
+          referred_id?: string
+          referrer_coins_awarded?: number
+          referrer_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       scheduled_posts: {
         Row: {
           content: string
@@ -1722,6 +1773,7 @@ export type Database = {
         }
         Returns: string
       }
+      generate_referral_code: { Args: never; Returns: string }
       get_public_profile_data: {
         Args: { profile_id: string }
         Returns: {
@@ -1735,6 +1787,10 @@ export type Database = {
           updated_at: string
           username: string
         }[]
+      }
+      process_referral: {
+        Args: { p_referral_code: string; p_referred_user_id: string }
+        Returns: boolean
       }
       spend_coins: {
         Args: {
