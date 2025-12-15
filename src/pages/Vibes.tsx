@@ -19,6 +19,7 @@ type Post = Tables<"posts"> & {
   comments_count: number;
   user_subscribed: boolean;
   subscription_price: number;
+  subscription_price_coins: number | null;
 };
 
 const Vibes = () => {
@@ -36,6 +37,7 @@ const Vibes = () => {
     id: string;
     name: string;
     price: number;
+    priceCoins: number | null;
   } | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
@@ -61,8 +63,8 @@ const Vibes = () => {
       if (vibesData && vibesData.length > 0) {
         const userIds = [...new Set(vibesData.map(vibe => vibe.user_id))];
         const { data: profilesData, error: profilesError } = await supabase
-          .from('safe_profiles')
-          .select('id, username, display_name, avatar_url, subscription_price')
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, subscription_price, subscription_price_coins')
           .in('id', userIds);
 
         if (profilesError) throw profilesError;
@@ -115,7 +117,8 @@ const Vibes = () => {
             user_liked: user ? vibeLikes.some(like => like.user_id === user.id) : false,
             comments_count: vibeComments.length,
             user_subscribed: isSubscribed,
-            subscription_price: profile?.subscription_price || 0
+            subscription_price: profile?.subscription_price || 0,
+            subscription_price_coins: profile?.subscription_price_coins || null
           };
         });
 
@@ -352,7 +355,7 @@ const Vibes = () => {
     }
   };
 
-  const handleSubscribe = async (creatorId: string, creatorName: string, subscriptionPrice: number, currentlySubscribed: boolean) => {
+  const handleSubscribe = async (creatorId: string, creatorName: string, subscriptionPrice: number, subscriptionPriceCoins: number | null, currentlySubscribed: boolean) => {
     if (!user) {
       toast.error('Please sign in to subscribe');
       return;
@@ -383,11 +386,12 @@ const Vibes = () => {
       }
     } else {
       // Handle subscribe with payment
-      if (subscriptionPrice > 0) {
+      if (subscriptionPrice > 0 || (subscriptionPriceCoins && subscriptionPriceCoins > 0)) {
         setSelectedCreator({
           id: creatorId,
           name: creatorName,
-          price: subscriptionPrice
+          price: subscriptionPrice,
+          priceCoins: subscriptionPriceCoins
         });
         setShowSubscriptionModal(true);
       } else {
@@ -611,10 +615,10 @@ const Vibes = () => {
                           >
                             {vibe.creator_username}
                           </span>
-                          {!vibe.user_subscribed && (
+                          {!vibe.user_subscribed && (vibe.subscription_price > 0 || (vibe.subscription_price_coins && vibe.subscription_price_coins > 0)) && (
                             <Button
                               size="sm"
-                              onClick={() => handleSubscribe(vibe.user_id, vibe.creator_name, vibe.subscription_price, vibe.user_subscribed)}
+                              onClick={() => handleSubscribe(vibe.user_id, vibe.creator_name, vibe.subscription_price, vibe.subscription_price_coins, vibe.user_subscribed)}
                               className="border border-white text-white bg-transparent hover:bg-white hover:text-black px-4 py-1 h-8 text-sm font-semibold rounded-md"
                             >
                               Follow
@@ -622,7 +626,6 @@ const Vibes = () => {
                           )}
                         </div>
                       </div>
-
                       {/* Caption */}
                       {vibe.description && (
                         <div className="mb-2">
@@ -760,6 +763,7 @@ const Vibes = () => {
           creatorId={selectedCreator.id}
           creatorName={selectedCreator.name}
           subscriptionPrice={selectedCreator.price}
+          subscriptionPriceCoins={selectedCreator.priceCoins || undefined}
           onSubscriptionSuccess={handleSubscriptionSuccess}
         />
       )}

@@ -22,6 +22,7 @@ interface Creator {
   bio: string;
   avatar_url: string;
   subscription_price: number;
+  subscription_price_coins?: number;
   is_verified: boolean;
   subscriber_count?: number;
   is_subscribed?: boolean;
@@ -66,8 +67,8 @@ const Discover = () => {
     try {
       // Use safe_profiles view to filter for creator role only
       const { data: profilesData, error } = await supabase
-        .from('safe_profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, role')
+        .from('profiles')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, subscription_price_coins, is_verified, role')
         .eq('role', 'creator')
         .order('created_at', { ascending: false });
 
@@ -267,8 +268,12 @@ const Discover = () => {
                       <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>{creator.subscriber_count} subs</span>
                     </div>
-                    <div className="text-primary font-semibold">
-                      ${creator.subscription_price}/mo
+                    <div className="text-primary font-semibold flex items-center gap-1">
+                      {creator.subscription_price_coins ? (
+                        <span>{creator.subscription_price_coins} coins/mo</span>
+                      ) : (
+                        <span>${creator.subscription_price}/mo</span>
+                      )}
                     </div>
                   </div>
 
@@ -347,6 +352,7 @@ const Discover = () => {
             creatorId={selectedCreator.id}
             creatorName={selectedCreator.display_name || selectedCreator.username}
             subscriptionPrice={selectedCreator.subscription_price}
+            subscriptionPriceCoins={selectedCreator.subscription_price_coins}
             onSubscriptionSuccess={handleSubscriptionSuccess}
           />
 
