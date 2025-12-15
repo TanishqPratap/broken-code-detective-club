@@ -1,12 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, DollarSign, AlertCircle } from "lucide-react";
+import { Check, DollarSign, AlertCircle, Coins, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/hooks/useWallet";
 
 interface SubscriptionPaymentModalProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ interface SubscriptionPaymentModalProps {
   creatorId: string;
   creatorName: string;
   subscriptionPrice: number;
+  subscriptionPriceCoins?: number;
   onSubscriptionSuccess: () => void;
 }
 
@@ -28,28 +29,48 @@ const SubscriptionPaymentModal = ({
   onClose, 
   creatorId, 
   creatorName, 
-  subscriptionPrice, 
+  subscriptionPrice,
+  subscriptionPriceCoins,
   onSubscriptionSuccess 
 }: SubscriptionPaymentModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { balance, transferCoins, refreshWallet } = useWallet();
   const [loading, setLoading] = useState(false);
   const [scriptLoading, setScriptLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'coins' | 'razorpay'>('coins');
   const [paymentInfo, setPaymentInfo] = useState<{
     amountUSD: number;
     amountINR: number;
     exchangeRate: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creatorCoinPrice, setCreatorCoinPrice] = useState<number | null>(subscriptionPriceCoins || null);
 
   useEffect(() => {
     if (isOpen) {
       loadRazorpayScript();
-      // Reset states when modal opens
+      fetchCreatorCoinPrice();
       setError(null);
       setPaymentInfo(null);
     }
-  }, [isOpen]);
+  }, [isOpen, creatorId]);
+
+  const fetchCreatorCoinPrice = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('subscription_price_coins')
+        .eq('id', creatorId)
+        .single();
+      
+      if (!error && data?.subscription_price_coins) {
+        setCreatorCoinPrice(data.subscription_price_coins);
+      }
+    } catch (err) {
+      console.error('Error fetching creator coin price:', err);
+    }
+  };
 
   const loadRazorpayScript = async () => {
     if (window.Razorpay) {
@@ -66,14 +87,100 @@ const SubscriptionPaymentModal = ({
       };
       script.onerror = () => {
         setScriptLoading(false);
-        setError('Failed to load payment gateway. Please try again.');
         resolve(false);
       };
       document.body.appendChild(script);
     });
   };
 
-  const handleSubscribe = async () => {
+  const handleCoinSubscription = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to subscribe",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!creatorCoinPrice) {
+      toast({
+        title: "Not Available",
+        description: "This creator hasn't set a coin price for subscriptions",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (balance < creatorCoinPrice) {
+      toast({
+        title: "Insufficient Coins",
+        description: `You need ${creatorCoinPrice} coins but only have ${balance}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Transfer coins to creator
+      const success = await transferCoins(
+        creatorId,
+        creatorCoinPrice,
+        `Subscription to ${creatorName}`,
+        creatorId
+      );
+
+      if (!success) {
+        throw new Error('Failed to transfer coins');
+      }
+
+      // Create subscription record
+      const periodStart = new Date();
+      const periodEnd = new Date();
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+      const { error: subError } = await supabase
+        .from('subscriptions')
+        .insert({
+          creator_id: creatorId,
+          subscriber_id: user.id,
+          status: 'active',
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString()
+        });
+
+      if (subError) {
+        console.error('Subscription creation error:', subError);
+        throw new Error('Failed to create subscription');
+      }
+
+      await refreshWallet();
+
+      toast({
+        title: "Subscription Successful!",
+        description: `You are now subscribed to ${creatorName} using ${creatorCoinPrice} coins`,
+      });
+
+      onClose();
+      onSubscriptionSuccess();
+
+    } catch (error: any) {
+      console.error('Coin subscription error:', error);
+      setError(error.message || 'Failed to process coin subscription');
+      toast({
+        title: "Subscription Failed",
+        description: error.message || "Failed to process subscription",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRazorpaySubscribe = async () => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -94,7 +201,6 @@ const SubscriptionPaymentModal = ({
     try {
       console.log('Creating subscription payment order...');
       
-      // Create a subscription payment order
       const { data, error } = await supabase.functions.invoke('create-subscription-payment', {
         body: {
           creatorId,
@@ -109,14 +215,12 @@ const SubscriptionPaymentModal = ({
 
       console.log('Subscription payment order created:', data);
 
-      // Store payment info for display
       setPaymentInfo({
         amountUSD: data.amount_usd,
         amountINR: data.amount_inr,
         exchangeRate: data.exchange_rate
       });
 
-      // Initialize Razorpay payment
       const options = {
         key: data.key_id,
         amount: data.amount,
@@ -135,7 +239,6 @@ const SubscriptionPaymentModal = ({
             console.log('Payment response received:', response);
             setLoading(true);
             
-            // Verify payment on backend
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-subscription-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
@@ -157,7 +260,6 @@ const SubscriptionPaymentModal = ({
               description: `You are now subscribed to ${creatorName}`,
             });
             
-            // Close modal and trigger success callback
             onClose();
             onSubscriptionSuccess();
             
@@ -197,10 +299,21 @@ const SubscriptionPaymentModal = ({
     }
   };
 
+  const handleSubscribe = () => {
+    if (paymentMethod === 'coins') {
+      handleCoinSubscription();
+    } else {
+      handleRazorpaySubscribe();
+    }
+  };
+
   const handleRetry = () => {
     setError(null);
     handleSubscribe();
   };
+
+  const canPayWithCoins = creatorCoinPrice !== null && creatorCoinPrice > 0;
+  const hasEnoughCoins = canPayWithCoins && balance >= (creatorCoinPrice || 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -212,28 +325,77 @@ const SubscriptionPaymentModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Card className="mt-6">
-          <CardHeader className="text-center">
+        <Card className="mt-4">
+          <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl">Monthly Subscription</CardTitle>
             <CardDescription>Full access to {creatorName}'s content</CardDescription>
-            <div className="text-2xl font-bold flex items-center justify-center gap-1">
-              <DollarSign className="w-6 h-6" />
-              {subscriptionPrice} USD
-              {paymentInfo && (
-                <div className="text-sm font-normal text-muted-foreground ml-2">
-                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
+            
+            {/* Price Display */}
+            <div className="flex flex-col gap-2 mt-4">
+              {canPayWithCoins && (
+                <div className="flex items-center justify-center gap-2 text-xl font-bold text-primary">
+                  <Coins className="w-5 h-5" />
+                  {creatorCoinPrice} Coins
                 </div>
               )}
-              <span className="text-sm font-normal text-muted-foreground">/month</span>
+              {subscriptionPrice > 0 && (
+                <div className="text-lg text-muted-foreground flex items-center justify-center gap-1">
+                  <DollarSign className="w-4 h-4" />
+                  {subscriptionPrice} USD
+                  <span className="text-sm font-normal">/month</span>
+                </div>
+              )}
             </div>
-            {paymentInfo && (
-              <p className="text-xs text-muted-foreground">
-                Exchange rate: 1 USD = ₹{paymentInfo.exchangeRate.toFixed(2)} INR
-              </p>
-            )}
           </CardHeader>
           
           <CardContent>
+            {/* Payment Method Selection */}
+            {canPayWithCoins && subscriptionPrice > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-2">Payment Method</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={paymentMethod === 'coins' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPaymentMethod('coins')}
+                    className="flex items-center gap-2"
+                  >
+                    <Coins className="w-4 h-4" />
+                    Pay with Coins
+                  </Button>
+                  <Button
+                    variant={paymentMethod === 'razorpay' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPaymentMethod('razorpay')}
+                    className="flex items-center gap-2"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Pay with Card
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Coin Balance Display */}
+            {paymentMethod === 'coins' && canPayWithCoins && (
+              <div className={`mb-4 p-3 rounded-lg ${hasEnoughCoins ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4" />
+                    <span className="text-sm font-medium">Your Balance</span>
+                  </div>
+                  <span className={`font-bold ${hasEnoughCoins ? 'text-green-600' : 'text-red-600'}`}>
+                    {balance} Coins
+                  </span>
+                </div>
+                {!hasEnoughCoins && (
+                  <p className="text-xs text-red-600 mt-1">
+                    You need {(creatorCoinPrice || 0) - balance} more coins
+                  </p>
+                )}
+              </div>
+            )}
+
             <ul className="space-y-2 mb-6">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
@@ -265,7 +427,16 @@ const SubscriptionPaymentModal = ({
               </div>
             )}
 
-            {scriptLoading ? (
+            {paymentMethod === 'coins' && canPayWithCoins ? (
+              <Button 
+                className="w-full" 
+                onClick={handleSubscribe}
+                disabled={loading || !user || !hasEnoughCoins}
+                size="lg"
+              >
+                {loading ? "Processing..." : `Pay ${creatorCoinPrice} Coins`}
+              </Button>
+            ) : scriptLoading ? (
               <Button className="w-full" disabled size="lg">
                 Loading payment gateway...
               </Button>
