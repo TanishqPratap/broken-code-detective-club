@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Heart, UserPlus, UserCheck, MessageSquare } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Users, Heart, UserPlus, UserCheck, MessageSquare, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,26 +38,44 @@ const Discover = () => {
   const [showPaidDMModal, setShowPaidDMModal] = useState(false);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [creators, setCreators] = useState<Creator[]>([]);
+  const [filteredCreators, setFilteredCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchCreators();
   }, [user]);
 
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredCreators(creators);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredCreators(
+        creators.filter(
+          (creator) =>
+            creator.username?.toLowerCase().includes(query) ||
+            creator.display_name?.toLowerCase().includes(query) ||
+            creator.bio?.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery, creators]);
+
   const fetchCreators = async () => {
     try {
-      // Use safe_profiles view to avoid exposing sensitive data
+      // Use safe_profiles view to filter for creator role only
       const { data: profilesData, error } = await supabase
         .from('safe_profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified')
-        .not('subscription_price', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(12);
+        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, role')
+        .eq('role', 'creator')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       if (!profilesData) {
         setCreators([]);
+        setFilteredCreators([]);
         return;
       }
 
@@ -93,6 +112,7 @@ const Discover = () => {
       );
 
       setCreators(creatorsWithDetails);
+      setFilteredCreators(creatorsWithDetails);
     } catch (error) {
       console.error('Error fetching creators:', error);
     } finally {
@@ -192,11 +212,23 @@ const Discover = () => {
         <div className={`w-full min-h-screen ${isMobile ? 'px-4 py-4' : 'px-4 py-6'}`}>
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Discover Creators</h1>
-            <p className="text-sm sm:text-base text-gray-600">Find amazing creators and content</p>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">Find amazing creators and content</p>
+            
+            {/* Search Bar */}
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search creators..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {creators.map((creator) => (
+            {filteredCreators.map((creator) => (
               <Card 
                 key={creator.id} 
                 className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -289,10 +321,14 @@ const Discover = () => {
             ))}
           </div>
 
-          {creators.length === 0 && (
+          {filteredCreators.length === 0 && (
             <div className="text-center py-12 sm:py-16">
-              <h3 className="text-lg sm:text-xl font-semibold mb-2">No creators found</h3>
-              <p className="text-sm sm:text-base text-gray-600">Be the first to become a creator!</p>
+              <h3 className="text-lg sm:text-xl font-semibold mb-2">
+                {searchQuery ? "No creators found" : "No creators yet"}
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600">
+                {searchQuery ? "Try a different search term" : "Be the first to become a creator!"}
+              </p>
             </div>
           )}
         </div>

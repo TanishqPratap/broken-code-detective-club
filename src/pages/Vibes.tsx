@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Play, Pause, Music } from "lucide-react";
@@ -22,6 +23,7 @@ type Post = Tables<"posts"> & {
 
 const Vibes = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [vibes, setVibes] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -593,14 +595,22 @@ const Vibes = () => {
                     <div className="absolute bottom-4 md:bottom-6 left-4 right-20 pb-safe-area-bottom">
                       {/* Creator info */}
                       <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="w-10 h-10 border-2 border-white">
+                        <Avatar 
+                          className="w-10 h-10 border-2 border-white cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/creator/${vibe.user_id}`)}
+                        >
                           <AvatarImage src={vibe.creator_avatar} />
                           <AvatarFallback className="bg-gray-600 text-white">
                             {vibe.creator_name[0]?.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex items-center gap-3">
-                          <span className="text-white font-semibold text-base">{vibe.creator_username}</span>
+                          <span 
+                            className="text-white font-semibold text-base cursor-pointer hover:underline"
+                            onClick={() => navigate(`/creator/${vibe.user_id}`)}
+                          >
+                            {vibe.creator_username}
+                          </span>
                           {!vibe.user_subscribed && (
                             <Button
                               size="sm"
@@ -699,7 +709,10 @@ const Vibes = () => {
 
                       {/* Creator avatar as last element (like Instagram) */}
                       <div className="flex flex-col items-center mt-2">
-                        <div className="relative">
+                        <div 
+                          className="relative cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/creator/${vibe.user_id}`)}
+                        >
                           <Avatar className="w-12 h-12 border-2 border-white">
                             <AvatarImage src={vibe.creator_avatar} />
                             <AvatarFallback className="bg-gray-600 text-white">
