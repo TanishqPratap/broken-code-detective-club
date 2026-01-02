@@ -313,7 +313,7 @@ const CreatorProfilePage = () => {
               subscriptionPrice: creator.subscription_price
             }}
             onSubscribe={handleSubscribe}
-            onStartPaidDM={creator.chat_rate ? handleStartPaidDM : undefined}
+            onStartPaidDM={(creator.chat_rate || creator.chat_rate_coins) ? handleStartPaidDM : undefined}
           />
 
           {/* Trailers Section */}
