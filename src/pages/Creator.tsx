@@ -128,7 +128,7 @@ const Creator = () => {
             onClose={() => setShowPaidDM(false)} 
             creatorId={creatorDMProps.creatorId} 
             creatorName={creatorDMProps.creatorName} 
-            chatRate={creatorDMProps.creatorChatRate} 
+            chatRateCoins={creatorDMProps.creatorChatRate} 
             subscriberId={creatorDMProps.subscriberId} 
             onSessionCreated={sessionId => setActiveSessionId(sessionId)} 
           />
@@ -185,7 +185,7 @@ const Creator = () => {
           onClose={() => setShowPaidDM(false)} 
           creatorId={creatorDMProps.creatorId} 
           creatorName={creatorDMProps.creatorName} 
-          chatRate={creatorDMProps.creatorChatRate} 
+          chatRateCoins={creatorDMProps.creatorChatRate} 
           subscriberId={creatorDMProps.subscriberId} 
           onSessionCreated={sessionId => setActiveSessionId(sessionId)} 
         />

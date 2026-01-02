@@ -22,6 +22,7 @@ interface CreatorData {
   subscription_price: number;
   is_verified: boolean;
   chat_rate?: number;
+  chat_rate_coins?: number;
   subscriber_count: number;
   post_count: number;
   is_subscribed: boolean;
@@ -81,10 +82,10 @@ const CreatorProfilePage = () => {
     try {
       setError(null);
       
-      // Fetch creator profile using safe view to protect sensitive data
+      // Fetch creator profile using profiles table
       const { data: profileData, error: profileError } = await supabase
-        .from('safe_profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate')
+        .from('profiles')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate, chat_rate_coins')
         .eq('id', creatorId)
         .maybeSingle();
 
@@ -127,7 +128,15 @@ const CreatorProfilePage = () => {
       }
 
       setCreator({
-        ...profileData,
+        id: profileData.id || '',
+        username: profileData.username || '',
+        display_name: profileData.display_name || '',
+        bio: profileData.bio || '',
+        avatar_url: profileData.avatar_url || '',
+        subscription_price: profileData.subscription_price || 0,
+        is_verified: profileData.is_verified || false,
+        chat_rate: profileData.chat_rate,
+        chat_rate_coins: profileData.chat_rate_coins,
         subscriber_count: subscriberCount || 0,
         post_count: postCount || 0,
         is_subscribed: isSubscribed
@@ -341,7 +350,7 @@ const CreatorProfilePage = () => {
             onClose={() => setShowPaidDMModal(false)}
             creatorId={creator.id}
             creatorName={creator.display_name || creator.username}
-            chatRate={creator.chat_rate || 0}
+            chatRateCoins={creator.chat_rate_coins || 0}
             subscriberId={user?.id || ''}
             onSessionCreated={(sessionId) => {
               console.log('Chat session created:', sessionId);
