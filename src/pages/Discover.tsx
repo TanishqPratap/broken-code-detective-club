@@ -27,6 +27,7 @@ interface Creator {
   subscriber_count?: number;
   is_subscribed?: boolean;
   chat_rate?: number;
+  chat_rate_coins?: number;
 }
 
 const Discover = () => {
@@ -68,7 +69,7 @@ const Discover = () => {
       // Use safe_profiles view to filter for creator role only
       const { data: profilesData, error } = await supabase
         .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, subscription_price_coins, is_verified, role')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, subscription_price_coins, chat_rate_coins, is_verified, role')
         .eq('role', 'creator')
         .order('created_at', { ascending: false });
 
@@ -364,7 +365,7 @@ const Discover = () => {
             }}
             creatorId={selectedCreator.id}
             creatorName={selectedCreator.display_name || selectedCreator.username}
-            chatRate={selectedCreator.chat_rate || 0}
+            chatRateCoins={selectedCreator.chat_rate_coins || 0}
             subscriberId={user?.id || ''}
             onSessionCreated={(sessionId) => {
               console.log('Chat session created:', sessionId);

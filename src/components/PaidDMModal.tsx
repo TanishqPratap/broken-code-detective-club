@@ -1,26 +1,21 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Check } from "lucide-react";
+import { Coins, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/hooks/useWallet";
 
 interface PaidDMModalProps {
   open: boolean;
   onClose: () => void;
   creatorId: string;
   creatorName: string;
-  chatRate: number;
+  chatRateCoins: number;
   subscriberId: string;
   onSessionCreated: (sessionId: string) => void;
-}
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
 }
 
 const PaidDMModal = ({
@@ -28,170 +23,72 @@ const PaidDMModal = ({
   onClose,
   creatorId,
   creatorName,
-  chatRate,
+  chatRateCoins,
   subscriberId,
   onSessionCreated
 }: PaidDMModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [paymentInfo, setPaymentInfo] = useState<{
-    amountUSD: number;
-    amountINR: number;
-    exchangeRate: number;
-  } | null>(null);
   const { toast } = useToast();
+  const { balance, transferCoins, refreshWallet } = useWallet();
 
-  useEffect(() => {
-    if (open) {
-      loadRazorpayScript();
-      // Pre-fetch exchange rate when modal opens
-      fetchPaymentInfo();
-    }
-  }, [open, chatRate]);
+  const hasEnoughCoins = balance >= chatRateCoins;
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const fetchPaymentInfo = async () => {
-    try {
-      // Create a payment order to get exchange rate info
-      const { data, error } = await supabase.functions.invoke('create-tip-payment', {
-        body: {
-          recipientId: creatorId,
-          amount: chatRate,
-          message: `Paid DM session with ${creatorName}`
-        }
+  const handlePayWithCoins = async () => {
+    if (!hasEnoughCoins) {
+      toast({
+        title: "Insufficient Coins",
+        description: `You need ${chatRateCoins} coins but only have ${balance}. Please purchase more coins.`,
+        variant: "destructive",
       });
-
-      if (error) throw error;
-
-      setPaymentInfo({
-        amountUSD: data.amount_usd,
-        amountINR: data.amount_inr,
-        exchangeRate: data.exchange_rate
-      });
-    } catch (error) {
-      console.error('Error fetching payment info:', error);
+      return;
     }
-  };
 
-  const handleStartSession = async () => {
     setLoading(true);
 
     try {
-      // Create a tip payment order (reusing the tip payment function for DM)
-      const { data, error } = await supabase.functions.invoke('create-tip-payment', {
-        body: {
-          recipientId: creatorId,
-          amount: chatRate,
-          message: `Paid DM session with ${creatorName}`
-        }
+      // Transfer coins from subscriber to creator
+      const success = await transferCoins(
+        creatorId,
+        chatRateCoins,
+        `Paid DM session with ${creatorName}`
+      );
+
+      if (!success) {
+        throw new Error("Failed to transfer coins");
+      }
+
+      // Create chat session after successful payment
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("chat_sessions")
+        .insert({
+          creator_id: creatorId,
+          subscriber_id: subscriberId,
+          hourly_rate: chatRateCoins,
+          payment_status: "paid",
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      await refreshWallet();
+
+      toast({
+        title: "Payment Successful!",
+        description: `You paid ${chatRateCoins} coins. You can now chat with ${creatorName}`,
       });
-
-      if (error) throw error;
-
-      console.log('DM payment order created:', data);
-
-      // Update payment info for display
-      setPaymentInfo({
-        amountUSD: data.amount_usd,
-        amountINR: data.amount_inr,
-        exchangeRate: data.exchange_rate
-      });
-
-      // Initialize Razorpay payment
-      const options = {
-        key: data.key_id,
-        amount: data.amount,
-        currency: data.currency,
-        order_id: data.order_id,
-        name: "Paid DM Session",
-        description: `1 hour chat session with ${creatorName}`,
-        prefill: {
-          email: subscriberId,
-        },
-        theme: {
-          color: "#3399cc"
-        },
-        handler: async function (response: any) {
-          try {
-            console.log('DM Payment response received:', response);
-            
-            // Verify payment on backend
-            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tip-payment', {
-              body: {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                recipientId: creatorId,
-                amount: chatRate,
-                message: `Paid DM session with ${creatorName}`
-              }
-            });
-
-            if (verifyError) throw verifyError;
-
-            console.log('DM Payment verified successfully:', verifyData);
-
-            // Create chat session after successful payment
-            const { data: sessionData, error: sessionError } = await supabase
-              .from("chat_sessions")
-              .insert({
-                creator_id: creatorId,
-                subscriber_id: subscriberId,
-                hourly_rate: chatRate,
-                payment_status: "paid",
-                stripe_payment_intent_id: response.razorpay_payment_id
-              })
-              .select()
-              .single();
-
-            if (sessionError) throw sessionError;
-
-            toast({
-              title: "Payment Successful!",
-              description: `You can now chat with ${creatorName}`,
-            });
-            
-            onSessionCreated(sessionData.id);
-            onClose();
-            
-          } catch (error: any) {
-            console.error('DM Payment verification failed:', error);
-            toast({
-              title: "Payment Verification Failed",
-              description: error.message || "Please contact support",
-              variant: "destructive",
-            });
-          }
-        },
-        modal: {
-          ondismiss: function() {
-            setLoading(false);
-          }
-        }
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      
+      onSessionCreated(sessionData.id);
+      onClose();
       
     } catch (error: any) {
-      console.error('Error creating DM payment:', error);
+      console.error('DM Payment failed:', error);
       toast({
-        title: "Payment Error",
-        description: error.message || "Failed to process payment",
+        title: "Payment Failed",
+        description: error.message || "Please try again",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -208,20 +105,13 @@ const PaidDMModal = ({
             <CardTitle className="text-xl">1 Hour Chat Session</CardTitle>
             <CardDescription>Direct messaging with {creatorName}</CardDescription>
             <div className="text-2xl font-bold flex items-center justify-center gap-1">
-              <DollarSign className="w-6 h-6" />
-              {chatRate} USD
+              <Coins className="w-6 h-6" />
+              {chatRateCoins} Coins
               <span className="text-sm font-normal text-muted-foreground">/hour</span>
             </div>
-            {paymentInfo && (
-              <div className="text-center">
-                <div className="text-lg font-semibold text-muted-foreground">
-                  ≈ ₹{paymentInfo.amountINR.toFixed(2)} INR
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Exchange rate: 1 USD = ₹{paymentInfo.exchangeRate.toFixed(2)} INR
-                </p>
-              </div>
-            )}
+            <div className="text-sm text-muted-foreground mt-2">
+              Your balance: <span className={hasEnoughCoins ? "text-green-600" : "text-destructive"}>{balance} coins</span>
+            </div>
           </CardHeader>
           
           <CardContent>
@@ -245,13 +135,29 @@ const PaidDMModal = ({
             </ul>
             
             <Button 
-              onClick={handleStartSession} 
-              disabled={loading}
+              onClick={handlePayWithCoins} 
+              disabled={loading || !hasEnoughCoins}
               className="w-full"
               size="lg"
             >
-              {loading ? "Processing..." : paymentInfo ? `Pay ₹${paymentInfo.amountINR.toFixed(2)} with Razorpay` : `Pay $${chatRate} with Razorpay`}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Coins className="w-4 h-4 mr-2" />
+                  Pay {chatRateCoins} Coins
+                </>
+              )}
             </Button>
+            
+            {!hasEnoughCoins && (
+              <p className="text-sm text-destructive text-center mt-2">
+                You need {chatRateCoins - balance} more coins to start this chat
+              </p>
+            )}
           </CardContent>
         </Card>
       </DialogContent>

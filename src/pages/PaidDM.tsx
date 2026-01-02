@@ -197,7 +197,7 @@ const PaidDM = () => {
         onClose={() => setShowPaidDMModal(false)} 
         creatorId="" 
         creatorName="" 
-        chatRate={20} 
+        chatRateCoins={20} 
         subscriberId={user.id} 
         onSessionCreated={(sessionId) => {
           setActiveSessionId(sessionId);
