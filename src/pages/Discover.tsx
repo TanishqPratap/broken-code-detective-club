@@ -66,10 +66,10 @@ const Discover = () => {
 
   const fetchCreators = async () => {
     try {
-      // Use safe_profiles view to filter for creator role only
+      // Use public_profiles view which is publicly accessible and excludes sensitive data
       const { data: profilesData, error } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, subscription_price_coins, chat_rate_coins, is_verified, role')
+        .from('public_profiles')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, chat_rate, is_verified, role')
         .eq('role', 'creator')
         .order('created_at', { ascending: false });
 
