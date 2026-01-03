@@ -20,6 +20,7 @@ interface CreatorData {
   bio: string;
   avatar_url: string;
   subscription_price: number;
+  subscription_price_coins?: number;
   is_verified: boolean;
   chat_rate?: number;
   chat_rate_coins?: number;
@@ -82,10 +83,10 @@ const CreatorProfilePage = () => {
     try {
       setError(null);
       
-      // Fetch creator profile using profiles table
+      // Fetch creator profile using creator_directory view (public-safe)
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, bio, avatar_url, subscription_price, is_verified, chat_rate, chat_rate_coins')
+        .from('creator_directory')
+        .select('id, username, display_name, bio, avatar_url, subscription_price, subscription_price_coins, is_verified, chat_rate, chat_rate_coins')
         .eq('id', creatorId)
         .maybeSingle();
 
@@ -134,6 +135,7 @@ const CreatorProfilePage = () => {
         bio: profileData.bio || '',
         avatar_url: profileData.avatar_url || '',
         subscription_price: profileData.subscription_price || 0,
+        subscription_price_coins: profileData.subscription_price_coins || undefined,
         is_verified: profileData.is_verified || false,
         chat_rate: profileData.chat_rate,
         chat_rate_coins: profileData.chat_rate_coins,
@@ -175,12 +177,12 @@ const CreatorProfilePage = () => {
 
       if (trailersError) throw trailersError;
 
-      // Get creator info for trailers
+      // Get creator info for trailers (use public-safe creator_directory)
       const { data: creatorInfo } = await supabase
-        .from('profiles')
+        .from('creator_directory')
         .select('id, username, display_name, avatar_url, is_verified, subscription_price')
         .eq('id', creatorId)
-        .single();
+        .maybeSingle();
 
       const trailersWithCreator = (trailersData || []).map(trailer => ({
         ...trailer,
@@ -342,6 +344,7 @@ const CreatorProfilePage = () => {
             creatorId={creator.id}
             creatorName={creator.display_name || creator.username}
             subscriptionPrice={creator.subscription_price}
+            subscriptionPriceCoins={creator.subscription_price_coins}
             onSubscriptionSuccess={handleSubscriptionSuccess}
           />
 

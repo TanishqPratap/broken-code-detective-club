@@ -54,17 +54,17 @@ const SubscriptionPaymentModal = ({
       setError(null);
       setPaymentInfo(null);
     }
-  }, [isOpen, creatorId]);
+  }, [isOpen, creatorId, subscriptionPriceCoins]);
 
   const fetchCreatorCoinPrice = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
+      const { data } = await supabase
+        .from('creator_directory')
         .select('subscription_price_coins')
         .eq('id', creatorId)
-        .single();
-      
-      if (!error && data?.subscription_price_coins) {
+        .maybeSingle();
+
+      if (data?.subscription_price_coins) {
         setCreatorCoinPrice(data.subscription_price_coins);
       }
     } catch (err) {
