@@ -1889,7 +1889,6 @@ export type Database = {
           chat_rate: number | null
           created_at: string | null
           display_name: string | null
-          email: string | null
           id: string | null
           is_verified: boolean | null
           role: Database["public"]["Enums"]["user_role"] | null
@@ -1900,28 +1899,26 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
-          chat_rate?: never
+          chat_rate?: number | null
           created_at?: string | null
           display_name?: string | null
-          email?: never
           id?: string | null
           is_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
-          subscription_price?: never
+          subscription_price?: number | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
-          chat_rate?: never
+          chat_rate?: number | null
           created_at?: string | null
           display_name?: string | null
-          email?: never
           id?: string | null
           is_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
-          subscription_price?: never
+          subscription_price?: number | null
           updated_at?: string | null
           username?: string | null
         }
